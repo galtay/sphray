@@ -1,0 +1,15 @@
+planning output times (OutputTiming = forced)
+SPHRAY will generate  5 full outputs
+ 
+ start time [code]:   0.000000000000000E+000
+ start time [Myr]:    0.000000000000000E+000
+ 
+                   (code units)        (Myrs)
+  output 001 :      1.02269E-02         1.00000E+01
+  output 002 :      3.06807E-02         3.00000E+01
+  output 003 :      1.02269E-01         1.00000E+02
+  output 004 :      2.04538E-01         2.00000E+02
+  output 005 :      5.11345E-01         5.00000E+02
+ 
+ total simulation time [code] =   0.511345091743208     
+ total simulation time [Myr]  =    500.000000000000     

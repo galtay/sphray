@@ -1,0 +1,14 @@
+ray planning: snapshots =   1 (RayScheme = raynum) (Comoving =    F)
+ 
+ 
+ ray plan in code units
+snap   t @ snap      t start       t end         dt            Src rays
+  1    0.000000E+00  0.000000E+00  5.113451E-01  5.113451E-01  1.000000E+06
+ 
+ 
+ ray plan in Myrs
+snap   t @ snap      t start       t end         dt            Src rays
+  1    0.000000E+00  0.000000E+00  5.000000E+02  5.000000E+02  1.000000E+06
+ 
+ total simulation time [code] =   0.511345091743208     
+ total simulation time [Myr]  =    500.000000000000     
