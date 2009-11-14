@@ -1,0 +1,61 @@
+reading in the atomic rates header
+log10 of temperature floor   = 0.0000E+00
+log10 of temperature ceiling = 9.0000E+00
+rate file entries            =  2251
+log10 spacing of temperature = 4.0000E-03
+ 
+ 
+ -----------------------------------------------------------
+Atomic Rates @  1.00000E+04 K from rate tables
+ 
+HI Col Ion:                     6.22677E-16 cm^3/s
+HeI Col Ion:                    7.33308E-22 cm^3/s
+HeII Col Ion:                   1.61685E-37 cm^3/s
+ 
+HII Rec (A):                    4.29695E-13 cm^3/s
+HII Rec (B):                    2.59182E-13 cm^3/s
+ 
+HeII Rec (A):                   4.22471E-13 cm^3/s
+HeII Rec (B):                   2.61613E-13 cm^3/s
+ 
+HeIII Rec (A):                  2.22561E-12 cm^3/s
+HeIII Rec (B):                  1.54528E-12 cm^3/s
+ 
+He D Rec:                       5.11685E-30cm^3/s
+ 
+HII Rec Cool (A):               4.59030E-25 ergs cm^3/s
+HII Rec Cool (B):               2.37591E-25 ergs cm^3/s
+ 
+HeII Rec Cool (A):              5.83285E-25 ergs cm^3/s
+HeII Rec Cool (B):              3.61196E-25 ergs cm^3/s
+ 
+HeIII Rec Cool (A):             1.00580E-23 ergs cm^3/s
+HeIII Rec Cool (B):             6.47065E-24 ergs cm^3/s
+ 
+He D Rec Cool:                  5.11685E-30cm^3/s
+ 
+HI Col Ion Cool:                1.95305E-26 ergs cm^3/s
+HeI Col Ion Cool:               2.94052E-32 ergs cm^3/s
+HeII Col Ion Cool:              0.00000E+00 ergs cm^3/s
+He 23 Col Ion Cool:             3.17986E-30 ergs cm^3/s
+ 
+HI Col Ext Cool:                4.12992E-24 ergs cm^3/s
+HeI Col Ext Cool:               3.91339E-28 ergs cm^6/s
+HeII Col Ext Cool:              0.00000E+00 ergs cm^3/s
+ 
+Collisional Equilibrium
+ 
+  CASE A
+xHIeq    =       9.986E-01
+xHIIeq   =       1.447E-03
+xHeIeq   =       1.000E+00
+xHeIIeq  =       1.736E-09
+xHeIIIeq =       1.261E-34
+ 
+  CASE B
+xHIeq    =       9.976E-01
+xHIIeq   =       2.397E-03
+xHeIeq   =       1.000E+00
+xHeIIeq  =       2.803E-09
+xHeIIIeq =       2.933E-34
+ 
