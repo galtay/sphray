@@ -42,10 +42,10 @@ write_rates_Hum: $(FILES) write_rates_Hum.o
 	$(FC) $(FFLAGS) $(OPT) $(INCLUDE) -c -o $@ $<
 
 clean:
-	rm -f *.o *.mod $(APPS) 
+	rm -f *.o *.mod $(APPS) $(SRCDIR)/*.o
 
 cleanall:
-	rm -f *.o *.mod $(APPS) 
+	rm -f *.o *.mod $(APPS) $(SRCDIR)/*.o
 
 tidy:
 	rm -f *~
