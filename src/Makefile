@@ -5,25 +5,26 @@
 # commented out.  
 #=============================================================================
 
-OPT += -DincHe    # if you want to include Helium
+#OPT += -DincHe    # if you want to include Helium
 #OPT += -DincHrec  # if you want seperate rays traced for H recomb. radiation
 #OPT += -DincHerec # if you want seperate rays traced for He recomb. radiation
 
-OPT += -DoutGamma # if you want to output HI photoionization rate
+#OPT += -DoutGamma # if you want to output HI photoionization rate
 
 #=============================================================================
 # the following system definitions can be usefull in setting 
-# the variables FC (Fortran Compiler) and FFLAGS (Compiler Flags)
-# The first two generic definitions should be fine for most systems
-# If you want architecture dependent compilation with the intel compiler
-# use ifort --help | less to read about the -x? flags.
+# the variables FC (Fortran Compiler) and FFLAGS (Compiler Flags).
+# I have used some features from the Fortran 2003 standard which gfortran 
+# hasn't implemented (yet).  The non OpenGL version compiles with g95 while
+# both the OpenGL and non-OpenGL versions compile with the intel compiler. 
 #=============================================================================
 
+#SYSTEM=generic_ift_opt
 #SYSTEM=generic_g95_opt
 #SYSTEM=generic_gfortran_opt
-#SYSTEM=generic_ift_opt
+
 #SYSTEM=cdm
-SYSTEM=profile
+#SYSTEM=profile
 #SYSTEM=debug
 
 
@@ -88,7 +89,7 @@ FILES= myf90.o physical_constants.o mt19937.o m_mrgrnk.o \
 
 #=============================================================================
 # these only need to be set if you are using the OpenGL visiualization tool
-# Note that you need to compile f90gl with the same Fortran 90 compiler you 
+# Note that you need to compile f03gl with the same Fortran 90 compiler you 
 # use to compile SPHRAY.  A make will produce the executable sphray while
 # make glsphray will produce the executable glsphray
 #=============================================================================
@@ -147,12 +148,11 @@ density_test: $(FILES) density_test.o
 	$(FC) $(FFLAGS) -o $@ $^ $(LIBS)
 
 
-
 clean :
 	rm -f libpt.a *.o *.mod *__genmod.f90
 
 cleanall :
-	rm -f libpt.a *.o *.mod density_test glsphray $(APPS) 
+	rm -f libpt.a *.o *.mod *__genmod.f90 density_test glsphray $(APPS) 
 
 tidy :
 	rm -f *~ 
