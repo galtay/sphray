@@ -104,12 +104,16 @@ contains
      character(4) :: ext
      character(clen) :: filename
      integer(i8b) :: lun, Nread, Nfile
-     integer(i4b) :: i, ifile
+     integer(i4b) :: ipar, ifile
 
      real(r8b) :: nHe_over_nH
      real(r4b), allocatable :: mu(:), uint(:)
      real(r4b), allocatable :: rblock3(:,:)
 
+     ! set defaults
+     !==============
+     nHe_over_nH = 0.0
+     ipar=0
 
      write(*,*) 'output number: ', GV%OutputIndx
      write(*,*) 'output type:   ', GV%OutputType
@@ -187,11 +191,11 @@ contains
         write(lun) pars(Nread+1:Nread+Nfile)%xHeII
 #endif
 #ifdef outGamma
-        do i = Nread+1, Nread+Nfile
-           if (pars(i)%time > 0.0) then
-              pars(i)%gammaHI = pars(i)%gammaHI / pars(i)%time
+        do ipar = Nread+1, Nread+Nfile
+           if (pars(ipar)%time > 0.0) then
+              pars(ipar)%gammaHI = pars(ipar)%gammaHI / pars(ipar)%time
            else
-              pars(i)%gammaHI = 0.0
+              pars(ipar)%gammaHI = 0.0
            end if
         end do
         write(lun) pars(Nread+1:Nread+Nfile)%gammaHI

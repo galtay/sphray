@@ -255,8 +255,8 @@ subroutine read_Gpub_particles(MB)
 
   real(r8b), intent(out) :: MB !< MB allocated for particle storage
 
-  character(200) :: myname 
-  logical :: crash
+  character(200), parameter :: myname="read_Gpub_particles"
+  logical, parameter :: crash=.true.
 
   real(r4b), allocatable :: rblck(:)
   real(r4b), allocatable :: rblck3(:,:)
@@ -282,10 +282,9 @@ subroutine read_Gpub_particles(MB)
 
   real(r8b) :: nHe_over_nH
 
-  ! set error handling variables
+  ! set default values
   !===============================
-  myname = "read_Gpub_particles"
-  crash = .true.
+  nHe_over_nH = 0.0
 
   ! read header from first file
   !============================
@@ -522,8 +521,8 @@ subroutine read_Gtiz_particles(MB)
 
   real(r8b), intent(out) :: MB         !< MB allocated for particle storage
 
-  character(200) :: myname 
-  logical :: crash
+  character(200), parameter :: myname="read_Gtiz_particles" 
+  logical, parameter :: crash=.true.
 
   real(r4b), allocatable :: rblck(:)
   real(r4b), allocatable :: rblck3(:,:)
@@ -547,12 +546,11 @@ subroutine read_Gtiz_particles(MB)
   real(r8b) :: xvec(5)
   real(r8b) :: Tdum
 
-
  
-  ! set error handling variables
+  ! set default values
   !===============================
-  myname = "read_Gtiz_particles"
-  crash = .true.
+  caseA=.false.
+  xvec=0.0
 
   ! read header from first file
   !============================
@@ -775,8 +773,9 @@ subroutine read_Gtiz_particles(MB)
 
   
 
-  ! if we have Helium, initialize the ionization fractions to collisional equilibrium
-  !----------------------------------------------------------------------------------
+  ! if we have Helium, initialize the ionization fractions to 
+  ! collisional equilibrium
+  !------------------------------------------------------------------------
 #ifdef incHe
 
   ! set caseA true or false for collisional equilibrium
@@ -825,17 +824,19 @@ subroutine update_particles(MB)
 
   real(r8b), intent(out) :: MB   !< MB allocated for particle storage
 
-  character(200) :: myname 
-  logical :: crash
+  character(200), parameter :: myname="update_particles" 
+  logical, parameter :: crash=.true.
 
   integer(i4b), allocatable :: idold(:)
   real(r4b), allocatable :: Told(:)
   real(r4b), allocatable :: yeold(:)
   real(r4b), allocatable :: xHIold(:)
   real(r4b), allocatable :: xHIIold(:)
+  
   real(r4b), allocatable :: xHeIold(:)
   real(r4b), allocatable :: xHeIIold(:)
   real(r4b), allocatable :: xHeIIIold(:)
+
   integer(i8b), allocatable :: lasthitold(:)
   integer(i8b), allocatable :: orderold(:)  
 
@@ -844,11 +845,7 @@ subroutine update_particles(MB)
 
   integer(i8b) :: i, idnew, indx, err
 
-
-  ! set error handling variables
-  !==============================
-  myname = "update_particles"
-  crash = .true.
+  
 
 
   ! store carry over variables
@@ -888,7 +885,11 @@ subroutine update_particles(MB)
   allocate( xHeIIIold(size(psys%par)), stat=err)
   if (err /= 0) call myerr("failed to allocate xHeIIIold",myname,crash)     
   xHeIIIold = psys%par%xHeIII
+#else
+  allocate( xHeIold(1), xHeIIold(1), xHeIIIold(1) )
 #endif
+
+
   
   allocate( lasthitold(size(psys%par)), stat=err)
   if (err /= 0) call myerr("failed to allocate lasthitold",myname,crash)     
@@ -956,9 +957,9 @@ subroutine update_particles(MB)
   end do
 
   deallocate (idold, Told, yeold, xHIold, xHIIold, lasthitold, orderold)
-#ifdef incHe
+
   deallocate (xHeIold, xHeIIold, xHeIIIold)
-#endif
+
 
 
 end subroutine update_particles
