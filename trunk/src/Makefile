@@ -5,7 +5,7 @@
 # commented out.  
 #=============================================================================
 
-#OPT += -DincHe    # if you want to include Helium
+OPT += -DincHe    # if you want to include Helium
 #OPT += -DincHrec  # if you want seperate rays traced for H recomb. radiation
 #OPT += -DincHerec # if you want seperate rays traced for He recomb. radiation
 
@@ -22,12 +22,7 @@ OPT += -DoutGamma # if you want to output HI photoionization rate
 #SYSTEM=generic_g95_opt
 #SYSTEM=generic_gfortran_opt
 #SYSTEM=generic_ift_opt
-#SYSTEM=generic_ift
 #SYSTEM=cdm
-#SYSTEM=eddington_ift_opt
-#SYSTEM=catbus_ift_opt
-#SYSTEM=silky_ift_opt
-#SYSTEM=toto_ift_opt
 SYSTEM=profile
 #SYSTEM=debug
 
@@ -43,15 +38,18 @@ ifeq ($(SYSTEM),cdm)
    FFLAGS= 
 endif
 
+
 ifeq ($(SYSTEM),debug)
    FC= ifort
    FFLAGS= $(IFORTFLAGS) 
 endif
 
+
 ifeq ($(SYSTEM),profile)
    FC= ifort
    FFLAGS= $(IFORTFLAGS) -p
 endif
+
 
 ifeq ($(SYSTEM),generic_ift_opt)
    FC= ifort
@@ -59,43 +57,11 @@ ifeq ($(SYSTEM),generic_ift_opt)
 endif
 
 
-ifeq ($(SYSTEM),catbus_ift_opt)
-   FC= ifort
-   FFLAGS= $(IFORTFLAGS) -fast 
-endif
-
-
-ifeq ($(SYSTEM),eddington_ift_opt)
-   FC= ifort
-   FFLAGS= $(IFORTFLAGS) -O3 -xP -ipo  
-endif
-
-
-ifeq ($(SYSTEM),toto_ift_opt)
-   FC= ifort
-   FFLAGS= $(IFORTFLAGS) -O3 -xN
-endif
-
-
-ifeq ($(SYSTEM),psycho_ift_opt)
-   FC= ifort             
-   FFLAGS= $(IFORTFLAGS) -O3 -xN -static
-endif                                                                
-
-ifeq ($(SYSTEM),generic_ift)
-   FC= ifort             
-   FFLAGS= $(IFORTFLAGS) -O3
-endif                                                                
-
-ifeq ($(SYSTEM),silky_ift_opt)
-   FC= ifort
-   FFLAGS= $(IFORTFLAGS) -O3  
-endif
-
 ifeq ($(SYSTEM),generic_g95_opt)
    FC= g95
    FFLAGS= -O3 -ffast-math -cpp
 endif
+
 
 ifeq ($(SYSTEM),generic_gfortran_opt)
    FC= gfortran
