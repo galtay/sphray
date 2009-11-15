@@ -19,7 +19,7 @@
 # both the OpenGL and non-OpenGL versions compile with the intel compiler. 
 #=============================================================================
 
-#SYSTEM=generic_ift_opt
+SYSTEM=generic_ift_opt
 #SYSTEM=generic_g95_opt
 #SYSTEM=generic_gfortran_opt
 
@@ -54,7 +54,7 @@ endif
 
 ifeq ($(SYSTEM),generic_ift_opt)
    FC= ifort
-   FFLAGS= $(IFORTFLAGS) -O3 -ipo 
+   FFLAGS= $(IFORTFLAGS) -O3 
 endif
 
 
@@ -77,7 +77,7 @@ APPS= sphray
 FILES= myf90.o physical_constants.o mt19937.o m_mrgrnk.o \
        pluecker.o cosmology.o particle_system.o b2cd.o \
        HuiGnedinAtomicRates.o CenAtomicRates.o \
-       HummerAtomicRates.o VoronovAtomicRates.o \
+       HummerAtomicRates.o  \
        spectra.o sphpar.o octtree3.o ray.o raylist.o global.o \
        config.o atomic_rates.o \
        source_input.o gadget_input.o main_input.o \
@@ -168,7 +168,6 @@ GLUT_fonts.o: GLUT_fonts.c
 	cc -c -o GLUT_fonts.o GLUT_fonts.c
 
 OpenGL_${GLUT}.o OpenGL_glu.o: OpenGL_gl.o
-
 
 
 glsphray: %: %.F90 $(MODULES) $(FILES) viewer.o fthread.o libpt.a force
