@@ -3,7 +3,7 @@
 !> \brief Module that stores the rate table from  
 !! http://adsabs.harvard.edu/abs/1994MNRAS.268..109H
 !<
-module HummerAtomicRates
+module hummer_atomic_rates_mod
 use myf90_mod
 implicit none
 private
@@ -90,7 +90,7 @@ contains
         integer(i8b) :: Tindx
 
         
-        if (T < Tmin) stop "T < Tmin in HummerAtomicRates.f90"
+        if (T < Tmin) stop "T < Tmin in hummer_atomic_rates_mod.f90"
     
         Tnum = ( log10(T) - logTmin ) / dlogT
         Tindx = ceiling(Tnum)
@@ -101,8 +101,8 @@ contains
         end if
         Tremain = Tnum - (Tindx-1)
     
-        if(Tindx < 1)        stop "Tindx < 1 in HummerAtomicRates.f90 "
-        if(Tindx > Ntable-1) stop "Tindx > Ntable-1 in HummerAtomicRates.f90 "
+        if(Tindx < 1)        stop "Tindx < 1 in hummer_atomic_rates_mod.f90 "
+        if(Tindx > Ntable-1) stop "Tindx > Ntable-1 in hummer_atomic_rates_mod.f90 "
 
         rdif = (HIIrcA_table(Tindx+1) - HIIrcA_table(Tindx)) * Tremain
         rate = (HIIrcA_table(Tindx) + rdif) / sqrt(T)
@@ -120,7 +120,7 @@ contains
         integer(i8b) :: Tindx
 
         
-        if (T < Tmin) stop "T < Tmin in HummerAtomicRates.f90"
+        if (T < Tmin) stop "T < Tmin in hummer_atomic_rates_mod.f90"
     
         Tnum = ( log10(T) - logTmin ) / dlogT
         Tindx = ceiling(Tnum)
@@ -131,8 +131,8 @@ contains
         end if
         Tremain = Tnum - (Tindx-1)
     
-        if(Tindx < 1)        stop "Tindx < 1 in HummerAtomicRates.f90 "
-        if(Tindx > Ntable-1) stop "Tindx > Ntable-1 in HummerAtomicRates.f90 "
+        if(Tindx < 1)        stop "Tindx < 1 in hummer_atomic_rates_mod.f90 "
+        if(Tindx > Ntable-1) stop "Tindx > Ntable-1 in hummer_atomic_rates_mod.f90 "
 
         rdif = (HIIrcB_table(Tindx+1) - HIIrcB_table(Tindx)) * Tremain
         rate = (HIIrcB_table(Tindx) + rdif) / sqrt(T)
@@ -150,7 +150,7 @@ contains
         integer(i8b) :: Tindx
 
         
-        if (T < Tmin) stop "T < Tmin in HummerAtomicRates.f90"
+        if (T < Tmin) stop "T < Tmin in hummer_atomic_rates_mod.f90"
     
         Tnum = ( log10(T) - logTmin ) / dlogT
         Tindx = ceiling(Tnum)
@@ -161,8 +161,8 @@ contains
         end if
         Tremain = Tnum - (Tindx-1)
     
-        if(Tindx < 1)        stop "Tindx < 1 in HummerAtomicRates.f90 "
-        if(Tindx > Ntable-1) stop "Tindx > Ntable-1 in HummerAtomicRates.f90 "
+        if(Tindx < 1)        stop "Tindx < 1 in hummer_atomic_rates_mod.f90 "
+        if(Tindx > Ntable-1) stop "Tindx > Ntable-1 in hummer_atomic_rates_mod.f90 "
 
         rdif = (HIIrccA_table(Tindx+1) - HIIrccA_table(Tindx)) * Tremain
         rate = (HIIrccA_table(Tindx) + rdif) * sqrt(T) * k_erg_K
@@ -180,7 +180,7 @@ contains
         integer(i8b) :: Tindx
 
         
-        if (T < Tmin) stop "T < Tmin in HummerAtomicRates.f90"
+        if (T < Tmin) stop "T < Tmin in hummer_atomic_rates_mod.f90"
     
         Tnum = ( log10(T) - logTmin ) / dlogT
         Tindx = ceiling(Tnum)
@@ -191,12 +191,12 @@ contains
         end if
         Tremain = Tnum - (Tindx-1)
     
-        if(Tindx < 1)        stop "Tindx < 1 in HummerAtomicRates.f90 "
-        if(Tindx > Ntable-1) stop "Tindx > Ntable-1 in HummerAtomicRates.f90 "
+        if(Tindx < 1)        stop "Tindx < 1 in hummer_atomic_rates_mod.f90 "
+        if(Tindx > Ntable-1) stop "Tindx > Ntable-1 in hummer_atomic_rates_mod.f90 "
 
         rdif = (HIIrccB_table(Tindx+1) - HIIrccB_table(Tindx)) * Tremain
         rate = (HIIrccB_table(Tindx) + rdif) * sqrt(T) * k_erg_K 
 
     end function Hum_HII_recomb_coolB
 
-end module HummerAtomicRates
+end module hummer_atomic_rates_mod

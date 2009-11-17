@@ -1,4 +1,4 @@
-!> \file HuiGnedinAtomicRates.f90
+!> \file hui_gnedin_atomic_rates_mod.f90
 
 !> \brief Module that stores the rate fits from   
 !! http://adsabs.harvard.edu/abs/1997MNRAS.292...27H
@@ -18,7 +18,7 @@
 !! Black5e3_5e5 are from Black 1981 with the correction from Cen 1992
 !! and are accurate to 10% from 5e3 to 5e5
 !<
-module HuiGnedinAtomicRates
+module hui_gnedin_atomic_rates_mod
 use myf90_mod
 implicit none
 
@@ -301,4 +301,4 @@ contains
   end function Hui_HeII_col_ext_cool
 
 
-end module HuiGnedinAtomicRates
+end module hui_gnedin_atomic_rates_mod

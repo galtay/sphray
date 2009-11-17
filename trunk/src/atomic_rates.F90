@@ -4,8 +4,8 @@
 
 module atomic_rates_mod
 use myf90_mod
-use HuiGnedinAtomicRates
-use CenAtomicRates
+use hui_gnedin_atomic_rates_mod
+use cen_atomic_rates_mod
 implicit none
 
   character(14), parameter :: ratenames(25) = &

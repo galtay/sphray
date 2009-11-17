@@ -1,4 +1,4 @@
-!> \file Voronov.f90
+!> \file voronov_atomic_rates.f90
 
 !> \brief Module that stores the rate fits from   
 !! "A practical fit formula for ionization rate coefficients of atoms and ions 
@@ -7,7 +7,7 @@
 
 
 
-module VoronovAtomicRates
+module voronov_atomic_rates_mod
 use myf90_mod
 implicit none
 
@@ -474,7 +474,7 @@ real :: te, u
 end subroutine cfit
 
 
-end module VoronovAtomicRates
+end module voronov_atomic_rates_mod
 
 
 
