@@ -180,7 +180,7 @@ BITS= 64
 
 #  The OpenGL / GLUT libraries 
 #-----------------------------------------------------------------------------
-DIROGL= ${ISLIB}/usr/lib${BITS} $(ISLIB)./$(LCLGLDIR)
+DIROGL= ${ISLIB}/usr/lib${BITS} $(ISLIB)./$(LCLGLDIR) 
 LIBOGL= -lglut -lGL -lGLU
 
 #  The X11 libraries 
@@ -193,7 +193,7 @@ LIBX11= -lXaw -lXt -lXmu -lXi -lXext -lX11 -lm -lXxf86vm
 
 # f03gl dir (f03gl should be compiled with the same Fortran as used here)
 #-----------------------------------------------------------------------------
-DIRF03GL= $(ISLIB)/home/galtay/usr/f03gl-$(FC)
+#DIRF03GL= $(ISLIB)/home/galtay/usr/f03gl-$(FC)
 
 
 
@@ -251,7 +251,7 @@ $(LCLGLDIR)/libpt.a: $(THRDSRC) $(LCLGLDIR)/pt.h
 # SPHRAY with OpenGL viewer
 
 glsphray: $(SRC) $(VIEWSRC) viewer.o $(LCLGLDIR)/libpt.a glsphray.o  
-	${FC} ${SRC} $(VIEWSRC) viewer.o glsphray.o $(DIRSVIEW) $(LIBSVIEW) $(FNAME) $@
+	${FC} $^ $(DIRSVIEW) $(LIBSVIEW) $(FNAME) $@
 
 
 
