@@ -6,7 +6,7 @@
 
 module euler_mod
 use ionpar_mod
-use CenAtomicRates
+use cen_atomic_rates_mod
 use atomic_rates_mod
 use physical_constants_mod
 implicit none
@@ -245,8 +245,8 @@ end subroutine eulerint
 !! ip%xHII, ip%xHeII, ip%xHeIII, ip%T, ip%pdeps
 !========================================================================
 subroutine recombeulerint(ip,scalls)
-use CenAtomicRates, only: Haiman_Bremss_cool
-use CenAtomicRates, only: Haiman_Comp_Heol
+use cen_atomic_rates_mod, only: Haiman_Bremss_cool
+use cen_atomic_rates_mod, only: Haiman_Comp_Heol
 use atomic_rates_mod, only: get_atomic_rates
 use atomic_rates_mod, only: iso_k
 use ionpar_mod, only: ionpar2screen

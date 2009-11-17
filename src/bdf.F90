@@ -9,7 +9,7 @@
 !<
 module bdf_mod
 use ionpar_mod
-use CenAtomicRates
+use cen_atomic_rates_mod
 use atomic_rates_mod
 use physical_constants_mod
 implicit none

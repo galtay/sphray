@@ -24,7 +24,7 @@ integer, parameter :: MouseMirror=1
 real, parameter :: minSpotDistance=.001
 
 real(kind=gldouble), parameter :: curveScale=0.02
-real(kind=gldouble), parameter :: freeFlightSpeed=0.0005
+real(kind=gldouble), parameter :: freeFlightSpeed=0.005
 real(kind=gldouble), parameter :: M_PI=3.14159265358979323846_gldouble
 real(kind=gldouble), dimension(3), parameter :: zero=(/0.,0.,0./)
 

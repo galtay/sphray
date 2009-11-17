@@ -1,9 +1,9 @@
-!> \file CenAtomicRates.f90
+!> \file cen_atomic_rates_mod.f90
 
 !> \brief Module that stores the rate fits from  
 !! http://adsabs.harvard.edu/abs/1992ApJS...78..341C
 !<
-module CenAtomicRates
+module cen_atomic_rates_mod
 use myf90_mod
 implicit none
 
@@ -307,4 +307,4 @@ contains
     end function Osterbrok_HeII_photo_cs
 
 
-end module CenAtomicRates
+end module cen_atomic_rates_mod

@@ -11,11 +11,11 @@ use raylist_mod, only: raylist_type
 use myf90_mod
 use physical_constants_mod
 use b2cd_mod, only: b2cdfac
-use CenAtomicRates, only: Osterbrok_HI_photo_cs
-use CenAtomicRates, only: Osterbrok_HeI_photo_cs
-use CenAtomicRates, only: Osterbrok_HeII_photo_cs
-use CenAtomicRates, only: Haiman_Bremss_cool
-use CenAtomicRates, only: Haiman_Comp_Heol
+use cen_atomic_rates_mod, only: Osterbrok_HI_photo_cs
+use cen_atomic_rates_mod, only: Osterbrok_HeI_photo_cs
+use cen_atomic_rates_mod, only: Osterbrok_HeII_photo_cs
+use cen_atomic_rates_mod, only: Haiman_Bremss_cool
+use cen_atomic_rates_mod, only: Haiman_Comp_Heol
 implicit none
 
 !---------------------------
