@@ -31,8 +31,8 @@
 # both the OpenGL and non-OpenGL versions compile with the Intel compiler. 
 
 
-SYSTEM=generic_ifort_opt
-#SYSTEM=generic_ifort_fast
+#SYSTEM=generic_ifort_opt
+SYSTEM=generic_ifort_fast
 #SYSTEM=generic_g95_opt
 #SYSTEM=generic_gfortran_opt
 
@@ -148,10 +148,19 @@ SRC= 	myf90.o \
 
 
 #=============================================================================
-# these only need to be set if you are using the OpenGL visiualization tool
-# Note that you need to compile f03gl with the same Fortran 90 compiler you 
-# use to compile SPHRAY.  A make will produce the executable sphray while
-# make glsphray will produce the executable glsphray
+# These only need to be set if you are using the OpenGL visiualization tool
+# Note that I have taken code from the f03gl project and placed it in a 
+# directory called OpenGL within the SPHRAY distribution to save you the 
+# trouble of downloading it. HOWEVER the work on that project has been done
+# by 
+#
+# Anthony Stone <ajs1 at cam dot ac dot uk> and 
+# Aleksandar Donev <aleks dot donev at gmail dot com>
+#
+# who have done a lot of work to make the fortran wrappers. 
+#
+# http://www-stone.ch.cam.ac.uk/pub/f03gl
+#
 #=============================================================================
 
 # local OpenGL directory (should not need to be changed) 
@@ -189,14 +198,6 @@ DIRX11= ${ISLIB}/usr/X11R6/lib${BITS}
 LIBX11= -lXaw -lXt -lXmu -lXi -lXext -lX11 -lm -lXxf86vm
 
 
-
-
-# f03gl dir (f03gl should be compiled with the same Fortran as used here)
-#-----------------------------------------------------------------------------
-#DIRF03GL= $(ISLIB)/home/galtay/usr/f03gl-$(FC)
-
-
-
 # multi threading and local GLUT library
 #=============================================================================
 
@@ -204,7 +205,7 @@ LIBX11= -lXaw -lXt -lXmu -lXi -lXext -lX11 -lm -lXxf86vm
 DIRTHRD = ${ISLIB}./$(LCLGLDIR)
 LIBTHRD = -lpthread -lpt
 
-DIRSVIEW = $(DIROGL) $(DIRX11) $(DIRTHRD) $(DIRF03GL) 
+DIRSVIEW = $(DIROGL) $(DIRX11) $(DIRTHRD) 
 
 LIBSVIEW = ${LIBOGL} ${LIBX11} $(LIBTHRD) -lg2c -ldl
 
