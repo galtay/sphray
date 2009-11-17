@@ -123,9 +123,9 @@ SRC= 	myf90.o \
 	cosmology.o \
 	particle_system.o \
 	b2cd.o \
-	HuiGnedinAtomicRates.o \
-	CenAtomicRates.o \
-	HummerAtomicRates.o  \
+	hui_gnedin_atomic_rates.o \
+	cen_atomic_rates.o \
+	hummer_atomic_rates.o  \
 	spectra.o \
 	sphpar.o \
 	octtree3.o \
