@@ -1006,8 +1006,6 @@ subroutine viewbodies
   call glutInitWindowPosition(100,100)
   call glutInitWindowSize(600,600)
   
-  
-  write(*,*) "creating window"
   string="please, don't close me.."
   win=glutCreateWindow(string)
   
@@ -1037,12 +1035,8 @@ subroutine viewbodies
   !  call glPointParameterfARB(GL_POINT_FADE_THRESHOLD_SIZE_ARB, 0._glfloat) 
   call glutVisibilityFunc(visible)
   
-  
-  write(*,*) "calling glutTimerFunc"
   call glutTimerFunc(100, starreset,0_glint)
   
-  
-  write(*,*) "calling glutMainLoop()"
   call glutMainLoop()
   
 end subroutine viewbodies
