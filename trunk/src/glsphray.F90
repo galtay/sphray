@@ -1,4 +1,4 @@
-!> \file glsphray.f90
+!> \file glsphray.F90
 
 !> \brief SPHRAY basic operation program + OpenGL viewer
 !! 

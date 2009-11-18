@@ -1,4 +1,4 @@
-!> \file hui_gnedin_atomic_rates_mod.f90
+!> \file hui_gnedin_atomic_rates.F90
 
 !> \brief Module that stores the rate fits from   
 !! http://adsabs.harvard.edu/abs/1997MNRAS.292...27H

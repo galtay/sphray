@@ -1,4 +1,4 @@
-!> \file output.f90
+!> \file output.F90
 
 !> \brief The module that handles output
 !<

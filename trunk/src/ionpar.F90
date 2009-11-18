@@ -1,4 +1,4 @@
-!> \file ionpar.f90
+!> \file ionpar.F90
 
 !> \brief the module that handles ionization particles
 !<

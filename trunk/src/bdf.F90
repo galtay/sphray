@@ -1,4 +1,4 @@
-!> \file bdf.f90
+!> \file bdf.F90
 
 !> \brief the module for the photo backward difference solver.
 !! this file contains the subroutines for updating particles

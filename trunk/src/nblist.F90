@@ -1,3 +1,8 @@
+!> \file nblist.F90
+
+!> \brief The neighbor list module.
+!! 
+!<
 module nblist_mod
 use myf90_mod
 use particle_system_mod, only: particle_system_type

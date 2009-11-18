@@ -1,4 +1,4 @@
-!> \file HummerAtomicRates.f90
+!> \file hummer_atomic_rates.F90
 
 !> \brief Module that stores the rate table from  
 !! http://adsabs.harvard.edu/abs/1994MNRAS.268..109H

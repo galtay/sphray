@@ -1,4 +1,4 @@
-!> \file cosmology.f90
+!> \file cosmology.F90
 
 !> \brief Module contains simple analytic cosmological functions
 !<

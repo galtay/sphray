@@ -1,4 +1,4 @@
-!> \file spectra.f90
+!> \file spectra.F90
 
 !> \brief spectra handling
 !<

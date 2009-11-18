@@ -1,4 +1,4 @@
-!> \file ray.f90
+!> \file ray.F90
 
 !> \brief the ray module 
 !!

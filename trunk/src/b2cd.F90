@@ -1,4 +1,4 @@
-!> \file b2cd.f90
+!> \file b2cd.F90
 
 !> \brief Handles the impact parameter to column depth table
 

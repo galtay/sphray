@@ -1,3 +1,9 @@
+!> \file viewer.F90
+
+!> \brief SPHRAY OpenGL viewer routines. 
+!! 
+!<
+
 module viewermod
 use opengl_gl
 use opengl_glu

@@ -1,3 +1,8 @@
+!> \file kerneldensity.F90
+
+!> \brief Module for calculating the kernel density.
+!<
+
 module kernel_density_mod
 use particle_system_mod, only: particle_system_type, particle_type
 use sphpar_mod, only: sphpar_type 

@@ -1,4 +1,4 @@
-!> \file ion_temperature_update.f90
+!> \file ion_temperature_update.F90
 
 !> \brief Module that is the starting point for ionization
 !! and temperature updates.  It calls a runge kutta or a 

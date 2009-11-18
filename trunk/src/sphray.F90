@@ -1,4 +1,4 @@
-!> \file sphray.f90
+!> \file sphray.F90
 
 !> \brief SPHRAY basic operation program
 !! 

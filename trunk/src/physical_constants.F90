@@ -1,4 +1,4 @@
-!> \file physical_constants.f90
+!> \file physical_constants.F90
 
 !> \brief stores physical constants 
 !!

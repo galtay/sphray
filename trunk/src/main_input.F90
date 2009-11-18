@@ -1,4 +1,4 @@
-!> \file main_input.f90
+!> \file main_input.F90
 
 !> \brief The module that calls the specific input routines
 !<

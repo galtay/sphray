@@ -1,4 +1,4 @@
-!> \file cen_atomic_rates_mod.f90
+!> \file cen_atomic_rates_mod.F90
 
 !> \brief Module that stores the rate fits from  
 !! http://adsabs.harvard.edu/abs/1992ApJS...78..341C
