@@ -1,4 +1,4 @@
-!> \file pluecker.f90
+!> \file pluecker.F90
 
 !> \brief the pluecker test module 
 !!

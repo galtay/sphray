@@ -1,4 +1,4 @@
-!> \file initialize.f90 
+!> \file initialize.F90 
 
 !> \brief Initialization module
 !! 

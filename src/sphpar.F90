@@ -1,4 +1,4 @@
-!> \file sphpar.f90
+!> \file sphpar.F90
 
 !> \brief module for determining smoothing lengths of particles
 !<

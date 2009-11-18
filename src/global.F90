@@ -1,4 +1,4 @@
-!> \file global.f90
+!> \file global.F90
 
 !> \brief the module that handles global variables
 !<

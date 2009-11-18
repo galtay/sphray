@@ -1,4 +1,4 @@
-!> \file octtree3.f90
+!> \file octtree3.F90
 
 !> \brief the oct tree module 
 !!

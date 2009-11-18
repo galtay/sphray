@@ -1,4 +1,4 @@
-!> \file euler.f90
+!> \file euler.F90
  
 !> \brief The module for the implicit euler solver.
 !!

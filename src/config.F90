@@ -1,4 +1,4 @@
-!> \file config.f90
+!> \file config.F90
 
 !> \brief the module that handles the config file
 !<

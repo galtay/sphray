@@ -1,4 +1,4 @@
-!> \file voronov_atomic_rates.f90
+!> \file voronov_atomic_rates.F90
 
 !> \brief Module that stores the rate fits from   
 !! "A practical fit formula for ionization rate coefficients of atoms and ions 

@@ -1,4 +1,4 @@
-!> \file particle_system.f90
+!> \file particle_system.F90
 
 !> \brief particles, sources, and box, types and subroutines
 !! 

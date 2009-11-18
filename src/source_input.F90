@@ -1,4 +1,4 @@
-!> \file sources.f90
+!> \file source_input.F90
 
 !> \brief Handles readin of sourcefiles
 !<

@@ -1,4 +1,4 @@
-!> \file iliev_comparison_project.f90
+!> \file iliev_comparison_project.F90
 
 !> \brief Module that does special output for the 
 !! Iliev Comparison Project (ICP) tests

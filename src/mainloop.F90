@@ -1,4 +1,4 @@
-!> \file mainloop.f90
+!> \file mainloop.F90
 
 !> \brief the main program loop
 !! 

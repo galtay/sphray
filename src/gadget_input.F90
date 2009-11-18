@@ -1,4 +1,4 @@
-!> \file gadget_input.f90
+!> \file gadget_input.F90
 
 !> \brief Handles readin of GADGET formatted files
 !<

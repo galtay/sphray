@@ -1,4 +1,4 @@
-!> \file raylist.f90
+!> \file raylist.F90
 
 !> \brief The raylist module 
 !!
