@@ -6,6 +6,7 @@
 module main_input_mod
 use myf90_mod
 use gadget_input_mod
+use gadget_input_hdf5_mod
 use source_input_mod
 use particle_system_mod, only: particle_type
 use particle_system_mod, only: source_type

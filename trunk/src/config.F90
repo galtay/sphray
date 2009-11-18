@@ -229,7 +229,7 @@ subroutine dummy_check_config_variables()
 
   if (GV%OutputType /= 1 .and. GV%OutputType /= 2) then
      write(*,*) "Input Type ", GV%OutputType, " not recognized"
-     write(*,*) "must be 1 (Sphray) or 2 (Gadget)"
+     write(*,*) "must be 1 (Standard Gadget) or 2 (HDF5 Gadget)"
      config_good = .false. 
   end if
 
@@ -514,7 +514,7 @@ subroutine config_info_to_file()
   write(lun,*)
   write(lun,*)  "Output Dir         : ", trim(GV%OutputDir)
   write(lun,*)  "Output File Base   : ", trim(GV%OutputFileBase)
-  write(lun,*)  "Output Type (1=Sphray, 2=Gadget) : ", GV%OutputType
+  write(lun,*)  "Output Type (1=Std. Gadget, 2=HDF5 Gadget) : ", GV%OutputType
 
   write(lun,*)  "Output timing plan : ", trim(GV%OutputTiming)
 

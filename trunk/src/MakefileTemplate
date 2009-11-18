@@ -1,3 +1,4 @@
+#!/bin/sh
 ##############################################################################
 ##############################################################################
 #                                                                            #
@@ -20,6 +21,8 @@
 #OPT += -DincHrec  # if you want seperate rays traced for H recomb. radiation
 #OPT += -DincHerec # if you want seperate rays traced for He recomb. radiation
 
+#OPT += -Dhdf5     # if you are using the hdf
+
 
 # System Definitions
 #=============================================================================
@@ -31,14 +34,16 @@
 # both the OpenGL and non-OpenGL versions compile with the Intel compiler. 
 
 
-#SYSTEM=generic_ifort_opt
-SYSTEM=generic_ifort_fast
-#SYSTEM=generic_g95_opt
-#SYSTEM=generic_gfortran_opt
+#SYSTEM= generic_ifort_opt
+#SYSTEM= generic_ifort_fast
+#SYSTEM= generic_g95_opt
+#SYSTEM= generic_gfortran_opt
 
-#SYSTEM=cdm
-#SYSTEM=profile_ifort
-#SYSTEM=debug_ifort
+#SYSTEM= cdm
+#SYSTEM= profile_ifort
+SYSTEM= debug_ifort
+
+
 
 
 #=============================================================================
@@ -92,7 +97,7 @@ ifeq ($(FC),ifort)
    ISLIB= -L
    ISINC= -I
    ISMOD= -I
-   ISRLIB= -Wl,rpath=
+   ISRLIB= -Wl,-rpath=
 endif
 
 ifeq ($(FC),f95)
@@ -111,7 +116,7 @@ endif
 
 
 
-APPS= sphray 
+APPS= screen sphray 
 
 #--------------------
 
@@ -136,6 +141,7 @@ SRC= 	myf90.o \
 	atomic_rates.o \
 	source_input.o \
 	gadget_input.o \
+	gadget_input_hdf5.o \
 	main_input.o \
 	ionpar.o \
 	euler.o \
@@ -146,6 +152,22 @@ SRC= 	myf90.o \
 	initialize.o \
 	mainloop.o 
 
+
+#=============================================================================
+# These lines should be edited if you are using the HDF5 libraries
+#
+
+OPTHDF= 
+
+ifeq (hdf5,$(findstring hdf5, $(OPT)))
+   DIRHDF= $(HOME)/opt/hdf5-1.8.4/hdf5
+   INCHDF= $(ISINC)$(DIRHDF)/include $(ISINC)$(DIRHDF)/lib
+   RLIBHDF= $(ISRLIB)$(DIRHDF)/lib
+   LIBHDF= $(ISLIB)$(DIRHDF)/lib 
+   OPTHDF= $(RLIBHDF) $(LIBHDF) $(INCHDF) -lhdf5 -lhdfwrapper
+endif
+
+OPT += $(OPTHDF)
 
 #=============================================================================
 # These only need to be set if you are using the OpenGL visiualization tool
@@ -234,9 +256,17 @@ all:$(APPS)
 
 # Main SPHRAY application
 #=============================================================================
+screen: Makefile
+	@echo
+	@echo "OPT=    " $(OPT)
+	@echo "SYSTEM= " $(SYSTEM)
+	@echo
 
+#
+# Main SPHRAY application
+#=============================================================================
 sphray: $(SRC) sphray.o
-	$(FC) $(FFLAGS) $^ $(FNAME) $@
+	$(FC) $(FFLAGS) $^ $(OPT) $(FNAME) $@
 
 
 # OpenGL Targets
@@ -252,22 +282,26 @@ $(LCLGLDIR)/libpt.a: $(THRDSRC) $(LCLGLDIR)/pt.h
 # SPHRAY with OpenGL viewer
 
 glsphray: $(SRC) $(VIEWSRC) viewer.o $(LCLGLDIR)/libpt.a glsphray.o  
-	${FC} $^ $(DIRSVIEW) $(LIBSVIEW) $(FNAME) $@
+	${FC} $(FFLAGS) $(OPT) $^ $(DIRSVIEW) $(LIBSVIEW) $(FNAME) $@
 
 
+# HDF5 modules
+#=============================================================================
+gadget_input_hdf5.o: gadget_input_hdf5.F90
+	$(FC) $(FFLAGS) $(OPT) $(F2OBJ) $< $(FNAME) $@
 
 # Test density estimates (in progress) 
 #=============================================================================
 
 density_test: $(SRC) density_test.o
-	$(FC) $(FFLAGS) -o $@ $^ 
+	$(FC) $(FFLAGS) $(OPT) -o $@ $^ 
 
 
 # Implicit Rules
 #=============================================================================
 
 %.o: %.F90 
-	$(FC) $(FFLAGS) $(F2OBJ) $< $(FNAME) $@
+	$(FC) $(FFLAGS) $(OPT) $(F2OBJ) $< $(FNAME) $@
 
 %.o: %.f90 
 	$(FC) $(FFLAGS) $(F2OBJ) $< $(FNAME) $@
