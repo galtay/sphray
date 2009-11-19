@@ -77,7 +77,7 @@ use physical_constants_mod, only: pi
 
   sum = 0.0d0
   
-  do i = 0,Nbins-1
+  do i = 1,Nbins-1
      b = (i+0.5) * db 
      sum = sum + 2.0d0 * pi * b * b2cd_table(i) * db 
   end do
