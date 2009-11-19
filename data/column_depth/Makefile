@@ -1,5 +1,6 @@
 FC=ifort
-FFLAGS= -traceback -fpe0 -C
+FFLAGS= -xHOST -ipo -O3 -traceback -C
+
 
 APPS = create_column_depth_table
 
@@ -8,8 +9,9 @@ APPS = create_column_depth_table
 NRDIR=NR
 SRCDIR=../../src
 
-NRFILES = $(NRDIR)/nrtype.o $(NRDIR)/nrutil.o $(NRDIR)/nr.o \
-          $(NRDIR)/trapzd.o $(NRDIR)/polint.o $(NRDIR)/qromb.o 
+NRFILES = $(NRDIR)/nrtype.o $(NRDIR)/nrutil.o \
+          $(NRDIR)/trapzd.o $(NRDIR)/polint.o $(NRDIR)/qromb.o \
+	  $(NRDIR)/nr.o
 
 
 FILES = $(NRFILES) $(SRCDIR)/myf90.o 
