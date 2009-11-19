@@ -18,8 +18,9 @@ real(r8b), allocatable :: b2cd_table(:)  !< stores line integrations
 
 contains
 
-!----------------------------------------------------
+
 !>  read in the impact parameter -> column depth file
+!----------------------------------------------------
 subroutine read_b2cd_file(b2cd_file)
 
   character(clen), intent(in) :: b2cd_file  ! impact parameter to CD table
@@ -83,8 +84,9 @@ function interpolate_b2cd(i,xfrac) result(b2cd)
 
 end function interpolate_b2cd
 
-!----------------------------------------------------------------
+
 !> checks normalization of impact parameter to column depth table
+!----------------------------------------------------------------
 subroutine sum_b2cd_table()
 use physical_constants_mod, only: pi
 
