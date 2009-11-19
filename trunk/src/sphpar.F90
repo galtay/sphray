@@ -10,40 +10,44 @@ use particle_system_mod, only: transformation_type
 
 !---------------------------------
 !> local particle type. 
-  type sphpar_type
-     integer(i8b) :: id !< particle id
-     real(r4b) :: pos(3) !< x,y,z coordinates
-     real(r4b) :: vel(3) !< x,y,z velocities
-     real(r4b) :: hsmooth !< smoothing length
-     real(r4b) :: rho !< density = mass * NsphNnb / hsml^3 
-     real(r4b) :: mass !< particle mass 
-     real(r4b) :: T !< particle temperature in K
-     real(r4b) :: xHI !< HI ionization fraction
-     real(r4b) :: xHII !< HII ionization fraction
-     real(r4b) :: xHeI !< HeI ionization fraction
-     real(r4b) :: xHeII !< HeII ionization fraction
-     real(r4b) :: xHeIII !< HeIII ionization fraction
-     integer(i8b) :: lasthit !< last ray to cross this particle
-     integer(i4b) :: nnb !< number of SPH neighbors
+  type, extends(particle_type) :: sphpar_type
+
+#ifndef incVel
+     real(r4b) :: vel
+#endif
+
+#ifndef incHe
+     real(r4b) :: xHeI
+     real(r4b) :: xHeII
+     real(r4b) :: xHeIII
+#endif
+
+     integer(i4b) :: nnb     !< number of SPH neighbors
      real(r4b) :: gradrho(3) !< vector gradient of the density
-     real(r4b) :: drhodh !< derivative of rho wrt to h
-     real(r4b) :: fi  !< used for finding smoothing length
-     real(r4b) :: dfi !< used for finding smoothing length
+     real(r4b) :: drhodh     !< derivative of rho wrt to h
+     real(r4b) :: fi         !< used for finding smoothing length
+     real(r4b) :: dfi        !< used for finding smoothing length
  end type sphpar_type
 
 contains
 
 !-----------------------------------------------------------------------
 !> creates a transormed sph particle from an input particle
-  subroutine par2sphpar(sphpar,par,pm)
+  subroutine par2sphpar(sphpar,par,pt)
     type(sphpar_type) :: sphpar  !< output sphpar
     type(particle_type) :: par   !< input particle
-    type(transformation_type),optional :: pm  !< possible transformation
+    type(transformation_type),optional :: pt  !< possible transformation
+
+    sphpar%pos = par%pos
+
+#ifdef incVel
+    sphpar%vel = par%vel
+#else
+    sphpar%vel = 0.0
+#endif
 
     sphpar%id = par%id
-    sphpar%pos = par%pos
-    sphpar%vel = par%vel
-    sphpar%hsmooth = par%hsml
+    sphpar%hsml = par%hsml
     sphpar%rho = par%rho
     sphpar%mass = par%mass
     sphpar%T = par%T 
@@ -63,7 +67,7 @@ contains
 
     sphpar%lasthit = par%lasthit
 
-    if(present(pm)) sphpar%pos=pm%fac*(par%pos-pm%shift)
+    if(present(pt)) sphpar%pos=pt%fac*(par%pos-pt%shift)
 
   end subroutine par2sphpar
 

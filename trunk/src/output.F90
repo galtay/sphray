@@ -160,9 +160,14 @@ contains
            rblock3(3,:) = pars(Nread+1:Nread+Nfile)%pos(3) 
            write(lun) rblock3
 
+#ifdef incVel
            rblock3(1,:) = pars(Nread+1:Nread+Nfile)%vel(1) 
            rblock3(2,:) = pars(Nread+1:Nread+Nfile)%vel(2) 
            rblock3(3,:) = pars(Nread+1:Nread+Nfile)%vel(3) 
+#else
+           rblock3 = 0.0e0
+#endif
+
            write(lun) rblock3
            deallocate( rblock3 )
 
@@ -280,14 +285,14 @@ contains
      GV%vwionfrac = Vionfrac
 
 
-     write(*,100) "neutral fraction:", "mass weighted"
-     write(*,105) 1.0d0 - Mionfrac
+     write(*,100) "neutral fraction:", "number weighted", "mass weighted", "volume weighted"
+     write(*,105) 1.0d0-Nionfrac, 1.d0-Mionfrac, 1.0d0-Vionfrac
      write(*,*) 
 
-     150 format (4ES15.5)
+     150 format (6ES15.5)
      write(GV%ionlun,150) GV%time_elapsed_code, &
                           GV%time_elapsed_s * s2Myr, &
-                          Mionfrac
+                          1.0d0-Nionfrac, 1.0d0-Mionfrac, 1.0d0-Vionfrac
 
      write(*,100) "rays cast:", "source", "diffuse", "diffuse/source"
      write(*,105) GV%TotalSourceRaysCast, GV%TotalDiffuseRaysCast, &

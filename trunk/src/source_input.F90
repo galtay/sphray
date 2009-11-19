@@ -61,6 +61,7 @@ subroutine read_src_snapshot(GV,verbose,MB)
   integer(i8b) :: bytespersource
   logical :: closefile
   integer(i8b) :: fn
+  real(r4b) :: vel(3)
 
 
   fn=1
@@ -85,10 +86,15 @@ subroutine read_src_snapshot(GV,verbose,MB)
      
   do i = 1,N 
      read(lun,*) psys%src(i)%pos(1), psys%src(i)%pos(2), psys%src(i)%pos(3), &
-                 psys%src(i)%vel(1), psys%src(i)%vel(2), psys%src(i)%vel(3), &
+                 vel(1), vel(2), vel(3), &
                  psys%src(i)%L, &
                  psys%src(i)%SpcType, &
                  psys%src(i)%EmisPrf
+
+#ifdef incVel
+     psys%src(i)%vel = vel 
+#endif
+
   end do
 
   close(lun)

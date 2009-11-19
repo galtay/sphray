@@ -321,6 +321,7 @@ subroutine read_Ghdf5_particles()
 
      ! read velocities 
      !-----------------------------------------------------------!  
+#ifdef incVel
      allocate(rblck3(3,ngas1), stat=err)
      if(err/=0) call myerr("allocating rblck3 for vel",myname,crash)
 
@@ -335,6 +336,7 @@ subroutine read_Ghdf5_particles()
      end do
   
      deallocate(rblck3)
+#endif
 
      ! read id's 
      !-----------------------------------------------------------!  
