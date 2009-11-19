@@ -25,32 +25,32 @@ public :: iliev_test4_screen_out
 ! Static Density Field Tests
 !---------------------------------------------------------------------
 
-    real(r8b), parameter :: CmpPrjRecRate = 2.59d-13                       !< ICP RR rate (B) [cm^3/s]
-    real(r8b), parameter :: CmpPrjColRate = 3.16d-16                       !< ICP CI rate [cm^3/s]
-    real(r8b), parameter :: CmpPrjTest1xHII = 1.2d-3                       !< xHII(t=0) for T1
-    real(r8b), parameter :: CmpPrjTest2xHII = 0.0                          !< xHII(t=0) for T2
-    real(r8b), parameter :: CmpPrjTest1Dens = 1.0d-3                       !< nH for T1 [cm^-3]
-    real(r8b), parameter :: CmpPrjTest2Dens = 1.0d-3                       !< nH for T2 [cm^-3]
-    real(r8b), parameter :: CmpPrjTest3OutDens = 2.0d-4                    !< nH_out for T3 [cm^-3]
-    real(r8b), parameter :: CmpPrjTest3InDens  = 200 * CmpPrjTest3OutDens  !< nH_in for T3 [cm^-3] 
-    real(r8b), parameter :: CmpPrjTest1Flux = 5.0d48                       !< T1 photons / s
-    real(r8b), parameter :: CmpPrjTest2Flux = 5.0d48                       !< T2 photons / s
-    real(r8b), parameter :: CmpPrjTest3Flux = 1.0d6                        !< T3 photons / s / cm^2
-    real(r8b), parameter :: CmpPrjTest1Temp = 1.0d4                        !< T(t=0) for T1[K]
-    real(r8b), parameter :: CmpPrjTest2Temp = 1.0d2                        !< T(t=0) for test 2 [K]
-    real(r8b), parameter :: CmpPrjTest3OutTemp = 8.0d3                     !< T_out(t=0) test 3 [K]
-    real(r8b), parameter :: CmpPrjTest3InTemp = 4.0d1                      !< T_in(t=0) test 3 [K]
+    real(r8b), parameter :: rtcpRecRate = 2.59d-13                    !< ICP RR rate (B) [cm^3/s]
+    real(r8b), parameter :: rtcpColRate = 3.16d-16                    !< ICP CI rate [cm^3/s]
+    real(r8b), parameter :: rtcpT1xHII = 1.2d-3                       !< xHII(t=0) for T1
+    real(r8b), parameter :: rtcpT2xHII = 0.0                          !< xHII(t=0) for T2
+    real(r8b), parameter :: rtcpT1Dens = 1.0d-3                       !< nH for T1 [cm^-3]
+    real(r8b), parameter :: rtcpT2Dens = 1.0d-3                       !< nH for T2 [cm^-3]
+    real(r8b), parameter :: rtcpT3OutDens = 2.0d-4                    !< nH_out for T3 [cm^-3]
+    real(r8b), parameter :: rtcpT3InDens  = 200 * rtcpT3OutDens       !< nH_in for T3 [cm^-3] 
+    real(r8b), parameter :: rtcpT1Flux = 5.0d48                       !< T1 photons / s
+    real(r8b), parameter :: rtcpT2Flux = 5.0d48                       !< T2 photons / s
+    real(r8b), parameter :: rtcpT3Flux = 1.0d6                        !< T3 photons / s / cm^2
+    real(r8b), parameter :: rtcpT1Temp = 1.0d4                        !< T(t=0) for T1[K]
+    real(r8b), parameter :: rtcpT2Temp = 1.0d2                        !< T(t=0) for test 2 [K]
+    real(r8b), parameter :: rtcpT3OutTemp = 8.0d3                     !< T_out(t=0) test 3 [K]
+    real(r8b), parameter :: rtcpT3InTemp = 4.0d1                      !< T_in(t=0) test 3 [K]
 
-    real(r8b), parameter :: CmpPrjRecTime_s = 1.0 / (CmpPrjRecRate * CmpPrjTest1Dens)      !< T1 rec time [s]
-    real(r8b), parameter :: CmpPrjColTime_s = 1.0 / (CmpPrjColRate * CmpPrjTest1Dens)      !< T1 col ion time [s]
-    real(r8b), parameter :: CmpPrjRecTime_yrs = CmpPrjRecTime_s / year2sec                 !< T1 rec time [yrs]
-    real(r8b), parameter :: CmpPrjColTime_yrs = CmpPrjColTime_s / year2sec                 !< T1 col ion time [yrs]
-    real(r8b), parameter :: CmpPrjEqxHII = CmpPrjColRate / (CmpPrjRecRate + CmpPrjColRate) !< T1 col ion eq.
+    real(r8b), parameter :: rtcpRecTime_s = 1.0 / (rtcpRecRate * rtcpT1Dens)  !< T1 rec time [s]
+    real(r8b), parameter :: rtcpColTime_s = 1.0 / (rtcpColRate * rtcpT1Dens)  !< T1 col ion time [s]
+    real(r8b), parameter :: rtcpRecTime_yrs = rtcpRecTime_s / year2sec        !< T1 rec time [yrs]
+    real(r8b), parameter :: rtcpColTime_yrs = rtcpColTime_s / year2sec        !< T1 col ion time [yrs]
+    real(r8b), parameter :: rtcpEqxHII = rtcpColRate / (rtcpRecRate + rtcpColRate) !< T1 col ion eq.
 
     
-    real(r8b), save :: CmpPrjStromRad3      !< T1 Strom. Radius Cubed [cm^3]
-    real(r8b), save :: CmpPrjStromRad_cm    !< T1 Strom. Radius [cm]
-    real(r8b), save :: CmpPrjStromRad_kpc   !< T1 Strom. Radius [kpc]
+    real(r8b), save :: rtcpStromRad3      !< T1 Strom. Radius Cubed [cm^3]
+    real(r8b), save :: rtcpStromRad_cm    !< T1 Strom. Radius [cm]
+    real(r8b), save :: rtcpStromRad_kpc   !< T1 Strom. Radius [kpc]
 
 
 contains
@@ -59,9 +59,9 @@ contains
 !> initialize iliev comparison project variables
   subroutine initialize_iliev_tests()
    
-    CmpPrjStromRad3    = (3 * CmpPrjTest1Flux) / (4 * pi * CmpPrjRecRate * CmpPrjTest1Dens**2)  
-    CmpPrjStromRad_cm  = exp( 1./3. * log(CmpPrjStromRad3) ) 
-    CmpPrjStromRad_kpc = CmpPrjStromRad_cm / kpc2cm                
+    rtcpStromRad3    = (3 * rtcpT1Flux) / (4 * pi * rtcpRecRate * rtcpT1Dens**2)  
+    rtcpStromRad_cm  = exp( 1./3. * log(rtcpStromRad3) ) 
+    rtcpStromRad_kpc = rtcpStromRad_cm / kpc2cm                
 
   end subroutine initialize_iliev_tests
 
@@ -87,23 +87,23 @@ contains
     integer :: i,pindx
     
 !   compute analytic Stromgren radius
-    time_ratio = GV%time_s / CmpPrjRecTime_s
-    ionRa = CmpPrjStromRad_kpc * (1.0d0 - exp(-time_ratio) )**(1.0/3.0)
+    time_ratio = GV%time_s / rtcpRecTime_s
+    ionRa = rtcpStromRad_kpc * (1.0d0 - exp(-time_ratio) )**(1.0/3.0)
  
 !   compute numerical Stromgren radius (Volume method)
     NWionfrac = number_weight_ionfrac(psys)
     if (psys%src(1)%EmisPrf == -2) then
-       ionVn = ( (NWionfrac - CmpPrjTest1xHII) * 6.6**3 ) * 8  
+       ionVn = ( (NWionfrac - rtcpT1xHII) * 6.6**3 ) * 8  
     else
-       ionVn = (NWionfrac - CmpPrjTest1xHII) * GV%BoxVol_kpc
+       ionVn = (NWionfrac - rtcpT1xHII) * GV%BoxVol_kpc
     end if
     ionRn = (3.0 * ionVn / (4 * pi) )**(1.0/3.0)
 
 !   compute numerical Stromgren radius (Ray probe method)
     call prepare_raysearch(psys,raylist)
-    pos = (/0.0,0.0,0.0/)
+    pos = GV%Boxlengths / 2.0d0
 
-    dir = (/1.0,2.0,1.0/)
+    dir = (/1.0,0.0,0.0/)
     call make_probe_ray( pos,dir,ray )
     call trace_ray(ray,raylist,psys,searchtree) 
     do i = 1,raylist%nnb
@@ -114,40 +114,7 @@ contains
     d1 = raylist%intersection(i-1)%d + &
         (raylist%intersection(i)%d - raylist%intersection(i-1)%d)/2 
          
-    dir = (/2.0,1.0,1.0/)
-    call make_probe_ray( pos,dir,ray )
-    call trace_ray(ray,raylist,psys,searchtree) 
-    do i = 1,raylist%nnb
-       pindx = raylist%intersection(i)%pindx
-       d = raylist%intersection(i)%d
-       if (psys%par(pindx)%xHII < 0.5) exit
-    end do
-    d2 = raylist%intersection(i-1)%d + &
-        (raylist%intersection(i)%d - raylist%intersection(i-1)%d)/2 
-
-    dir = (/1.0,1.0,2.0/)
-    call make_probe_ray( pos,dir,ray )
-    call trace_ray(ray,raylist,psys,searchtree) 
-    do i = 1,raylist%nnb
-       pindx = raylist%intersection(i)%pindx
-       d = raylist%intersection(i)%d
-       if (psys%par(pindx)%xHII < 0.5) exit
-    end do
-    d3 = raylist%intersection(i-1)%d + &
-        (raylist%intersection(i)%d - raylist%intersection(i-1)%d)/2 
-
-    dir = (/1.0,1.0,1.0/)
-    call make_probe_ray( pos,dir,ray )
-    call trace_ray(ray,raylist,psys,searchtree) 
-    do i = 1,raylist%nnb
-       pindx = raylist%intersection(i)%pindx
-       d = raylist%intersection(i)%d
-       if (psys%par(pindx)%xHII < 0.5) exit
-    end do
-    d4 = raylist%intersection(i-1)%d + &
-        (raylist%intersection(i)%d - raylist%intersection(i-1)%d)/2 
-
-    d = (d1+d2+d3+d4)/4
+    d = d1
 
     call  kill_raylist(raylist)
 
@@ -155,11 +122,11 @@ contains
     write(*,*) " Iliev Test 1 Specific Monitoring "
     write(*,*) "=============================================================="
     write(*,*) "Stromgren Radii (kpc)"
-    write(*,*) "Analytic                  = ", ionRa
-    write(*,*) "Numerical (Volume Method) = ", ionRn
-    write(*,*) "Numerical (Ray Method)    = ", d
+    write(*,*) "Analytic                    = ", ionRa
+    write(*,*) "Numerical (Volume Method)   = ", ionRn
+    write(*,*) "Numerical (X-axis)          = ", d
     write(*,*) "numerical/analytic (Volume) = ", ionRn / ionRa
-    write(*,*) "numerical/analytic (Ray)    = ", d / ionRa
+    write(*,*) "numerical/analytic (X-axis) = ", d / ionRa
     write(*,*) "=============================================================="
    
   end subroutine iliev_test1_screen_out
@@ -186,17 +153,17 @@ contains
     integer :: i,pindx
 
 !   compute analytic Stromgren radius
-    time_ratio = GV%time_s / CmpPrjRecTime_s
-    ionRa = CmpPrjStromRad_kpc * (1.0d0 - exp(-time_ratio) )**(1.0/3.0)
+    time_ratio = GV%time_s / rtcpRecTime_s
+    ionRa = rtcpStromRad_kpc * (1.0d0 - exp(-time_ratio) )**(1.0/3.0)
  
 !   compute numerical Stromgren radius
     NWionfrac = number_weight_ionfrac(psys)
-    ionVn = (NWionfrac - CmpPrjTest2xHII) * GV%BoxVol_kpc
+    ionVn = (NWionfrac - rtcpT2xHII) * GV%BoxVol_kpc
     ionRn = (3.0 * ionVn / (4 * pi) )**(1.0/3.0)
 
 !   compute numerical Stromgren radius (Ray probe method)
     call prepare_raysearch(psys,raylist)
-    pos = (/0.0,0.0,0.0/)
+    pos = GV%Boxlengths / 2.0d0
 
     dir = (/1.0,0.0,0.0/)
     call make_probe_ray( pos,dir,ray )
@@ -209,40 +176,7 @@ contains
     d1 = raylist%intersection(i-1)%d + &
         (raylist%intersection(i)%d - raylist%intersection(i-1)%d)/2 
          
-    dir = (/0.0,1.0,0.0/)
-    call make_probe_ray( pos,dir,ray )
-    call trace_ray(ray,raylist,psys,searchtree) 
-    do i = 1,raylist%nnb
-       pindx = raylist%intersection(i)%pindx
-       d = raylist%intersection(i)%d
-       if (psys%par(pindx)%xHII < 0.5) exit
-    end do
-    d2 = raylist%intersection(i-1)%d + &
-        (raylist%intersection(i)%d - raylist%intersection(i-1)%d)/2 
-
-    dir = (/0.0,0.0,1.0/)
-    call make_probe_ray( pos,dir,ray )
-    call trace_ray(ray,raylist,psys,searchtree) 
-    do i = 1,raylist%nnb
-       pindx = raylist%intersection(i)%pindx
-       d = raylist%intersection(i)%d
-       if (psys%par(pindx)%xHII < 0.5) exit
-    end do
-    d3 = raylist%intersection(i-1)%d + &
-        (raylist%intersection(i)%d - raylist%intersection(i-1)%d)/2 
-
-    dir = (/1.0,1.0,1.0/)
-    call make_probe_ray( pos,dir,ray )
-    call trace_ray(ray,raylist,psys,searchtree) 
-    do i = 1,raylist%nnb
-       pindx = raylist%intersection(i)%pindx
-       d = raylist%intersection(i)%d
-       if (psys%par(pindx)%xHII < 0.5) exit
-    end do
-    d4 = raylist%intersection(i-1)%d + &
-        (raylist%intersection(i)%d - raylist%intersection(i-1)%d)/2 
-
-    d = (d1+d2+d3+d4)/4
+    d = d1
 
     call  kill_raylist(raylist)
 
@@ -250,11 +184,11 @@ contains
     write(*,*) " Iliev Test 2 Specific Monitoring "
     write(*,*) "=============================================================="
     write(*,*) "Stromgren Radii (kpc)"
-    write(*,*) "Analytic                  = ", ionRa
-    write(*,*) "Numerical (Volume Method) = ", ionRn
-    write(*,*) "Numerical (Ray Method)    = ", d
+    write(*,*) "Analytic                    = ", ionRa
+    write(*,*) "Numerical (Volume Method)   = ", ionRn
+    write(*,*) "Numerical (X-axis)          = ", d
     write(*,*) "numerical/analytic (Volume) = ", ionRn / ionRa
-    write(*,*) "numerical/analytic (Ray)    = ", d / ionRa
+    write(*,*) "numerical/analytic (X-axis) = ", d / ionRa
     write(*,*) "=============================================================="
 
 

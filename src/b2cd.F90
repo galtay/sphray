@@ -10,10 +10,10 @@ private
 public :: b2cdfac
 public :: read_b2cd_file
 
-integer(i4b) :: Nbins     !< impact parameter bins
-integer(i4b) :: Nentries  !< table entries
+integer(i4b) :: Nentries  !< table entries (from b=0 to b=1)
 real(r8b) :: db           !< spacing in impact parameter
 real(r8b), allocatable :: b2cd_table(:)  !< stores line integrations
+                                         !< 0:Nentries-1
 
 
 contains
@@ -46,17 +46,16 @@ subroutine read_b2cd_file(b2cd_file)
   call mywrite('', verb+1)
   call mywrite(str, verb+1) 
 
-  allocate ( b2cd_table(Nentries), stat=err )
+  allocate ( b2cd_table(0:Nentries-1), stat=err )
   if(err/=0) call myerr('cant allocate b2cd_table', myname, crash)
      
   str = '  reading in SPH impact parameter -> column depth table'
   call mywrite(str, verb+1)
 
-  do i = 1,Nentries
+  do i = 0,Nentries-1
      read(lun,*) b2cd_table(i)
   end do
-  Nbins = Nentries - 1
-  db = 1.0d0 / Nbins
+  db = 1.0d0 / (Nentries - 1)
 
   close(lun)
   call sum_b2cd_table()
@@ -64,22 +63,50 @@ subroutine read_b2cd_file(b2cd_file)
 
 end subroutine read_b2cd_file
 
+!> Interpolates from the line integral table
+!---------------------------------------------
+function interpolate_b2cd(i,xfrac) result(b2cd)
+  character(clen), parameter :: myname="interpolate_b2cd"
+  logical, parameter :: crash=.true.
+  integer(i4b) :: i   !< entry just below evaluation point
+  real(r8b) :: xfrac  !< fraction of the way to the next entry
+  real(r8b) :: b2cd   !< interpolated value
+  real(r8b) :: dy     !< difference between adjacent table entries
+  
+  if (i >= Nentries-1) then
+     write(*,*) "i = ", i
+     call myerr(" out of bounds in interpolate b2cd",myname,crash)
+  end if
+
+  dy = b2cd_table(i+1) - b2cd_table(i)
+  b2cd = b2cd_table(i) + xfrac * dy
+
+end function interpolate_b2cd
+
 !----------------------------------------------------------------
 !> checks normalization of impact parameter to column depth table
 subroutine sum_b2cd_table()
 use physical_constants_mod, only: pi
 
-  real(r8b) :: sum,b
+  real(r8b) :: fac,sum,a,b,ab2,xfrac
   integer(i4b) :: i
 
   integer, parameter :: verb=2
   character(clen) :: str
 
   sum = 0.0d0
+  xfrac = 0.5d0
   
-  do i = 1,Nbins-1
-     b = (i+0.5) * db 
-     sum = sum + 2.0d0 * pi * b * b2cd_table(i) * db 
+  do i = 0,Nentries-2
+     a = i * db
+     b = (i+1) * db
+     ab2 = (b+a)/2.0d0
+
+     fac = db/6.0d0 * ( b2cd_table(i) + &
+                        4.0d0 * interpolate_b2cd(i,xfrac) + &
+                        b2cd_table(i+1) )
+
+     sum = sum + 2.0d0 * pi * ab2 * fac 
   end do
 
   write(str,'(A,ES10.4)') &
@@ -100,11 +127,21 @@ function b2cdfac(b_norm,hsml,cgs_len) result(cdfac)
   real(r8b) :: cgs_len !< cgs length
   real(r8b) :: cdfac   !< output column depth factor
 
-  integer :: bindx
+  integer :: b_indx
+  real(r8b) :: xfrac
+  real(r8b) :: b2cd
 
-  bindx = floor(Nbins * b_norm) + 1
-  if (bindx.gt.Nentries) bindx = Nentries
-  cdfac = b2cd_table(bindx) / ( hsml*hsml*cgs_len*cgs_len )
+  b_indx = floor( (Nentries-1) * b_norm)  ! same as floor( b_norm / db )
+  xfrac = b_norm / db - b_indx
+
+  if (b_indx >= Nentries-1) then
+     b_indx = Nentries-2
+     xfrac = 1.0d0
+  end if
+
+  b2cd = interpolate_b2cd( b_indx, xfrac )
+  
+  cdfac = b2cd / ( hsml*hsml*cgs_len*cgs_len )
 
 end function b2cdfac
 

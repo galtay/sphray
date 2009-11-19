@@ -269,7 +269,13 @@ subroutine par2ionpar(par,ipar)
 
  ipar%id = par%id
  ipar%pos = par%pos
+
+#ifdef incVel
  ipar%vel = par%vel
+#else
+ ipar%vel = 0.0
+#endif
+
  ipar%hsml = par%hsml
  ipar%rho = par%rho
  ipar%mass = par%mass

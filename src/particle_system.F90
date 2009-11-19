@@ -29,7 +29,11 @@ public :: adjustbox
 type particle_type
 
    real(r4b)    :: pos(3)    !< x,y,z coordinates
+
+#ifdef incVel
    real(r4b)    :: vel(3)    !< x,y,z velocities
+#endif
+
    integer(i4b) :: id        !< particle id
    real(r4b)    :: mass      !< particle mass
    real(r4b)    :: T         !< temperature in K       
@@ -39,18 +43,26 @@ type particle_type
    real(r4b)    :: xHII      !< * nHII/nH
    real(r4b)    :: hsml      !< smoothing length
 
+#ifdef incHmf   
+   real(r4b)    :: Hmf       !< Hydrogen mass fraction
+#endif
+
 #ifdef incHe
    real(r4b)    :: xHeI      !< * nHeI/nHe 
    real(r4b)    :: xHeII     !< * nHeII/nHe
    real(r4b)    :: xHeIII    !< * nHeIII/nHe
 #endif
 
-#ifdef outGamma
-   real(r4b)    :: gammaHI    !< * time averaged HI photoionization rate
-   real(r4b)    :: time       !< * elapsed time in seconds - reset at outputs
+#ifdef incHemf
+   real(r4b)    :: Hemf      !< Helium mass fraction
 #endif
 
-   integer(i8b) :: lasthit    !< * indx of last ray to cross this particle
+#ifdef outGamma
+   real(r4b)    :: gammaHI   !< * time averaged HI photoionization rate
+   real(r4b)    :: time      !< * elapsed time in seconds - reset at outputs
+#endif
+
+   integer(i8b) :: lasthit   !< * indx of last ray to cross this particle
   
 end type particle_type
 
@@ -60,7 +72,11 @@ end type particle_type
 !================
 type source_type
    real(r4b)    :: pos(3)    !< x,y,z coordinates
+
+#ifdef incVel
    real(r4b)    :: vel(3)    !< x,y,z velocities
+#endif
+
    real(r4b)    :: L         !< luminosity
    real(r4b)    :: SpcType   !< spectral type
    integer(i4b) :: EmisPrf   !< emission profile
@@ -203,9 +219,11 @@ subroutine scale_comoving_to_physical(a,par,src,box)
   par%pos(2) = par%pos(2) * a
   par%pos(3) = par%pos(3) * a
 
+#ifdef incVel
   par%vel(1) = par%vel(1) * a
   par%vel(2) = par%vel(2) * a
   par%vel(3) = par%vel(3) * a
+#endif
 
   par%hsml = par%hsml * a
   par%rho  = par%rho / (a*a*a)
@@ -215,9 +233,12 @@ subroutine scale_comoving_to_physical(a,par,src,box)
      src%pos(2) = src%pos(2) * a
      src%pos(3) = src%pos(3) * a
 
+#ifdef incVel
      src%vel(1) = src%vel(1) * a
      src%vel(2) = src%vel(2) * a
      src%vel(3) = src%vel(3) * a
+#endif
+
   end if
 
   if (present(box)) then
@@ -244,9 +265,11 @@ subroutine scale_physical_to_comoving(a,par,src,box)
   par%pos(2) = par%pos(2) / a
   par%pos(3) = par%pos(3) / a
 
+#ifdef incVel
   par%vel(1) = par%vel(1) / a
   par%vel(2) = par%vel(2) / a
   par%vel(3) = par%vel(3) / a
+#endif
 
   par%hsml = par%hsml / a
   par%rho = par%rho * (a*a*a)
@@ -256,9 +279,12 @@ subroutine scale_physical_to_comoving(a,par,src,box)
      src%pos(2) = src%pos(2) / a
      src%pos(3) = src%pos(3) / a
 
+#ifdef incVel
      src%vel(1) = src%vel(1) / a
      src%vel(2) = src%vel(2) / a
      src%vel(3) = src%vel(3) / a
+#endif
+
   end if
 
   if (present(box)) then
@@ -309,7 +335,11 @@ subroutine calc_bytes_per_particle(bpp, bps)
   character(clen) :: str
 
   bytes = 12         ! positions
+
+#ifdef incVel
   bytes = bytes + 12 ! velocities  
+#endif
+
   bytes = bytes + 4  ! ID
   bytes = bytes + 4  ! mass
   bytes = bytes + 4  ! temperature
@@ -367,6 +397,7 @@ subroutine particle_info_to_screen(par)
      write(*,100) "zpos", minval(par%pos(3)), maxval(par%pos(3)), &
                           meanval_real(par%pos(3))   
 
+#ifdef incVel
      write(*,100) "xvel", minval(par%vel(1)), maxval(par%vel(1)), &
                           meanval_real(par%vel(1))
 
@@ -375,6 +406,7 @@ subroutine particle_info_to_screen(par)
 
      write(*,100) "zvel", minval(par%vel(3)), maxval(par%vel(3)), &
                           meanval_real(par%vel(3))
+#endif
 
      write(*,102) "id",   minval(par%id), maxval(par%id)
 

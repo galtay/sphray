@@ -332,6 +332,7 @@ subroutine read_Gpub_particles(MB)
      
      ! read velocities 
      !-----------------------------------------------------------!  
+#ifdef incVel
      allocate(rblck3(3,ngas1), stat=err)
      if(err/=0) call myerr("allocating rblck3 for vel",myname,crash)
      read(lun, iostat=err) rblck3
@@ -344,6 +345,10 @@ subroutine read_Gpub_particles(MB)
      end do
   
      deallocate(rblck3)
+#else
+     read(lun, iostat=err)
+     if (err/=0) call myerr("dummy reading vel",myname,crash) 
+#endif
 
      ! read id's 
      !-----------------------------------------------------------!  
@@ -599,6 +604,7 @@ subroutine read_Gtiz_particles(MB)
      
      ! read velocities 
      !-----------------------------------------------------------!  
+#ifdef incVel
      allocate(rblck3(3,ngas1), stat=err)
      if(err/=0) call myerr("allocating rblck3 for vel",myname,crash)
      read(lun, iostat=err) rblck3
@@ -611,6 +617,11 @@ subroutine read_Gtiz_particles(MB)
      end do
   
      deallocate(rblck3)
+#else
+     read(lun, iostat=err)
+     if (err/=0) call myerr("dummy reading vel",myname,crash) 
+#endif
+
 
      ! read id's 
      !-----------------------------------------------------------!  
@@ -624,6 +635,7 @@ subroutine read_Gtiz_particles(MB)
      end do
 
      deallocate(iblck)
+
 
      ! read masses 
      !-----------------------------------------------------------!  
