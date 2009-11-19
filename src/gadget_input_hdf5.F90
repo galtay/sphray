@@ -11,8 +11,32 @@ use hdf5_wrapper
 implicit none
 
 
+
 contains
 
+#ifndef hdf5
+
+! these are dummy subroutines so that the calls outside this file
+! dont have to be wrapped with pre processor macros.
+
+subroutine get_planning_data_gadget_hdf5()
+  call myerr("this routine shuold not have been called","hdf5dummy",crash=.true.)
+end subroutine get_planning_data_gadget_hdf5
+
+subroutine read_Ghdf5_particles()
+  call myerr("this routine shuold not have been called","hdf5dummy",crash=.true.)
+end subroutine read_Ghdf5_particles
+
+subroutine update_hdf5_particles()
+  call myerr("this routine shuold not have been called","hdf5dummy",crash=.true.)
+end subroutine update_hdf5_particles
+
+subroutine gadget_output_hdf5()
+  call myerr("this routine shuold not have been called","hdf5dummy",crash=.true.)
+end subroutine gadget_output_hdf5
+
+
+#else
 
 !>   reads in an HDF5 particle header
 !==========================================================================
@@ -437,6 +461,10 @@ end subroutine read_gadget_hdf5_box
 
 subroutine gadget_output_hdf5()
 end subroutine gadget_output_hdf5
+
+
+
+#endif
 
 
 end module gadget_input_hdf5_mod
