@@ -21,7 +21,7 @@
 #OPT += -DincHrec  # if you want seperate rays traced for H recomb. radiation
 #OPT += -DincHerec # if you want seperate rays traced for He recomb. radiation
 
-#OPT += -Dhdf5     # if you are using the hdf
+OPT += -Dhdf5     # if you are using the hdf
 
 
 # System Definitions
@@ -34,14 +34,14 @@
 # both the OpenGL and non-OpenGL versions compile with the Intel compiler. 
 
 
-#SYSTEM= generic_ifort_opt
+SYSTEM= generic_ifort_opt
 #SYSTEM= generic_ifort_fast
 #SYSTEM= generic_g95_opt
 #SYSTEM= generic_gfortran_opt
 
 #SYSTEM= cdm
 #SYSTEM= profile_ifort
-SYSTEM= debug_ifort
+#SYSTEM= debug_ifort
 
 
 
@@ -73,7 +73,7 @@ endif
 
 ifeq ($(SYSTEM),debug_ifort)
    FC= ifort
-   FFLAGS= $(IFORTFLAGS) 
+   FFLAGS= $(IFORTFLAGS) -C
 endif
 
 ifeq ($(SYSTEM),profile_ifort)

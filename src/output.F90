@@ -6,6 +6,7 @@
 module output_mod
 use myf90_mod
 use gadget_input_mod, only: gadget_header_type, saved_gheads
+use gadget_input_hdf5_mod
 use particle_system_mod, only: particle_system_type, particle_type
 use oct_tree_mod, only: oct_tree_type
 use physical_constants_mod
@@ -127,96 +128,110 @@ contains
      write(label,100) GV%OutputIndx
 
 
-     ! GADGET formatted output
+     !================================================================
+     ! GADGET standard formatted output
      !================================================================
      !================================================================
-     Nread = 0
-        
-     do ifile = 0, GV%ParFilesPerSnap-1
-           
-        call config_to_ghead( ifile, ghead )
+     if (GV%OutputType == 1) then
+        Nread = 0
 
-        !    form file name
-        write(ext,'(I3)') ifile
+        do ifile = 0, GV%ParFilesPerSnap-1
 
-        filename = trim(GV%OutputDir) // "/" // trim(GV%OutputFileBase) // "_" // label 
-        if (GV%ParFilesPerSnap > 1) then
-           filename = trim(filename) // "." // trim(adjustl(ext))
-        end if
-        write(*,*) "writing snapshot state to ", trim(filename)
-        write(*,*) 
-        call open_unformatted_file_w(filename,lun)
-        
-        Nfile = ghead%npar_file(1)
+           call config_to_ghead( ifile, ghead )
 
-        write(lun) ghead     
+           !    form file name
+           write(ext,'(I3)') ifile
 
-        allocate( rblock3(3,Nfile) )
-        rblock3(1,:) = pars(Nread+1:Nread+Nfile)%pos(1) 
-        rblock3(2,:) = pars(Nread+1:Nread+Nfile)%pos(2) 
-        rblock3(3,:) = pars(Nread+1:Nread+Nfile)%pos(3) 
-        write(lun) rblock3
+           filename = trim(GV%OutputDir) // "/" // trim(GV%OutputFileBase) // "_" // label 
+           if (GV%ParFilesPerSnap > 1) then
+              filename = trim(filename) // "." // trim(adjustl(ext))
+           end if
+           write(*,*) "writing snapshot state to ", trim(filename)
+           write(*,*) 
+           call open_unformatted_file_w(filename,lun)
 
-        rblock3(1,:) = pars(Nread+1:Nread+Nfile)%vel(1) 
-        rblock3(2,:) = pars(Nread+1:Nread+Nfile)%vel(2) 
-        rblock3(3,:) = pars(Nread+1:Nread+Nfile)%vel(3) 
-        write(lun) rblock3
-        deallocate( rblock3 )
-        
-        write(lun) pars(Nread+1:Nread+Nfile)%id 
-        write(lun) pars(Nread+1:Nread+Nfile)%mass
+           Nfile = ghead%npar_file(1)
+
+           write(lun) ghead     
+
+           allocate( rblock3(3,Nfile) )
+           rblock3(1,:) = pars(Nread+1:Nread+Nfile)%pos(1) 
+           rblock3(2,:) = pars(Nread+1:Nread+Nfile)%pos(2) 
+           rblock3(3,:) = pars(Nread+1:Nread+Nfile)%pos(3) 
+           write(lun) rblock3
+
+           rblock3(1,:) = pars(Nread+1:Nread+Nfile)%vel(1) 
+           rblock3(2,:) = pars(Nread+1:Nread+Nfile)%vel(2) 
+           rblock3(3,:) = pars(Nread+1:Nread+Nfile)%vel(3) 
+           write(lun) rblock3
+           deallocate( rblock3 )
+
+           write(lun) pars(Nread+1:Nread+Nfile)%id 
+           write(lun) pars(Nread+1:Nread+Nfile)%mass
 
 
-        ! calculate some quantities for the next round of outputs
-        allocate( mu(Nfile), uint(Nfile) )
+           ! calculate some quantities for the next round of outputs
+           allocate( mu(Nfile), uint(Nfile) )
 
-        pars(:)%ye = pars(:)%xHII 
+           pars(:)%ye = pars(:)%xHII 
 #ifdef incHe
-        nHe_over_nH = 0.25d0 * GV%He_mf / GV%H_mf
-        pars(:)%ye = pars(:)%ye + ( pars(:)%xHeII + 2.0d0 * pars(:)%xHeIII ) * nHe_over_nH
+           nHe_over_nH = 0.25d0 * GV%He_mf / GV%H_mf
+           pars(:)%ye = pars(:)%ye + ( pars(:)%xHeII + 2.0d0 * pars(:)%xHeIII ) * nHe_over_nH
 #endif
 
-        mu = 4.0d0 / (3.0d0 * GV%H_mf + 1.0d0 + 4.0d0 * GV%H_mf * pars(Nread+1:Nread+Nfile)%ye)
-        uint = ( k_erg_K * pars(Nread+1:Nread+Nfile)%T ) / ( mu * M_p * 2.0d0/3.0d0 * GV%cgs_enrg / GV%cgs_mass) 
-        
-        write(lun) uint(1:Nfile)
-        write(lun) pars(Nread+1:Nread+Nfile)%rho         
-        write(lun) pars(Nread+1:Nread+Nfile)%ye
-        write(lun) pars(Nread+1:Nread+Nfile)%xHI
-        write(lun) pars(Nread+1:Nread+Nfile)%hsml 
+           mu = 4.0d0 / (3.0d0 * GV%H_mf + 1.0d0 + 4.0d0 * GV%H_mf * pars(Nread+1:Nread+Nfile)%ye)
+           uint = ( k_erg_K * pars(Nread+1:Nread+Nfile)%T ) / ( mu * M_p * 2.0d0/3.0d0 * GV%cgs_enrg / GV%cgs_mass) 
 
-        write(lun) pars(Nread+1:Nread+Nfile)%T
+           write(lun) uint(1:Nfile)
+           write(lun) pars(Nread+1:Nread+Nfile)%rho         
+           write(lun) pars(Nread+1:Nread+Nfile)%ye
+           write(lun) pars(Nread+1:Nread+Nfile)%xHI
+           write(lun) pars(Nread+1:Nread+Nfile)%hsml 
+
+           write(lun) pars(Nread+1:Nread+Nfile)%T
 #ifdef incHe
-        write(lun) pars(Nread+1:Nread+Nfile)%xHeI
-        write(lun) pars(Nread+1:Nread+Nfile)%xHeII
+           write(lun) pars(Nread+1:Nread+Nfile)%xHeI
+           write(lun) pars(Nread+1:Nread+Nfile)%xHeII
 #endif
 #ifdef outGamma
-        do ipar = Nread+1, Nread+Nfile
-           if (pars(ipar)%time > 0.0) then
-              pars(ipar)%gammaHI = pars(ipar)%gammaHI / pars(ipar)%time
-           else
-              pars(ipar)%gammaHI = 0.0
-           end if
-        end do
-        write(lun) pars(Nread+1:Nread+Nfile)%gammaHI
-        
-        pars(Nread+1:Nread+Nfile)%gammaHI = 0.0
-        pars(Nread+1:Nread+Nfile)%time = 0.0
+           do ipar = Nread+1, Nread+Nfile
+              if (pars(ipar)%time > 0.0) then
+                 pars(ipar)%gammaHI = pars(ipar)%gammaHI / pars(ipar)%time
+              else
+                 pars(ipar)%gammaHI = 0.0
+              end if
+           end do
+           write(lun) pars(Nread+1:Nread+Nfile)%gammaHI
+
+           pars(Nread+1:Nread+Nfile)%gammaHI = 0.0
+           pars(Nread+1:Nread+Nfile)%time = 0.0
 #endif
 
-        write(lun) pars(Nread+1:Nread+Nfile)%lasthit
+           write(lun) pars(Nread+1:Nread+Nfile)%lasthit
 
 
-        close(lun)
-        deallocate( mu, uint )
-        Nread = Nread + Nfile
+           close(lun)
+           deallocate( mu, uint )
+           Nread = Nread + Nfile
 
-     end do
+        end do
 
+     end if
+ 
 
+     !================================================================     
+     ! GADGET HDF5 formatted output
      !================================================================
      !================================================================
-     
+     if (GV%OutputType == 2) then
+        
+        call gadget_output_hdf5()
+
+     end if
+ 
+     !================================================================
+     !================================================================
+
 
      if (GV%Comoving) call scale_comoving_to_physical(PLAN%snap(GV%CurSnapNum)%ScalefacAt,pars)
 

@@ -85,30 +85,6 @@ subroutine read_gadget_header(snapfile,verbose,closefile,ghead,lun)
 end subroutine read_gadget_header
 
 
-!>   reads box data from a gadget snapshot 
-!==========================================================================
-subroutine read_gadget_box(box)
-
-  type(box_type), intent(out) :: box  !< box 
-
-  integer(i8b) :: fn
-  character(200) :: snapfile   
-  type(gadget_header_type) :: ghead  
-  integer(i8b) :: lun    
-
-  fn=0
-  call form_Gsnapshot_file_name(GV%SnapPath,GV%ParFileBase,GV%CurSnapNum,fn,snapfile)
-  call open_unformatted_file_r(snapfile,lun)
-  read(lun) ghead
-  close(lun)  
-
-  box%bot = 0.0
-  box%top = ghead%boxlen
-  box%bbound = GV%BndryCond
-  box%tbound = GV%BndryCond
-
-end subroutine read_gadget_box
-
 !>   gets run planning data from Gadget Headers
 !===============================================
 subroutine get_planning_data_gadget()
@@ -124,12 +100,14 @@ use source_input_mod, only: read_source_header
   integer(i8b) :: iSnap, fSnap    ! initial and final snapshot numbers
   integer(i8b) :: pfiles, sfiles  ! files/snap for particles and sources   
   integer(i8b) :: i,j             ! counters
-  character(200) :: snapfile ! snapshot file name
+  character(clen) :: snapfile ! snapshot file name
 
   integer(i8b) :: loglun
-  character(200) :: logfile
+  character(clen) :: logfile
+ 
 
-
+  ! open up the planning data log file
+  !======================================================
   logfile = trim(GV%OutputDir) // "/" // "headers.log"
   call open_formatted_file_w(logfile,loglun)
 
@@ -219,6 +197,8 @@ use source_input_mod, only: read_source_header
        end do
     end do
 
+    ! close headers log file
+    !========================
     close(loglun)
 
 
@@ -255,7 +235,7 @@ subroutine read_Gpub_particles(MB)
 
   real(r8b), intent(out) :: MB !< MB allocated for particle storage
 
-  character(200), parameter :: myname="read_Gpub_particles"
+  character(clen), parameter :: myname="read_Gpub_particles"
   logical, parameter :: crash=.true.
 
   real(r4b), allocatable :: rblck(:)
@@ -264,7 +244,7 @@ subroutine read_Gpub_particles(MB)
   integer(i8b) :: ngasread
 
   type(gadget_header_type) :: ghead
-  character(200) :: snapfile
+  character(clen) :: snapfile
   integer(i8b) :: lun,i
   integer(i4b) :: err
 
@@ -518,10 +498,10 @@ end subroutine read_Gpub_particles
 !> reads a Gadget-2 (Tiziana version) snapshot into a particle array  
 !========================================================================
 subroutine read_Gtiz_particles(MB)
-
+ 
   real(r8b), intent(out) :: MB         !< MB allocated for particle storage
 
-  character(200), parameter :: myname="read_Gtiz_particles" 
+  character(clen), parameter :: myname="read_Gtiz_particles" 
   logical, parameter :: crash=.true.
 
   real(r4b), allocatable :: rblck(:)
@@ -530,7 +510,7 @@ subroutine read_Gtiz_particles(MB)
   integer(i8b) :: ngasread
 
   type(gadget_header_type) :: ghead
-  character(200) :: snapfile
+  character(clen) :: snapfile
   integer(i8b) :: lun,i
   integer(i4b) :: err
 
@@ -672,7 +652,7 @@ subroutine read_Gtiz_particles(MB)
 
      end if
 
-     ! read internal energy (internal energy until we change it)
+     ! read internal energy (will be changed to temperature)
      !-----------------------------------------------------------!  
      allocate(rblck(ngas1), stat=err)
      if(err/=0) call myerr("allocating rblck for u",myname,crash)
@@ -711,7 +691,7 @@ subroutine read_Gtiz_particles(MB)
      end do
 
      deallocate(rblck)
-
+ 
      ! read neutral hydrogen fraction (xHI)
      !-----------------------------------------------------------!  
      allocate(rblck(ngas1), stat=err)
@@ -824,7 +804,7 @@ subroutine update_particles(MB)
 
   real(r8b), intent(out) :: MB   !< MB allocated for particle storage
 
-  character(200), parameter :: myname="update_particles" 
+  character(clen), parameter :: myname="update_particles" 
   logical, parameter :: crash=.true.
 
   integer(i4b), allocatable :: idold(:)
@@ -972,11 +952,11 @@ end subroutine update_particles
 !> and a file number.
 !===================================================================
 subroutine form_Gsnapshot_file_name(path,base,SnapNum,FileNum,SnapFile)
-  character(200), intent(in) :: path        !< path to snapshot dir
-  character(200), intent(in) :: base        !< base snapshot name
+  character(clen), intent(in) :: path        !< path to snapshot dir
+  character(clen), intent(in) :: base        !< base snapshot name
   integer(i8b), intent(in) :: SnapNum       !< snapshot number
   integer(i8b), intent(in) :: FileNum       !< file number of snapshot
-  character(200), intent(out) :: SnapFile   !< snapshot filename
+  character(clen), intent(out) :: SnapFile   !< snapshot filename
   
   character(10) :: FileNumChar
   logical :: Fthere
@@ -1004,11 +984,11 @@ end subroutine form_Gsnapshot_file_name
 !! and a file number.
 !===================================================================
 subroutine form_snapshot_file_name(Path,FileBase,SnapNum,FileNum,SnapFile)
-  character(200), intent(in) :: Path       !< path to snapshot dir
-  character(200), intent(in) :: FileBase   !< file base names
+  character(clen), intent(in) :: Path       !< path to snapshot dir
+  character(clen), intent(in) :: FileBase   !< file base names
   integer(i8b), intent(in) :: SnapNum      !< snapshot number
   integer(i8b), intent(in) :: FileNum      !< file number in snapshot
-  character(200), intent(out) :: SnapFile  !< file name to return
+  character(clen), intent(out) :: SnapFile  !< file name to return
   
   character(10) :: FileNumChar
   

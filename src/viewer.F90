@@ -370,7 +370,7 @@ logical :: show_gas=.TRUE.,show_stars=.TRUE.,SHOW_ray=.FALSE.
 logical :: show_axes=.FALSE.,show_box=.TRUE.,show_data=.TRUE.
 logical :: show_brightness=.FALSE.
 integer(glint) :: update_flag=0 ! 1+2+4 for gas+src+ray
-integer :: show_temp=0
+integer :: show_temp=1
     
 integer(glint) :: framerate=5000;
   
@@ -396,7 +396,7 @@ end subroutine visible
 subroutine gaslist
 use global_mod, only: psys,GV
     
-real(kind=glfloat) :: xt,yt,zt,temp
+real(kind=glfloat) :: xt,yt,zt,temp,dT,Tmin,Tmax
 real(kind=glfloat) :: red,green,blue,alpha_c
 integer :: i,step
     
@@ -406,9 +406,14 @@ ngas=size(psys%par)
 if(.not.show_gas) return
 
 call glNewList(1,GL_COMPILE)	
-call glPointSize( 1.5_glfloat)
+call glPointSize( 0.5_glfloat)
 call glBegin(GL_POINTS)
-call glColor4f(5._glfloat, .3_glfloat, .3_glfloat,.3_glfloat)
+call glColor4f(5._glfloat, .3_glfloat, .3_glfloat, 0.1_glfloat)
+
+
+Tmax = 8.0
+Tmin = 3.0
+dT = 8.0-3.0
 
 do i=1,size(psys%par)
    
@@ -416,29 +421,78 @@ do i=1,size(psys%par)
    yt=psys%par(i)%pos(2)
    zt=psys%par(i)%pos(3)
    
-   if(show_temp.EQ.1) then
-      temp = ( log10(psys%par(i)%T+1) - 1.0 ) / 4.0
+   ! temperature
+   !-------------------
+   if(show_temp.EQ.2) then
+
+      temp = log10(psys%par(i)%T)
+      if (temp <= Tmin) then
+         temp = 0.0
+      else if (temp >= Tmax) then
+         temp = 1.0
+      else
+         temp = (temp - Tmin) / dT
+      end if
+
       red=temp
-      blue=(1.0-temp)
+      blue=(1.0_glfloat - temp)
       green=0.01
-      alpha_c=0.2
+      alpha_c=0.1
       call glColor4f(red, green, blue, alpha_c)
    end if
 
-   if(show_temp.EQ.2) then
+   ! ionization
+   !---------------
+   if(show_temp.EQ.3) then
       temp = psys%par(i)%xHI 
-      if (temp > 0.5) then
-         green=1.0
-         red=0.0
-         alpha_c=0.1	  
-      else
-         red=1.0
-         green=0.0
-         alpha_c=0.6
-      end if
-      blue=0.
+      green = temp
+      red = 1.0-temp
+      alpha_c=0.1
+      blue=0.05
       call glColor4f(red, green, blue, alpha_c)
    endif
+
+
+   ! only neutral
+   !---------------
+   if(show_temp.EQ.4) then
+      temp = psys%par(i)%xHII 
+      if (temp <= 0.01) then
+         green = 0.2
+         red = 0.5
+         blue=0.5
+         alpha_c=0.3
+      else
+         green=0.
+         red=0.
+         blue=0.
+         alpha_c=0.
+      endif
+      call glColor4f(red, green, blue, alpha_c)
+   endif
+
+
+   ! only ionized
+   !---------------
+   if(show_temp.EQ.5) then
+      temp = psys%par(i)%xHI 
+      if (temp <= 0.01) then
+         green = 0.2
+         red = 0.5
+         blue=0.5
+         alpha_c=0.1
+      else
+         green=0.
+         red=0.
+         blue=0.
+         alpha_c=0.
+      endif
+      call glColor4f(red, green, blue, alpha_c)
+   endif
+
+
+
+
 
    call glVertex3f(xt,yt,zt)
 
@@ -627,15 +681,19 @@ subroutine prop_menu(optie) bind(c)
     
   select case (optie)
   case(1)
-     show_temp=0
-  case(2)
      show_temp=1
-  case(3)
+  case(2)
      show_temp=2
+  case(3)
+     show_temp=3
   case(4)
+     show_temp=4
+  case(5)
+     show_temp=5
+  case(6)
      show_brightness=.NOT.show_brightness
   case default
-       
+     
   end select
     
   flag=update_flag
@@ -723,7 +781,9 @@ subroutine createsubmenus(i,j,k)
   call glutaddmenuentry('plain', 1)
   call glutaddmenuentry('show temperature', 2)
   call glutaddmenuentry('show ionization', 3)
-  call glutaddmenuentry('show luminosity', 4)
+  call glutaddmenuentry('show only neutral', 4)
+  call glutaddmenuentry('show only ionized', 5)
+  call glutaddmenuentry('show luminosity', 6)
   
 end subroutine createsubmenus
 

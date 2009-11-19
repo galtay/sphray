@@ -22,16 +22,21 @@ contains
 !> Read in planning data from the header of all snapshots 
 !========================================================
 subroutine get_planning_data()
+  integer, parameter :: verb=2
 
   ! allocate global planning arrays
   GV%Nsnaps = GV%EndSnapNum - GV%StartSnapNum + 1
 
   allocate( PLAN%snap(GV%StartSnapNum : GV%EndSnapNum) )
 
-  write(*,*) 
-  write(*,'(A)') "reading headers "
+  call mywrite("",verb) 
+  call mywrite("getting planning data:", verb)
 
-  call get_planning_data_gadget()
+  if (GV%InputType == 1 .or. GV%InputType == 2) then
+     call get_planning_data_gadget()
+  else if (GV%InputType == 3) then
+     call get_planning_data_gadget_hdf5()
+  end if
 
 end subroutine get_planning_data
 
@@ -89,8 +94,6 @@ integer, parameter :: verb=1
         call update_particles(MB)
      end if
 
-     call read_gadget_box(box)
-
      MBalloc = MBalloc + MB
 
 ! gadget w/ cooling, stars, met
@@ -104,17 +107,19 @@ integer, parameter :: verb=1
         call update_particles(MB)
      end if
      
-     call read_gadget_box(box)
-
      MBalloc = MBalloc + MB
 
 ! gadget w/ HDF5
 !---------------------------------------------------------------
   else if (GV%InputType == 3) then 
      
-     write(*,*) "set up HDF5 input" 
-     stop
-
+     if (first) then
+        call read_Ghdf5_particles()
+        psys%par(:)%lasthit = 0
+     else
+        call update_hdf5_particles()
+     end if
+     
 ! not recognized
 !---------------------------------------------------------------
   else
@@ -158,12 +163,14 @@ integer, parameter :: verb=1
    
   ! now that we've got the data we will set the global variables
   !===============================================================
+
+  psys%box%top = GV%BoxUppers
+  psys%box%bot = GV%BoxLowers
+  psys%box%tbound = GV%BndryCond
+  psys%box%bbound = GV%BndryCond
   
   GV%dtray_code = PLAN%snap(GV%CurSnapNum)%RunTime / PLAN%snap(GV%CurSnapNum)%SrcRays
   GV%dtray_s    = GV%dtray_code * GV%cgs_time / GV%LittleH
-
-  GV%BoxLowers = box%bot  
-  GV%BoxUppers = box%top
 
   GV%BoxLengths(1:3) = GV%BoxUppers(1:3) - GV%BoxLowers(1:3)
   GV%BoxLengths_cm   = GV%BoxLengths * GV%cgs_len / GV%LittleH
