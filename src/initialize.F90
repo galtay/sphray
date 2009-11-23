@@ -18,6 +18,7 @@ use atomic_rates_mod, only: set_iso_atomic_rates
 use iliev_comparison_project_mod, only: initialize_iliev_tests
 use main_input_mod, only: get_planning_data
 use global_mod, only: GV, PLAN
+use ray_mod, only: curface
 implicit none
 
   contains
@@ -379,6 +380,9 @@ subroutine initialize_global_variables()
   call calc_bytes_per_particle(bpp, bps)
   GV%bytesperpar = bpp
   GV%bytespersrc = bps
+
+  ! only important for runs with a background source (emisprf=-3)
+  curface = 0
 
 
 end subroutine initialize_global_variables
