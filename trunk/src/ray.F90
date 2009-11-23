@@ -40,6 +40,7 @@ integer, parameter :: raystatbuffsize = 5000
 
   private
   public :: raystatbuffsize
+  public :: curface
   public :: ray_type
   public :: raystat_type
   public :: set_ray
