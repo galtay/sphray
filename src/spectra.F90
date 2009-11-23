@@ -87,6 +87,9 @@ contains
   function rn2freq(spectype) result(freq)
   use mt19937_mod, only: genrand_real1
 
+    character(clen), parameter :: myname = 'rn2freq'
+    logical, parameter :: crash = .true.
+
     real(r4b) :: spectype  !< spectral user defined type
     real(r4b) :: freq      !< returned frequency
 
@@ -101,9 +104,14 @@ contains
        specnum = int(spectype)
        rn = genrand_real1()
        do specbin = 1,Nfreqs
-          if ( rn <= cdf(specbin,specnum) ) exit
+          if ( rn <= cdf(specbin,specnum) ) then
+             freq = nus(specbin,specnum)
+             return
+          end if
        end do
-       freq = nus(specbin,specnum)  
+
+       call myerr("went through loop w/o finding frequency", myname, crash)
+
     end if
 
    end function rn2freq
