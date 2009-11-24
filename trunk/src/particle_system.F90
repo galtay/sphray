@@ -229,7 +229,7 @@ subroutine scale_comoving_to_physical(a,par,src,box,hub)
   fmt = "(A,F12.5,T22,A,T25,F12.5)"
   write(str,fmt) "  a = ", a, "h = ", h
   call mywrite(str,verb)
-  call mywrite("",verb)
+
   
   par%pos(1) = par%pos(1) * a / h
   par%pos(2) = par%pos(2) * a / h

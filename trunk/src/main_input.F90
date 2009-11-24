@@ -62,6 +62,7 @@ use atomic_rates_mod, only: set_cmb_atomic_rates
   integer(i8b) :: i
   real(r8b) :: a     !< scale factor
   real(r8b) :: h     !< Hubble paraemter (little H)
+  real(r8b) :: Flux  !< photons / s from planar sources
   character(clen) :: snpbase
   character(clen) :: srcbase
 
@@ -173,6 +174,61 @@ use atomic_rates_mod, only: set_cmb_atomic_rates
   write(GV%srcdatalun,*)
 
 
+  ! take care of all the box variables
+  !===============================================================
+  GV%BoxLwrsComo = GV%BoxLwrsComoh / h
+  GV%BoxLwrsPhys = GV%BoxLwrsComoh / h * a
+
+  GV%BoxUprsComo = GV%BoxUprsComoh / h
+  GV%BoxUprsPhys = GV%BoxUprsComoh / h * a
+ 
+  GV%BoxLensComoh = GV%BoxUprsComoh - GV%BoxLwrsComoh
+  GV%BoxLensComo  = GV%BoxUprsComo  - GV%BoxLwrsComo
+  GV%BoxLensPhysh = GV%BoxUprsPhysh - GV%BoxLwrsPhysh
+  GV%BoxLensPhys  = GV%BoxUprsPhys  - GV%BoxLwrsPhys
+
+  GV%BoxLensComoh_cm = GV%BoxLensComoh * GV%cgs_len
+  GV%BoxLensComo_cm  = GV%BoxLensComo  * GV%cgs_len
+  GV%BoxLensPhysh_cm = GV%BoxLensPhysh * GV%cgs_len
+  GV%BoxLensPhys_cm  = GV%BoxLensPhys  * GV%cgs_len
+ 
+  GV%BoxLensComoh_kpc = GV%BoxLensComoh_cm * cm2kpc
+  GV%BoxLensComo_kpc  = GV%BoxLensComo_cm  * cm2kpc
+  GV%BoxLensPhysh_kpc = GV%BoxLensPhysh_cm * cm2kpc
+  GV%BoxLensPhys_kpc  = GV%BoxLensPhys_cm  * cm2kpc
+
+  GV%BoxVolComoh = product( GV%BoxLensComoh )
+  GV%BoxVolComo  = product( GV%BoxLensComo  )
+  GV%BoxVolPhysh = product( GV%BoxLensPhysh )
+  GV%BoxVolPhys  = product( GV%BoxLensPhys  )
+
+  GV%BoxVolComoh_cm = product( GV%BoxLensComoh_cm )
+  GV%BoxVolComo_cm  = product( GV%BoxLensComo_cm  )
+  GV%BoxVolPhysh_cm = product( GV%BoxLensPhysh_cm )
+  GV%BoxVolPhys_cm  = product( GV%BoxLensPhys_cm  )
+
+  GV%BoxVolComoh_kpc = product( GV%BoxLensComoh_kpc )
+  GV%BoxVolComo_kpc  = product( GV%BoxLensComo_kpc  )
+  GV%BoxVolPhysh_kpc = product( GV%BoxLensPhysh_kpc )
+  GV%BoxVolPhys_kpc  = product( GV%BoxLensPhys_kpc  )
+
+
+  ! convert number density to flux for planar sources
+  !==========================================================
+  do i = 1,size(psys%src)
+     if (psys%src(i)%EmisPrf == -3) then 
+        ! if this is true the input luminosity is a number density [photons/cm^3]
+        ! we want the flux from all 6 walls that would produce this number 
+        ! density in an optically thin volume
+
+        Flux = psys%src(i)%L * c * GV%BoxLensPhys_cm(1)**2 / 6
+        Flux = Flux / GV%Lunit
+        psys%src(i)%L = Flux
+
+     end if
+
+  end do
+
 
   ! set ionization conditions for Helium test if we need to
   !==========================================================
@@ -249,44 +305,10 @@ use atomic_rates_mod, only: set_cmb_atomic_rates
   write(GV%srcdatalun,*)
   write(GV%srcdatalun,*)
 
+
+
    
-  ! take care of all the box variables
-  !===============================================================
-  GV%BoxLwrsComo = GV%BoxLwrsComoh / h
-  GV%BoxLwrsPhys = GV%BoxLwrsComoh / h * a
 
-  GV%BoxUprsComo = GV%BoxUprsComoh / h
-  GV%BoxUprsPhys = GV%BoxUprsComoh / h * a
- 
-  GV%BoxLensComoh = GV%BoxUprsComoh - GV%BoxLwrsComoh
-  GV%BoxLensComo  = GV%BoxUprsComo  - GV%BoxLwrsComo
-  GV%BoxLensPhysh = GV%BoxUprsPhysh - GV%BoxLwrsPhysh
-  GV%BoxLensPhys  = GV%BoxUprsPhys  - GV%BoxLwrsPhys
-
-  GV%BoxLensComoh_cm = GV%BoxLensComoh * GV%cgs_len
-  GV%BoxLensComo_cm  = GV%BoxLensComo  * GV%cgs_len
-  GV%BoxLensPhysh_cm = GV%BoxLensPhysh * GV%cgs_len
-  GV%BoxLensPhys_cm  = GV%BoxLensPhys  * GV%cgs_len
- 
-  GV%BoxLensComoh_kpc = GV%BoxLensComoh_cm * cm2kpc
-  GV%BoxLensComo_kpc  = GV%BoxLensComo_cm  * cm2kpc
-  GV%BoxLensPhysh_kpc = GV%BoxLensPhysh_cm * cm2kpc
-  GV%BoxLensPhys_kpc  = GV%BoxLensPhys_cm  * cm2kpc
-
-  GV%BoxVolComoh = product( GV%BoxLensComoh )
-  GV%BoxVolComo  = product( GV%BoxLensComo  )
-  GV%BoxVolPhysh = product( GV%BoxLensPhysh )
-  GV%BoxVolPhys  = product( GV%BoxLensPhys  )
-
-  GV%BoxVolComoh_cm = product( GV%BoxLensComoh_cm )
-  GV%BoxVolComo_cm  = product( GV%BoxLensComo_cm  )
-  GV%BoxVolPhysh_cm = product( GV%BoxLensPhysh_cm )
-  GV%BoxVolPhys_cm  = product( GV%BoxLensPhys_cm  )
-
-  GV%BoxVolComoh_kpc = product( GV%BoxLensComoh_kpc )
-  GV%BoxVolComo_kpc  = product( GV%BoxLensComo_kpc  )
-  GV%BoxVolPhysh_kpc = product( GV%BoxLensPhysh_kpc )
-  GV%BoxVolPhys_kpc  = product( GV%BoxLensPhys_kpc  )
   
 
   ! and the rest of the stuff
@@ -329,6 +351,7 @@ use atomic_rates_mod, only: set_cmb_atomic_rates
   write(GV%srcdatalun,*)
   write(GV%srcdatalun,100)
 
+  call mywrite("",verb)
  
 
 end subroutine readin_snapshot

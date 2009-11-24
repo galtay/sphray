@@ -15,6 +15,9 @@
 # in the case of the recombination macros.  The default is for all
 # these flags to be commented out. 
 
+#OPT += -DincHmf     # if you want individual Hydrogen mass fractions
+#OPT += -DincHemf    # if you want individual Helium mass fractions
+
 #OPT += -DincHe      # if you want to include Helium
 #OPT += -DoutGammaHI # if you want to output HI photoionization rate
 
@@ -23,6 +26,7 @@
 
 OPT += -Dhdf5     # if you are using the hdf
 
+OPT += -DOWLS
 
 # System Definitions
 #=============================================================================
