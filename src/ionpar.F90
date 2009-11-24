@@ -4,18 +4,18 @@
 !<
 
 module ionpar_mod
-use atomic_rates_mod, only: atomic_rates_type
-use particle_system_mod, only: particle_type
-use global_mod, only: global_variables_type
-use raylist_mod, only: raylist_type
 use myf90_mod
 use physical_constants_mod
+use atomic_rates_mod, only: atomic_rates_type
+use particle_system_mod, only: particle_type
+use raylist_mod, only: raylist_type
 use b2cd_mod, only: b2cdfac
 use cen_atomic_rates_mod, only: Osterbrok_HI_photo_cs
 use cen_atomic_rates_mod, only: Osterbrok_HeI_photo_cs
 use cen_atomic_rates_mod, only: Osterbrok_HeII_photo_cs
 use cen_atomic_rates_mod, only: Haiman_Bremss_cool
 use cen_atomic_rates_mod, only: Haiman_Comp_Heol
+use global_mod, only: GV
 implicit none
 
 !---------------------------
@@ -167,11 +167,10 @@ end type ionpart_type
 contains
 
 !> initializes the ionization particle values
-subroutine initialize_ionpar(ipar,par,GV,srcray,He,raylist,impact)
+subroutine initialize_ionpar(ipar,par,srcray,He,raylist,impact)
 
   type(ionpart_type), intent(inout) :: ipar           !< ionization particle
   type(particle_type), intent(in) :: par              !< standard particle
-  type(global_variables_type), intent(in) :: GV       !< global variables
   logical, intent(in) :: srcray                       !< source ray update ?
   logical, intent(in) :: He                           !< update Helium ?
   type(raylist_type), intent(in), optional :: raylist !< optional raylist
@@ -201,12 +200,10 @@ subroutine initialize_ionpar(ipar,par,GV,srcray,He,raylist,impact)
   ipar%rayn = GV%rayn
   if (present(impact)) ipar%impact = impact
   ipar%NeBckgnd = GV%NeBackground
-  ipar%H_mf = GV%H_mf
-  ipar%He_mf = GV%He_mf
   ipar%Tcmb = GV%Tcmb_cur
 
-  mass_cgs = ipar%mass * GV%cgs_mass / GV%LittleH
-  rho_cgs  = ipar%rho * (GV%cgs_mass / (GV%cgs_len*GV%cgs_len*GV%cgs_len)) * GV%LittleH * GV%LittleH
+  mass_cgs = ipar%mass * GV%cgs_mass 
+  rho_cgs  = ipar%rho *  GV%cgs_rho 
  
   ipar%gpercm3 = rho_cgs
   ipar%cm3 = mass_cgs / rho_cgs
@@ -228,7 +225,7 @@ subroutine initialize_ionpar(ipar,par,GV,srcray,He,raylist,impact)
      ipar%d = raylist%intersection(impact)%d
      ipar%b = raylist%intersection(impact)%b
      ipar%bnorm = ipar%b/ipar%hsml
-     ipar%cdfac = b2cdfac(ipar%bnorm,ipar%hsml,GV%cgs_len/GV%LittleH)
+     ipar%cdfac = b2cdfac(ipar%bnorm,ipar%hsml,GV%cgs_len)
 
      ipar%dt_code = (GV%rayn - ipar%lasthit) * GV%dtray_code
      ipar%dt_s    = (GV%rayn - ipar%lasthit) * GV%dtray_s
@@ -274,6 +271,18 @@ subroutine par2ionpar(par,ipar)
  ipar%vel = par%vel
 #else
  ipar%vel = 0.0
+#endif
+
+#ifdef incHmf
+  ipar%H_mf = par%Hmf
+#else
+  ipar%H_mf = GV%H_mf
+#endif
+
+#ifdef incHemf
+  ipar%He_mf = GV%He_mf
+#else
+  ipar%He_mf = GV%He_mf
 #endif
 
  ipar%hsml = par%hsml

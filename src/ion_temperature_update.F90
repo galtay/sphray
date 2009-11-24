@@ -94,7 +94,7 @@ subroutine update_raylist(GV,raylist,pars,box,srcray)
 
      photo = .true.
      GV%ParticleCrossings = GV%ParticleCrossings + 1
-     call initialize_ionpar(ipar,par,GV,srcray,He,raylist,impact)
+     call initialize_ionpar(ipar,par,srcray,He,raylist,impact)
 
      if (srcray) then
         if (GV%IonTempSolver==1) then
@@ -257,7 +257,7 @@ subroutine non_photo_update_all(GV,pars)
         !=============================================
         par = pars(p)
         srcray = .false.
-        call initialize_ionpar(ipar,par,GV,srcray,He)
+        call initialize_ionpar(ipar,par,srcray,He)
         photo = .false.
         call eulerint(ipar,scalls,photo,caseA,He,isoT,fixT)
         call ionpar2par(ipar,par)

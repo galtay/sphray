@@ -297,7 +297,7 @@ subroutine read_Gpub_particles()
   GV%MB = GV%MB + MB
 
   fmt="(A,F10.4,A,I10,A)"
-  write(str,fmt) "allocating ", MB, " MB for ", ngas, " particles"
+  write(str,fmt) "  allocating ", MB, " MB for ", ngas, " particles"
   call mywrite(str,verb)
 
   allocate (psys%par(ngas), stat=err)
@@ -311,7 +311,7 @@ subroutine read_Gpub_particles()
   files: do fn = 0, ghead%nfiles-1
 
      call form_Gsnapshot_file_name(GV%SnapPath,GV%ParFileBase,GV%CurSnapNum,fn,snapfile)
-     call mywrite("reading public gadget particle snapshot file "//trim(snapfile), verb)
+     call mywrite("   reading public gadget particle snapshot file "//trim(snapfile), verb,fmt="(A)")
      call read_gadget_header(snapfile,ghead,lun,closefile)
 
      varmass = (ghead%npar_file > 0 .and. ghead%mass == 0)

@@ -447,8 +447,12 @@ do i=1,size(psys%par)
       temp = psys%par(i)%xHI 
       green = temp
       red = 1.0-temp
-      alpha_c=0.1
       blue=0.05
+      if (temp < 0.5) then
+         alpha_c=0.3
+      else
+         alpha_c=0.1
+      endif
       call glColor4f(red, green, blue, alpha_c)
    endif
 

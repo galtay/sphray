@@ -92,8 +92,6 @@ contains
        call prepare_raysearch(psys, globalraylist)
        
        
-
-
        if(GV%JustInit) then
           write(str,"(A,F10.2)") "total memory allocated [MB] = ", GV%MB
           call mywrite(str,verb)
@@ -109,7 +107,7 @@ contains
        end if
        
        
-       !     begin ray tracing 
+       ! begin ray tracing 
        !------------------------- 
        src_rays: do rayn = one, PLAN%snap(snapn)%SrcRays
           
@@ -117,7 +115,7 @@ contains
           GV%src_rayn = GV%src_rayn + 1
           
           
-          !        select a source randomly (weighted by their luminosity)
+          !  select a source randomly (weighted by their luminosity)
           rn = genrand_real1() * psys%src(size(psys%src))%Lcdf
           srcn=1
           do while(psys%src(srcn)%Lcdf.LT.rn)
@@ -135,16 +133,8 @@ contains
           GV%TotalSourceRaysCast = GV%TotalSourceRaysCast + 1      
           
           
-          !        create a source ray and calc the impacts
+          !  create a source ray and calc the impacts
           call make_source_ray(psys%src(srcn), GV%rayn, GV%dtray_s, GV%Lunit, psys%box, ray)
-
-
-          write(*,*) "source pos = ", ray%start
-          write(*,*) "min/max par pos = ", minval(psys%par(:)%pos(1)), maxval(psys%par(:)%pos(1))
-          write(*,*) 
-
-          if (rayn > 6) stop
-
 
           globalraylist%ray = ray
           call trace_ray(globalraylist%ray, globalraylist, psys, tree) 
