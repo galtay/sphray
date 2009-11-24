@@ -84,118 +84,117 @@ contains
 !    -2  = x-y plane towards -z
 !    -3  = all planes into box
 !
-  
-    ! random direction on the unit sphere
-    if (src%EmisPrf == 0) then 
-       ray%start = src%pos
-       r=2. 
-       do while ( r .GT. 1.0 .and. r .NE. 0.0 )
-          xx=(2*genrand_real1()-1)   
-          yy=(2*genrand_real1()-1)   
-          zz=(2*genrand_real1()-1)   
-          r=xx*xx+yy*yy+zz*zz
-       enddo
-       r = sqrt(r)
-       ray%dir(1) = xx/r  ! it is important that ray%dir be a unit vector
-       ray%dir(2) = yy/r
-       ray%dir(3) = zz/r
-
-    ! this makes the bottom x-y plane a source rays go in +z direction        
-    else if (src%EmisPrf == -1) then  
-       ray%dir(1) = 0.0
-       ray%dir(2) = 0.0
-       ray%dir(3) = 1.0
-
-       ray%start(3) = box%bot(3)
-
-       rn = genrand_real1()
-       ray%start(2) = box%bot(2) + rn * (box%top(2)-box%bot(2))
-       rn = genrand_real1()
-       ray%start(1) = box%bot(1) + rn * (box%top(1)-box%bot(1))
-
-    ! this makes the top x-y plane a source rays go in -z direction        
-    else if (src%EmisPrf == -2) then  
-       ray%dir(1) = 0.0
-       ray%dir(2) = 0.0
-       ray%dir(3) = -1.0
-
-       ray%start(3) = box%top(3)
-
-       rn = genrand_real1()
-       ray%start(2) = box%bot(2) + rn * (box%top(2)-box%bot(2))
-       rn = genrand_real1()
-       ray%start(1) = box%bot(1) + rn * (box%top(1)-box%bot(1))
-
-    ! this cycles through all planes and casts into the box
-    ! the position coordinate is used to track which face is next
-    else if (src%EmisPrf == -3) then  
-
-       curface = curface + 1
-       if (curface > 6) curface = 1
-
-       rn1 = genrand_real1()
-       rn2 = genrand_real1()
 
 
-       if (curface == 1) then
+
+    select case (src%EmisPrf)
+
+
+       ! this cycles through all planes and casts into the box
+       ! the position coordinate is used to track which face is next
+       case(-3)
+
+          curface = curface + 1
+          if (curface > 6) curface = 1
+
+          rn1 = genrand_real1()
+          rn2 = genrand_real1()
+
           ray%dir = 0.0
-          ray%dir(1) = 1.0
 
-          ray%start(1) = box%bot(1)
-          ray%start(2) = box%bot(2) + rn1 * (box%top(2)-box%bot(2))
-          ray%start(3) = box%bot(3) + rn2 * (box%top(3)-box%bot(3))
+          select case (curface)
+             
+             case(1)
+                ray%dir(1) = 1.0            
+                ray%start(1) = box%bot(1)
+                ray%start(2) = box%bot(2) + rn1 * (box%top(2)-box%bot(2))
+                ray%start(3) = box%bot(3) + rn2 * (box%top(3)-box%bot(3))
+             case(2)
+                ray%dir(2) = 1.0             
+                ray%start(2) = box%bot(2)
+                ray%start(3) = box%bot(3) + rn1 * (box%top(3)-box%bot(3))
+                ray%start(1) = box%bot(1) + rn2 * (box%top(1)-box%bot(1))
+             case(3)
+                ray%dir(3) = 1.0             
+                ray%start(3) = box%bot(3)
+                ray%start(1) = box%bot(1) + rn1 * (box%top(1)-box%bot(1))
+                ray%start(2) = box%bot(2) + rn2 * (box%top(2)-box%bot(2))     
+             case(4)
+                ray%dir(1) = -1.0             
+                ray%start(1) = box%top(1)
+                ray%start(2) = box%bot(2) + rn1 * (box%top(2)-box%bot(2))
+                ray%start(3) = box%bot(3) + rn2 * (box%top(3)-box%bot(3))
+             case(5)
+                ray%dir(2) = -1.0
+                ray%start(2) = box%top(2)
+                ray%start(3) = box%bot(3) + rn1 * (box%top(3)-box%bot(3))
+                ray%start(1) = box%bot(1) + rn2 * (box%top(1)-box%bot(1))
+             case(6)
+                ray%dir(3) = -1.0
+                ray%start(3) = box%top(3)
+                ray%start(1) = box%bot(1) + rn1 * (box%top(1)-box%bot(1))
+                ray%start(2) = box%bot(2) + rn2 * (box%top(2)-box%bot(2))
+             case default 
+                stop "curface out of bounds"
+          end select
 
-       else if (curface == 2) then
-          ray%dir = 0.0
-          ray%dir(2) = 1.0
 
-          ray%start(2) = box%bot(2)
-          ray%start(3) = box%bot(3) + rn1 * (box%top(3)-box%bot(3))
-          ray%start(1) = box%bot(1) + rn2 * (box%top(1)-box%bot(1))
+       ! this makes the z=boxlen plane a source rays go in -z direction  
+       case(-2)
 
-       else if (curface == 3) then
-          ray%dir = 0.0
-          ray%dir(3) = 1.0
-
-          ray%start(3) = box%bot(3)
-          ray%start(1) = box%bot(1) + rn1 * (box%top(1)-box%bot(1))
-          ray%start(2) = box%bot(2) + rn2 * (box%top(2)-box%bot(2))       
-
-       else if (curface == 4) then
-          ray%dir = 0.0
-          ray%dir(1) = -1.0
-
-          ray%start(1) = box%top(1)
-          ray%start(2) = box%bot(2) + rn1 * (box%top(2)-box%bot(2))
-          ray%start(3) = box%bot(3) + rn2 * (box%top(3)-box%bot(3))
-
-       else if (curface == 5) then
-          ray%dir = 0.0
-          ray%dir(2) = -1.0
-
-          ray%start(2) = box%top(2)
-          ray%start(3) = box%bot(3) + rn1 * (box%top(3)-box%bot(3))
-          ray%start(1) = box%bot(1) + rn2 * (box%top(1)-box%bot(1))
-
-       else if (curface == 6) then
-          ray%dir = 0.0
+          ray%dir(1) = 0.0
+          ray%dir(2) = 0.0
           ray%dir(3) = -1.0
-
-          ray%start(3) = box%top(3)
-          ray%start(1) = box%bot(1) + rn1 * (box%top(1)-box%bot(1))
-          ray%start(2) = box%bot(2) + rn2 * (box%top(2)-box%bot(2))       
-
-       else 
-          stop "curface out of bounds"
           
-       end if
+          ray%start(3) = box%top(3)
+          
+          rn = genrand_real1()
+          ray%start(2) = box%bot(2) + rn * (box%top(2)-box%bot(2))
+          rn = genrand_real1()
+          ray%start(1) = box%bot(1) + rn * (box%top(1)-box%bot(1))
 
 
-    else
-       write(*,*) "emission profile not recognized"
-       write(*,*) "profile = ", src%EmisPrf
-       stop
-    end if
+       ! this makes the bottom z=0 plane a source rays go in +z direction 
+       case(-1)
+       
+          ray%dir(1) = 0.0
+          ray%dir(2) = 0.0
+          ray%dir(3) = 1.0
+          
+          ray%start(3) = box%bot(3)
+          
+          rn = genrand_real1()
+          ray%start(2) = box%bot(2) + rn * (box%top(2)-box%bot(2))
+          rn = genrand_real1()
+          ray%start(1) = box%bot(1) + rn * (box%top(1)-box%bot(1))
+
+
+       ! random direction on the unit sphere
+       case(0)
+
+          ray%start = src%pos
+          r=2. 
+          do while ( r .GT. 1.0 .and. r .NE. 0.0 )
+             xx=(2*genrand_real1()-1)   
+             yy=(2*genrand_real1()-1)   
+             zz=(2*genrand_real1()-1)   
+             r=xx*xx+yy*yy+zz*zz
+          enddo
+          r = sqrt(r)
+          ray%dir(1) = xx/r  ! it is important that ray%dir be a unit vector
+          ray%dir(2) = yy/r
+          ray%dir(3) = zz/r          
+          
+       case default
+
+          write(*,*) "emission profile not recognized"
+          write(*,*) "profile = ", src%EmisPrf
+          stop          
+
+    end select
+
+
+
 
     ray%length=sqrt(sum(ray%dir**2))
 
