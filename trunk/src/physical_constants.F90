@@ -57,6 +57,7 @@ implicit none
     real(r8b), parameter :: erg2solar    = 1.0d0/L_solar       !< cgs 2 solar 
     real(r8b), parameter :: year2sec     = 3.1556926d7         !< years to seconds
     real(r8b), parameter :: Myr2sec      = 3.1556926d13        !< Myrs to seconds
+    real(r8b), parameter :: Gyr2sec      = 3.1556926d16        !< Gyrs to seconds
     real(r8b), parameter :: sec2year     = 1.0d0 / year2sec    !< seconds to years
     real(r8b), parameter :: s2Myr        = 1.0d0 / Myr2sec     !< seconds to Myrs
     real(r8b), parameter :: g2solar      = 1.0d0 / M_solar     !< grams 2 solar masses

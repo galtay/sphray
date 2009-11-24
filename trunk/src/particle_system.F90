@@ -17,7 +17,7 @@ public :: particle_system_type
 public :: transformation_type
 public :: orderparticles
 public :: orderpsys
-public :: calc_bytes_per_particle
+public :: calc_bytes_per_particle_and_source
 public :: scale_comoving_to_physical
 public :: scale_physical_to_comoving
 public :: enforce_x_and_T_minmax
@@ -194,8 +194,8 @@ end subroutine copypart
 !==================================================================
 subroutine adjustbox(box,bot,top)
   type(box_type), intent(inout) :: box !< input box
-  real(r4b), intent(in) :: bot(3)           !< new bottoms
-  real(r4b), intent(in) :: top(3)           !< new tops
+  real(r4b), intent(in) :: bot(3)      !< new bottoms
+  real(r4b), intent(in) :: top(3)      !< new tops
 
   where (box%bbound==0) box%bot = bot
   where (box%tbound==0) box%top = top
@@ -204,92 +204,126 @@ end subroutine adjustbox
 
 
 !> scales particles, sources, and the box from comoving to physical values
-!> (the velocity is taken from comoving to peculiar)
 !==========================================================================
-subroutine scale_comoving_to_physical(a,par,src,box)
+subroutine scale_comoving_to_physical(a,par,src,box,hub)
+
+  character(clen), parameter :: myname="scale_comoving_to_physical"
+  integer, parameter :: verb=2
+  character(clen) :: str,fmt
 
   real(r8b), intent(in) :: a                           !< scale factor
   type(particle_type), intent(inout) :: par(:)         !< particles
   type(source_type), optional, intent(inout) :: src(:) !< sources
   type(box_type), optional, intent(inout) :: box       !< box 
+  real(r8b), optional, intent(in) :: hub               !< hubble parameter (little h)
 
-  write(*,'(A,F12.4)') "scaling comoving to physical coordinates, a = ", a
+  real(r8b) :: h
 
-  par%pos(1) = par%pos(1) * a
-  par%pos(2) = par%pos(2) * a
-  par%pos(3) = par%pos(3) * a
+  if (present(hub)) then 
+     h = hub
+  else
+     h = 1.0d0
+  end if
+
+  call mywrite("  scaling comoving to physical coordinates", verb)
+  fmt = "(A,F12.5,T22,A,T25,F12.5)"
+  write(str,fmt) "  a = ", a, "h = ", h
+  call mywrite(str,verb)
+  call mywrite("",verb)
+  
+  par%pos(1) = par%pos(1) * a / h
+  par%pos(2) = par%pos(2) * a / h
+  par%pos(3) = par%pos(3) * a / h
 
 #ifdef incVel
-  par%vel(1) = par%vel(1) * a
-  par%vel(2) = par%vel(2) * a
-  par%vel(3) = par%vel(3) * a
+  par%vel(1) = par%vel(1) * sqrt(a) 
+  par%vel(2) = par%vel(2) * sqrt(a) 
+  par%vel(3) = par%vel(3) * sqrt(a) 
 #endif
 
-  par%hsml = par%hsml * a
-  par%rho  = par%rho / (a*a*a)
+  par%mass = par%mass / h
+  par%hsml = par%hsml * a / h
+  par%rho  = ( par%rho / (a*a*a) ) * (h*h)
 
   if (present(src)) then  
-     src%pos(1) = src%pos(1) * a
-     src%pos(2) = src%pos(2) * a
-     src%pos(3) = src%pos(3) * a
+     src%pos(1) = src%pos(1) * a / h
+     src%pos(2) = src%pos(2) * a / h
+     src%pos(3) = src%pos(3) * a / h
 
 #ifdef incVel
-     src%vel(1) = src%vel(1) * a
-     src%vel(2) = src%vel(2) * a
-     src%vel(3) = src%vel(3) * a
+     src%vel(1) = src%vel(1) * sqrt(a) 
+     src%vel(2) = src%vel(2) * sqrt(a)
+     src%vel(3) = src%vel(3) * sqrt(a)
 #endif
 
   end if
 
   if (present(box)) then
-     box%top = box%top * a
-     box%bot = box%bot * a
+     box%top = box%top * a / h
+     box%bot = box%bot * a / h
   end if
 
 end subroutine scale_comoving_to_physical
 
 
 !> scales particles, sources, and the box from physical to comoving  values
-!> (the velocity is taken from peculiar to comoving)
 !==========================================================================
-subroutine scale_physical_to_comoving(a,par,src,box)
+subroutine scale_physical_to_comoving(a,par,src,box,hub)
 
-  real(r8b), intent(in) :: a                                 !< scale factor 
+  character(clen), parameter :: myname="scale_physical_to_comoving"
+  integer, parameter :: verb=2
+  character(clen) :: str,fmt
+
+  real(r8b), intent(in) :: a                            !< scale factor 
   type(particle_type), intent(inout) :: par(:)          !< particles
   type(source_type), optional, intent(inout) :: src(:)  !< sources
   type(box_type), optional, intent(inout) :: box        !< box 
+  real(r8b), optional, intent(in) :: hub                !< hubble parameter (little h)
 
-  write(*,'(A,F8.4)') "scaling physical to comoving coordinates, a = ", a
+  real(r8b) :: h
+
+  if (present(hub)) then 
+     h = hub
+  else
+     h = 1.0d0
+  end if
+
+  call mywrite("  scaling physical to comoving coordinates", verb)
+  fmt = "(A,F12.5,T22,A,T25,F12.5)"
+  write(str,fmt) "  a = ", a, "h = ", h
+  call mywrite(str,verb)
+
   
-  par%pos(1) = par%pos(1) / a
-  par%pos(2) = par%pos(2) / a
-  par%pos(3) = par%pos(3) / a
+  par%pos(1) = par%pos(1) / a * h
+  par%pos(2) = par%pos(2) / a * h
+  par%pos(3) = par%pos(3) / a * h
 
 #ifdef incVel
-  par%vel(1) = par%vel(1) / a
-  par%vel(2) = par%vel(2) / a
-  par%vel(3) = par%vel(3) / a
+  par%vel(1) = par%vel(1) / sqrt(a)
+  par%vel(2) = par%vel(2) / sqrt(a)
+  par%vel(3) = par%vel(3) / sqrt(a)
 #endif
 
-  par%hsml = par%hsml / a
-  par%rho = par%rho * (a*a*a)
+  par%mass = par%mass * h
+  par%hsml = par%hsml / a * h
+  par%rho = par%rho * (a*a*a) / (h*h)
 
   if (present(src)) then
-     src%pos(1) = src%pos(1) / a
-     src%pos(2) = src%pos(2) / a
-     src%pos(3) = src%pos(3) / a
+     src%pos(1) = src%pos(1) / a * h
+     src%pos(2) = src%pos(2) / a * h
+     src%pos(3) = src%pos(3) / a * h
 
 #ifdef incVel
-     src%vel(1) = src%vel(1) / a
-     src%vel(2) = src%vel(2) / a
-     src%vel(3) = src%vel(3) / a
+     src%vel(1) = src%vel(1) / sqrt(a)
+     src%vel(2) = src%vel(2) / sqrt(a)
+     src%vel(3) = src%vel(3) / sqrt(a)
 #endif
 
   end if
 
   if (present(box)) then
-     box%top = box%top / a
-     box%bot = box%bot / a
+     box%top = box%top / a * h
+     box%bot = box%bot / a * h
   end if
 
 end subroutine scale_physical_to_comoving
@@ -326,134 +360,160 @@ end subroutine enforce_x_and_T_minmax
 
 !> figures out how many bytes of RAM are needed per particle
 !=================================================================
-subroutine calc_bytes_per_particle(bpp, bps)
-  integer(i8b), intent(out) :: bpp !< bytes per particle
-  integer(i8b), intent(out) :: bps !< bytes per source
-  integer(i8b) :: bytes  
+subroutine calc_bytes_per_particle_and_source(bpp, bps)
+
+  character(clen), parameter :: myname="calc_bytes_per_particle_and_source"
+  logical, parameter :: crash=.true.
   integer, parameter :: verb=2
 
+  integer(i8b), intent(out) :: bpp !< bytes per particle
+  integer(i8b), intent(out) :: bps !< bytes per source
   character(clen) :: str
 
-  bytes = 12         ! positions
+  bpp = 12         ! positions
 
 #ifdef incVel
-  bytes = bytes + 12 ! velocities  
+  bpp = bpp + 12 ! velocities  
 #endif
 
-  bytes = bytes + 4  ! ID
-  bytes = bytes + 4  ! mass
-  bytes = bytes + 4  ! temperature
-  bytes = bytes + 4  ! rho
-  bytes = bytes + 4  ! ye
-  bytes = bytes + 8  ! H ionization fractions
-  bytes = bytes + 4  ! hsml
+  bpp = bpp + 4  ! ID
+  bpp = bpp + 4  ! mass
+  bpp = bpp + 4  ! temperature
+  bpp = bpp + 4  ! rho
+  bpp = bpp + 4  ! ye
+  bpp = bpp + 8  ! H ionization fractions
+  bpp = bpp + 4  ! hsml
+
+#ifdef incHmf
+  bpp = bpp + 4  ! H mass fraction
+#endif
+
+#ifdef incHemf
+  bpp = bpp + 4  ! He mass fraction
+#endif
 
 #ifdef incHe
-  bytes = bytes + 12 ! He ionization fractions
+  bpp = bpp + 12 ! He ionization fractions
 #endif
 
 #ifdef outGamma
-  bytes = bytes + 8  ! GammaHI tracking
+  bpp = bpp + 8  ! GammaHI tracking
 #endif
 
-  bytes = bytes + 8  ! last hit index
-
-
-  write(str,'(A,I4)') "bytes per particle = ", bytes
+  bpp = bpp + 8  ! last hit index
+  write(str,'(A,I4)') "  bytes per particle = ", bpp
   call mywrite(str, verb)
-  bpp = bytes
+
   
-
- 
   bps = 10 * 4 + 8
-  write(*,'(A,I3)') "bytes per src = ", bps
+  write(str,'(A,I4)') "  bytes per source = ", bps
+  call mywrite(str, verb)
 
 
- end subroutine calc_bytes_per_particle
+end subroutine calc_bytes_per_particle_and_source
 
 
 !> outputs currently loaded particle data to the screen
 !=================================================================
-subroutine particle_info_to_screen(par)
+subroutine particle_info_to_screen(psys,str,lun)
 
-  type(particle_type), intent(in) :: par(:)  !< particle array
-
-99 format(72("="))  
-100 format(A,T10,3ES15.5)
-101 format(A,T10,2I15,ES15.5)
-102 format(A,T10,2I15)
-  write(*,99) 
-  write(*,*) " particle data  "
-  write(*,99) 
-  write(*,*) 
+  type(particle_system_type), intent(in) :: psys     !< particle system
+  character(*), optional, intent(in) :: str          !< arbitrary string
+  integer(i8b), optional, intent(in) :: lun          !< if present goes to file
+  integer(i8b) :: outlun
+  
+  
+  outlun=stdout
+  if (present(lun)) outlun=lun
 
 
-     write(*,100) "xpos", minval(par%pos(1)), maxval(par%pos(1)), &
-                          meanval_real(par%pos(1))
+  99  format(72("-"))  
+  100 format(A,T10,3ES15.5)
+  101 format(A,T10,2I15,ES15.5)
+  102 format(A,T10,2I15)
+  103 format(A,T10,3I15)
 
-     write(*,100) "ypos", minval(par%pos(2)), maxval(par%pos(2)), &
-                          meanval_real(par%pos(2))
 
-     write(*,100) "zpos", minval(par%pos(3)), maxval(par%pos(3)), &
-                          meanval_real(par%pos(3))   
+  write(outlun,99) 
+  if (present(str)) write(outlun,"(A)") trim(str)
+  write(outlun,"(A,I15,A)") "particle data for ", size(psys%par), "  particles"
+!  write(outlun,99) 
+  write(outlun,*) 
 
+
+  write(outlun,100) "xpos", minval(psys%par%pos(1)), maxval(psys%par%pos(1)), &
+       meanval_real(psys%par%pos(1))
+
+  write(outlun,100) "ypos", minval(psys%par%pos(2)), maxval(psys%par%pos(2)), &
+       meanval_real(psys%par%pos(2))
+  
+  write(outlun,100) "zpos", minval(psys%par%pos(3)), maxval(psys%par%pos(3)), &
+       meanval_real(psys%par%pos(3))   
+  
 #ifdef incVel
-     write(*,100) "xvel", minval(par%vel(1)), maxval(par%vel(1)), &
-                          meanval_real(par%vel(1))
-
-     write(*,100) "yvel", minval(par%vel(2)), maxval(par%vel(2)), &
-                          meanval_real(par%vel(2))
-
-     write(*,100) "zvel", minval(par%vel(3)), maxval(par%vel(3)), &
-                          meanval_real(par%vel(3))
+  write(outlun,100) "xvel", minval(psys%par%vel(1)), maxval(psys%par%vel(1)), &
+       meanval_real(psys%par%vel(1))
+  
+  write(outlun,100) "yvel", minval(psys%par%vel(2)), maxval(psys%par%vel(2)), &
+       meanval_real(psys%par%vel(2))
+  
+  write(outlun,100) "zvel", minval(psys%par%vel(3)), maxval(psys%par%vel(3)), &
+       meanval_real(psys%par%vel(3))
 #endif
-
-     write(*,102) "id",   minval(par%id), maxval(par%id)
-
-     write(*,100) "mass", minval(par%mass), maxval(par%mass), &
-                          meanval_real(par%mass)
-
-     write(*,100) "T",    minval(par%T), maxval(par%T), &
-                          meanval_real(par%T)
-
-     write(*,100) "rho",  minval(par%rho), maxval(par%rho), &
-                          meanval_real(par%rho)
-
-     write(*,100) "ye",    minval(par%ye), maxval(par%ye), &
-                            meanval_real(par%ye)
-
-     write(*,100) "xHI",    minval(par%xHI), maxval(par%xHI), &
-                            meanval_real(par%xHI)
-
-     write(*,100) "xHII",   minval(par%xHII), maxval(par%xHII), &
-                            meanval_real(par%xHII)
-
-     write(*,100) "hsml", minval(par%hsml), maxval(par%hsml), &
-                          meanval_real(par%hsml)
-
+  
+  write(outlun,102) "id",   minval(psys%par%id), maxval(psys%par%id)
+  
+  write(outlun,100) "mass", minval(psys%par%mass), maxval(psys%par%mass), &
+       meanval_real(psys%par%mass)
+  
+  write(outlun,100) "T",    minval(psys%par(:)%T), maxval(psys%par(:)%T), &
+       meanval_real(psys%par%T)
+  
+  write(outlun,100) "rho",  minval(psys%par%rho), maxval(psys%par%rho), &
+       meanval_real(psys%par%rho)
+  
+  write(outlun,100) "ye",    minval(psys%par%ye), maxval(psys%par%ye), &
+       meanval_real(psys%par%ye)
+  
+  write(outlun,100) "xHI",    minval(psys%par%xHI), maxval(psys%par%xHI), &
+       meanval_real(psys%par%xHI)
+  
+  write(outlun,100) "xHII",   minval(psys%par%xHII), maxval(psys%par%xHII), &
+       meanval_real(psys%par%xHII)
+  
+  write(outlun,100) "hsml", minval(psys%par%hsml), maxval(psys%par%hsml), &
+       meanval_real(psys%par%hsml)
+  
 #ifdef incHe
-     write(*,100) "xHeI",   minval(par%xHeI), maxval(par%xHeI), &
-                            meanval_real(par%xHeI)
-
-     write(*,100) "xHeII",  minval(par%xHeII), maxval(par%xHeII), &
-                            meanval_real(par%xHeII)
-
-     write(*,100) "xHeIII", minval(par%xHeIII), maxval(par%xHeIII), &
-                            meanval_real(par%xHeIII)
+  write(outlun,100) "xHeI",   minval(psys%par%xHeI), maxval(psys%par%xHeI), &
+       meanval_real(psys%par%xHeI)
+  
+  write(outlun,100) "xHeII",  minval(psys%par%xHeII), maxval(psys%par%xHeII), &
+       meanval_real(psys%par%xHeII)
+  
+  write(outlun,100) "xHeIII", minval(psys%par%xHeIII), maxval(psys%par%xHeIII), &
+       meanval_real(psys%par%xHeIII)
 #endif
 
 #ifdef outGamma
-     write(*,100) "gammaHI",   minval(par%gammaHI), maxval(par%gammaHI), &
-                            meanval_real(par%gammaHI)
-
-     write(*,100) "time(s)",   minval(par%time), maxval(par%time), &
-                            meanval_real(par%time)
-#endif
-
-     write(*,101) "lasthit", minval(par%lasthit), maxval(par%lasthit)
+  write(outlun,100) "gammaHI",   minval(psys%par%gammaHI), maxval(psys%par%gammaHI), &
+       meanval_real(psys%par%gammaHI)
   
-  write(*,99) 
+  write(outlun,100) "time(s)",   minval(psys%par%time), maxval(psys%par%time), &
+       meanval_real(psys%par%time)
+#endif
+  
+  write(outlun,101) "lasthit", minval(psys%par%lasthit), maxval(psys%par%lasthit)
 
+  write(outlun,*)
+  
+  write(outlun,100) "Box Uppers = ", psys%box%top
+  write(outlun,100) "Box Lowers = ", psys%box%bot
+  write(outlun,103) "Upr BCs    = ", psys%box%tbound
+  write(outlun,103) "Lwr BCs    = ", psys%box%bbound
+  
+  write(outlun,99) 
+  
 end subroutine particle_info_to_screen
 
 !> calculates the mean value w/o using the intrinsics

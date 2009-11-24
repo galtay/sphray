@@ -59,15 +59,15 @@ contains
 
 !> creates a source ray (as opposed to recombination)
 !-----------------------------------------------------------------------  
-  subroutine make_source_ray(src,rayn,dtray,Lfac,box,ray)
+  subroutine make_source_ray(src,rayn,dtray,LumFac,box,ray)
   use particle_system_mod, only: source_type, box_type
   use spectra_mod, only: rn2freq
   use physical_constants_mod, only: HI_th_erg
 
     type(source_type), intent(inout) :: src !< the source
-    integer(i8b), intent(in) :: rayn             !< the ray indx
-    real(r8b), intent(in) :: dtray               !< the time between rays
-    real(r8b), intent(in) :: Lfac                !< luminosity unit conversion
+    integer(i8b), intent(in) :: rayn        !< the ray indx
+    real(r8b), intent(in) :: dtray          !< the time between rays
+    real(r8b), intent(in) :: LumFac         !< pt. src src%lum -> photons/s
     type(box_type), intent(in) :: box       !< simulation box
     type(ray_type), intent(out) :: ray      !< output ray
   
@@ -78,13 +78,20 @@ contains
 
 
   
-!  set the direction of the ray from the emmission profile
+!  set the direction of the ray from the emmission profile (src%EmisPrf)
 !     0  = isotropic
-!    -1  = x-y plane towards +z
-!    -2  = x-y plane towards -z
+!    -1  = z=0 plane towards +z
+!    -2  = z=blxlen plane towards -z
 !    -3  = all planes into box
 !
-
+!  note that for all sources the luminosity is interpreted as a Flux 
+!  [photons/s].  For point sources (src%EmisPrf >= 0) this flux is just 
+!  src%L * LumFac.  For extended sources, (src%EmisPrf < 0) the luminosity 
+!  that is read in is expected to be a photon number density, n 
+!  [photons/cm^3].  In this case this input value is converted in 
+!  read_src_snapshot to a Flux using the area of the emitting planes such that 
+!  the flux F (photons/s) emitted from the planes would produce the number 
+!  density, n,  in an optically thin volume.
 
 
     select case (src%EmisPrf)
@@ -212,7 +219,7 @@ contains
 
 !   set the number of photons in the ray
     if (ray%enrg > 0.) then
-       prate = src%L * Lfac ! photons per sec
+       prate = src%L * LumFac ! photons per sec
     else 
        prate = 0.
     end if
@@ -224,6 +231,7 @@ contains
     end if
     ray%pcnt = ray%pini
     src%lastemit = rayn
+
 
   end subroutine make_source_ray
 

@@ -5,9 +5,9 @@
 
 module source_input_mod
 use myf90_mod
+use particle_system_mod, only: particle_system_type
 use particle_system_mod, only: source_type
-use global_mod, only: global_variables_type
-use global_mod, only: psys
+use global_mod, only: psys, GV
 implicit none
 
 !> source header type 
@@ -24,12 +24,20 @@ contains
 
 !> reads in a source header, prints the header to the screen if verbose
 !========================================================================
-subroutine read_source_header(snapfile, verbose, closefile, shead, lun)
+subroutine read_source_header(snapfile, shead, lun, closefile)
+
   character(*), intent(in) :: snapfile  !< file containing source header
-  logical, intent(in) :: verbose        !< report to screen?
-  logical, intent(in) :: closefile      !< close file when done?
   type(source_header_type), intent(inout) :: shead  !< source header to read
   integer(i8b), intent(out) :: lun  !< output lun assigned to snapfile
+  logical, optional, intent(in) :: closefile      !< close file when done?
+
+  logical :: closef
+
+  if (.not. present(closefile) ) then
+     closef = .true.
+  else
+     closef = closefile
+  end if
 
   call open_formatted_file_r(snapfile,lun)
 
@@ -40,53 +48,60 @@ subroutine read_source_header(snapfile, verbose, closefile, shead, lun)
   read(lun,*) shead%Lunit
   read(lun,*)
   read(lun,*)
-  if (closefile) close(lun)
-  
-  if (verbose) call source_header_to_screen(shead)
+  if (closef) close(lun)
   
 end subroutine read_source_header
 
 
 !> reads a source snapshot into arc array (src is allocated in this routine)
 !=============================================================================
-subroutine read_src_snapshot(GV,verbose,MB)
-  type(global_variables_type), intent(in) :: GV
-  logical, intent(in) :: verbose      !< report to screen?
-  real(r8b), intent(out) :: MB  !< MB's allocated to source storage
+subroutine read_src_snapshot()
 
-  character(200) :: snapfile  
+  character(clen), parameter :: myname="read_src_snapshot"
+  logical, parameter :: crash=.true.
+  integer, parameter :: verb=2
+
+  character(clen) :: snapfile  
+  character(clen) :: str
   type(source_header_type) :: shead
   integer(i8b) :: lun, err
   integer(i8b) :: i, N, Nall
-  integer(i8b) :: bytespersource
   logical :: closefile
   integer(i8b) :: fn
   real(r4b) :: vel(3)
-
+  real(r8b) :: MB
 
   fn=1
   call form_snapshot_file_name(GV%SourcePath,GV%SourceFileBase,GV%CurSnapNum,fn,snapfile)
       
-  bytespersource = 10 * 4 + 8
   closefile = .false.
-  call read_source_header(snapfile,verbose,closefile,shead,lun)
+  call read_source_header(snapfile,shead,lun,closefile)
 
   Nall = shead%NsrcSnap        
-  N = shead%NsrcFile
-  MB = bytespersource * real(Nall) / 2**20
+  N    = shead%NsrcFile
 
-  101 format(A,F10.4,A,I10,A)
-  write(*,101) "allocating ", MB, " MB for ", Nall, " sources"
+  MB = GV%bytespersrc * real(Nall) / 2**20
+  GV%MB = GV%MB + MB
+
+  write(str,"(A,F10.4,A,I10,A)") "  allocating ", MB, " MB for ", Nall, " sources"
+  call mywrite(str,verb)
 
   if (allocated(psys%src)) deallocate(psys%src)
   allocate (psys%src(Nall),stat=err)
-  if (err /= 0) stop "cant allocate sources in particle system"
+  if (err /= 0) then
+     call myerr("cant allocate sources in particle system", myname, crash)
+  end if
 
-  write(*,'(A,A)') "reading source snapshot file: ", trim(snapfile)
+  write(str,"(A,A)") "   reading source snapshot file: ", trim(snapfile) 
+  call mywrite(str,verb,fmt="(A)")
      
   do i = 1,N 
-     read(lun,*) psys%src(i)%pos(1), psys%src(i)%pos(2), psys%src(i)%pos(3), &
-                 vel(1), vel(2), vel(3), &
+     read(lun,*) psys%src(i)%pos(1), &
+                 psys%src(i)%pos(2), &
+                 psys%src(i)%pos(3), &
+                 vel(1), &
+                 vel(2), &
+                 vel(3), &
                  psys%src(i)%L, &
                  psys%src(i)%SpcType, &
                  psys%src(i)%EmisPrf
@@ -99,8 +114,6 @@ subroutine read_src_snapshot(GV,verbose,MB)
 
   close(lun)
  
-  psys%src(1:N)%lastemit = GV%rayn
-
   
 end subroutine read_src_snapshot
 
@@ -193,11 +206,11 @@ end subroutine order_sources_lum
 !! and a file number.
 !===================================================================
 subroutine form_snapshot_file_name(Path,FileBase,SnapNum,FileNum,SnapFile)
-  character(200), intent(in) :: Path       !< path to snapshot dir
-  character(200), intent(in) :: FileBase   !< file base names
+  character(*), intent(in) :: Path       !< path to snapshot dir
+  character(*), intent(in) :: FileBase   !< file base names
   integer(i8b), intent(in) :: SnapNum      !< snapshot number
   integer(i8b), intent(in) :: FileNum      !< file number in snapshot
-  character(200), intent(out) :: SnapFile  !< file name to return
+  character(*), intent(out) :: SnapFile  !< file name to return
   
   character(10) :: FileNumChar
   
@@ -268,37 +281,42 @@ end subroutine source_header_to_file
 
 !> outputs the source data currently loaded in the particle system to screen
 !! -------------------------------------------------------------------------
-subroutine source_info_to_screen(src)
+subroutine source_info_to_screen(psys,str,lun)
+
+  type(particle_system_type), intent(in) :: psys     !< particle system
+  character(*), optional, intent(in) :: str          !< arbitrary string
+  integer(i8b), optional, intent(in) :: lun          !< if present goes to file
+  integer(i8b) :: outlun
 
   integer(i8b), parameter :: srclimit = 20     !< max number of sources to screen
-  type(source_type), intent(in) :: src(:) !< get sources from here
   integer(i8b) :: i
   
-  100 format(72("="))
+  outlun=stdout
+  if (present(lun)) outlun=lun
+
+  100 format(72("-"))
   110 format(T2,A,3ES10.3)
   111 format(T2,A,ES10.3)
   
-  write(*,100)
-  write(*,*) " source data  "
-  write(*,100)
-  write(*,*) 
-  write(*,'(A,I3,A)') "writing first ", srclimit, &
-                      " sources to screen (code units) ..."
-  
-  write(*,*) 
+  write(outlun,100)
+  if (present(str)) write(outlun,"(A)") trim(str)
+  write(outlun,"(A,I4,A,I13,A)") "source data for first ", srclimit, &
+                                 " of ", size(psys%src), "  sources"
+  write(outlun,*)   
+  write(outlun,*) 
   120 format(T1,A, T15,A,     T37,A,     T51,A,     T65,A)
-  121 format(T1,I2,T5,3ES10.1,T37,ES10.3,T51,ES10.3,T65,I3)
-  write(*,120) "Src","Position","Luminosity","Spectrum","Emis Prf"
-  write(*,100)
+  121 format(T1,I2,T5,3ES10.3,T37,ES10.3,T51,ES10.3,T65,I3)
+  write(outlun,120) "Src","Position","Luminosity","Spectrum","Emis Prf"
+!  write(outlun,100)
   
-  do i = 1, size(src)
-     write(*,121) i, src(i)%pos, src(i)%L, src(i)%SpcType, &
-          src(i)%EmisPrf
+  do i = 1, size(psys%src)
+     write(outlun,121) i, psys%src(i)%pos, psys%src(i)%L, psys%src(i)%SpcType, &
+          psys%src(i)%EmisPrf
      if (i==srclimit) exit
   end do
   
-  write(*,100) 
-  write(*,*)
+  write(outlun,100) 
+  write(outlun,*)
   
   
 end subroutine source_info_to_screen

@@ -16,16 +16,17 @@ implicit none
 !> gadget particle types
 character(5), parameter :: ptype_names(6) = (/"gas  ","halo ","disk ",&
                                               "bulge","stars","bndry"/)
-  
+
+!> default gadget units  
 real(r8b), parameter :: GLEN = 3.085678d21  !< in cm/h (1 kpc/h)
 real(r8b), parameter :: GMASS = 1.989d43    !< in g/h  (10^10 Msolar/h)
 real(r8b), parameter :: GVEL = 1.0d5        !< in cm/s (1 km/s) 
 
-real(r8b), parameter :: GTIME = GLEN / GVEL                !< gadget time unit
-real(r8b), parameter :: GRHO = GMASS / GLEN**3             !< gadget density unit
-real(r8b), parameter :: GPRS = GMASS / GLEN / GTIME**2     !< gadget pressure unit
-real(r8b), parameter :: GENRG = GMASS * GLEN**2 / GTIME**2 !< gadget energy unit
-real(r8b), parameter :: GLUM = GENRG / GTIME               !< gadget luminosity unit
+real(r8b), parameter :: GTIME = GLEN / GVEL                !< gadget time unit in s/h
+real(r8b), parameter :: GRHO = GMASS / GLEN**3             !< gadget density unit in g/cm^3 h^2
+real(r8b), parameter :: GPRS = GMASS / GLEN / GTIME**2     !< gadget pressure unit in dyne/cm^2 h^2
+real(r8b), parameter :: GENRG = GMASS * GLEN**2 / GTIME**2 !< gadget energy unit in ergs/h
+real(r8b), parameter :: GLUM = GENRG / GTIME               !< gadget luminosity unit ergs/s
 
 real(r8b), parameter :: GMASS_solar = GMASS / M_solar
 
@@ -70,17 +71,24 @@ contains
 
 !>   reads in a particle header, prints the header to the screen if verbose 
 !==========================================================================
-subroutine read_gadget_header(snapfile,verbose,closefile,ghead,lun)
+subroutine read_gadget_header(snapfile,ghead,lun,closefile)
+
   character(*), intent(in) :: snapfile  !< snapshot file name
-  logical, intent(in) :: verbose        !< report to screen?
-  logical, intent(in) :: closefile      !< close file when done
   type(gadget_header_type), intent(out) :: ghead  !< particle header
   integer(i8b), intent(out) :: lun           !< logical unit number used
+  logical, intent(in), optional :: closefile      !< close file when done
+
+  logical :: closef
+
+  if (.not. present(closefile) ) then
+     closef = .true.
+  else
+     closef = closefile
+  end if
 
   call open_unformatted_file_r(snapfile,lun)
   read(lun) ghead
-  if (closefile) close(lun)  
-  if (verbose) call gadget_header_to_screen(ghead)
+  if (closef) close(lun)  
 
 end subroutine read_gadget_header
 
@@ -135,7 +143,7 @@ use source_input_mod, only: read_source_header
 
           call form_Gsnapshot_file_name(GV%SnapPath,GV%ParFileBase,i,j,snapfile)
           write(loglun,'(I3,"  ",A)') i,trim(snapfile)
-          call read_gadget_header(snapfile,verbose,closefile,ghead,lun)
+          call read_gadget_header(snapfile,ghead,lun,closefile)
           call gadget_header_to_file(ghead,loglun)
 
           saved_gheads(i,j) = ghead
@@ -151,8 +159,8 @@ use source_input_mod, only: read_source_header
 
           ! IsoTemp comes from config file
 
-          GV%BoxLowers(:) = 0.0d0
-          GV%BoxUppers(:) = ghead%boxlen
+          GV%BoxLwrsComoh(:) = 0.0d0
+          GV%BoxUprsComoh(:) = ghead%boxlen
 
           GV%OmegaM = ghead%OmegaM
           GV%OmegaL = ghead%OmegaL
@@ -171,8 +179,8 @@ use source_input_mod, only: read_source_header
 
           if (GV%Comoving) then
              PLAN%snap(i)%ScalefacAt = ghead%a
-             PLAN%snap(i)%TimeAt = tsinceBB(ghead%a, GV%OmegaM, GV%LittleH)
-             PLAN%snap(i)%TimeAt = PLAN%snap(i)%TimeAt * GV%LittleH / GV%cgs_time
+             PLAN%snap(i)%TimeAt = tsinceBB(ghead%a, GV%OmegaM, GV%LittleH)       ! in seconds
+             PLAN%snap(i)%TimeAt = PLAN%snap(i)%TimeAt * GV%LittleH / GV%cgs_time ! in code units
           else
              PLAN%snap(i)%ScalefacAt = 1.0d0 / (1.0d0 + ghead%z)
              PLAN%snap(i)%TimeAt = ghead%a
@@ -189,7 +197,7 @@ use source_input_mod, only: read_source_header
        do j = 1,sfiles
           call form_snapshot_file_name(GV%SourcePath,GV%SourceFileBase,i,j,snapfile)
           write(loglun,'(I3,"  ",A)') i,trim(snapfile)
-          call read_source_header(snapfile,verbose,closefile,shead,lun)
+          call read_source_header(snapfile,shead,lun,closefile)
 
           PLAN%snap(i)%RaysFromSrcHeader = shead%TotalRays
           GV%Lunit = shead%Lunit
@@ -231,12 +239,12 @@ end subroutine get_planning_data_gadget
 
 !> reads a Gadget-2 (public version) snapshot into a particle array  
 !========================================================================
-subroutine read_Gpub_particles(MB)
-
-  real(r8b), intent(out) :: MB !< MB allocated for particle storage
+subroutine read_Gpub_particles()
 
   character(clen), parameter :: myname="read_Gpub_particles"
   logical, parameter :: crash=.true.
+  integer, parameter :: verb=2
+  character(clen) :: str,fmt
 
   real(r4b), allocatable :: rblck(:)
   real(r4b), allocatable :: rblck3(:,:)
@@ -251,7 +259,6 @@ subroutine read_Gpub_particles(MB)
   integer(i8b) :: npar, ngas, nmass
   integer(i8b) :: npar1, ngas1, nmass1
   logical :: closefile
-  logical :: header_verbose
   logical :: varmass(6)
   integer(i8b) :: fn
 
@@ -259,8 +266,8 @@ subroutine read_Gpub_particles(MB)
   logical :: caseA(2)
   real(r8b) :: xvec(5)
   real(r8b) :: Tdum
-
   real(r8b) :: nHe_over_nH
+  real(r8b) :: MB 
 
   ! set default values
   !===============================
@@ -271,8 +278,7 @@ subroutine read_Gpub_particles(MB)
   fn=0
   call form_Gsnapshot_file_name(GV%SnapPath,GV%ParFileBase,GV%CurSnapNum,fn,snapfile)
   closefile=.true.
-  header_verbose=.false.
-  call read_gadget_header(snapfile,header_verbose,closefile,ghead,lun)
+  call read_gadget_header(snapfile,ghead,lun,closefile)
 
   ! set local particle numbers
   !============================
@@ -288,10 +294,12 @@ subroutine read_Gpub_particles(MB)
   ! calculate bytes per particle and allocate particle array
   !===========================================================
   MB = GV%bytesperpar * real(ngas) / 2.**20
+  GV%MB = GV%MB + MB
 
-  101  format(A,F10.4,A,I10,A)
-  write(*,101) "allocating ", MB, " MB for ", ngas, " particles"
-  
+  fmt="(A,F10.4,A,I10,A)"
+  write(str,fmt) "allocating ", MB, " MB for ", ngas, " particles"
+  call mywrite(str,verb)
+
   allocate (psys%par(ngas), stat=err)
   if (err /= 0) call myerr("failed to allocate par",myname,crash)
 
@@ -300,12 +308,11 @@ subroutine read_Gpub_particles(MB)
 
   ngasread = 0
   closefile=.false.
-  header_verbose=.false.
   files: do fn = 0, ghead%nfiles-1
 
      call form_Gsnapshot_file_name(GV%SnapPath,GV%ParFileBase,GV%CurSnapNum,fn,snapfile)
-     write(*,'(A,A)') "reading public gadget particle snapshot file ", trim(snapfile)
-     call read_gadget_header(snapfile,header_verbose,closefile,ghead,lun)
+     call mywrite("reading public gadget particle snapshot file "//trim(snapfile), verb)
+     call read_gadget_header(snapfile,ghead,lun,closefile)
 
      varmass = (ghead%npar_file > 0 .and. ghead%mass == 0)
      npar1 = sum(ghead%npar_file)
@@ -500,14 +507,14 @@ end subroutine read_Gpub_particles
 
 
 
-!> reads a Gadget-2 (Tiziana version) snapshot into a particle array  
+!> reads a Gadget-3 (Tiziana version) snapshot into a particle array  
 !========================================================================
-subroutine read_Gtiz_particles(MB)
- 
-  real(r8b), intent(out) :: MB         !< MB allocated for particle storage
+subroutine read_Gtiz_particles()
 
-  character(clen), parameter :: myname="read_Gtiz_particles" 
+  character(clen), parameter :: myname="read_Gtiz_particles"
   logical, parameter :: crash=.true.
+  integer, parameter :: verb=2
+  character(clen) :: str,fmt 
 
   real(r4b), allocatable :: rblck(:)
   real(r4b), allocatable :: rblck3(:,:)
@@ -530,12 +537,13 @@ subroutine read_Gtiz_particles(MB)
   logical :: caseA(2)
   real(r8b) :: xvec(5)
   real(r8b) :: Tdum
+  real(r8b) :: MB 
 
- 
+  
   ! set default values
   !===============================
   caseA=.false.
-  xvec=0.0
+  xvec=0.0d0
 
   ! read header from first file
   !============================
@@ -543,7 +551,7 @@ subroutine read_Gtiz_particles(MB)
   call form_Gsnapshot_file_name(GV%SnapPath,GV%ParFileBase,GV%CurSnapNum,fn,snapfile)
   closefile=.true.
   header_verbose=.false.
-  call read_gadget_header(snapfile,header_verbose,closefile,ghead,lun)
+  call read_gadget_header(snapfile,ghead,lun,closefile)
 
   ! set local particle numbers
   !============================
@@ -556,16 +564,18 @@ subroutine read_Gtiz_particles(MB)
   !============================
   if (ngas .EQ. 0) call myerr("snapshot has no gas particles",myname,crash)
 
-
   ! calculate bytes per particle and allocate particle array
   !===========================================================
   MB = GV%bytesperpar * real(ngas) / 2.**20
+  GV%MB = GV%MB + MB
 
-  101  format(A,F10.4,A,I10,A)
-  write(*,101) "allocating ", MB, " MB for ", ngas, " particles"
+  fmt="(A,F10.4,A,I10,A)"
+  write(str,fmt) "allocating ", MB, " MB for ", ngas, " particles"
+  call mywrite(str,verb)
 
   allocate (psys%par(ngas), stat=err)
   if (err /= 0) call myerr("failed to allocate par",myname,crash)
+
 
 
   ! now read all snapshot files
@@ -577,8 +587,8 @@ subroutine read_Gtiz_particles(MB)
   files: do fn = 0, ghead%nfiles-1
 
      call form_Gsnapshot_file_name(GV%SnapPath,GV%ParFileBase,GV%CurSnapNum,fn,snapfile)
-     write(*,'(A,A)') "reading tiziana gadget snapshot file ", trim(snapfile)
-     call read_gadget_header(snapfile,header_verbose,closefile,ghead,lun)
+     call mywrite("reading tiziana gadget snapshot file "//trim(snapfile), verb)
+     call read_gadget_header(snapfile,ghead,lun,closefile)
 
      varmass = (ghead%npar_file > 0 .and. ghead%mass == 0)
      npar1 = sum(ghead%npar_file)
@@ -812,9 +822,7 @@ end subroutine read_Gtiz_particles
 !! The particles are reordered during the raytracing so when a new snapshot
 !! is readin they must be matched
 !===========================================================================
-subroutine update_particles(MB)
-
-  real(r8b), intent(out) :: MB   !< MB allocated for particle storage
+subroutine update_particles()
 
   character(clen), parameter :: myname="update_particles" 
   logical, parameter :: crash=.true.
@@ -892,9 +900,9 @@ subroutine update_particles(MB)
   !==================================================================
   deallocate( psys%par )
   if (GV%InputType == 2) then
-     call read_Gpub_particles(MB)
+     call read_Gpub_particles()
   else if (GV%InputType == 3) then
-     call read_Gtiz_particles(MB)
+     call read_Gtiz_particles()
   end if
   minIDnew = minval(psys%par%id)
   maxIDnew = maxval(psys%par%id)

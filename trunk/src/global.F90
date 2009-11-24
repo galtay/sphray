@@ -32,19 +32,6 @@ type run_planning_type
 end type run_planning_type
 
 
-! default code units (these are the Gadget system of units)
-!-------------------------------------------------------------
-real(r8b), parameter :: dflt_cgs_len  = 3.085678d21   !< 1 kpc/h 
-real(r8b), parameter :: dflt_cgs_mass = 1.989d43      !< 1e10 Msun/h 
-real(r8b), parameter :: dflt_cgs_vel  = 1.0d5         !< 1.0 km/s 
-real(r8b), parameter :: dflt_cgs_time = dflt_cgs_len / dflt_cgs_vel                       !< 9.77814e8 years/h
-real(r8b), parameter :: dflt_cgs_rho  = dflt_cgs_mass / dflt_cgs_len**3                   !< 1e10 Msun/kpc^3 h^2
-real(r8b), parameter :: dflt_cgs_prs  = dflt_cgs_mass / dflt_cgs_len / dflt_cgs_time**2   !< 6.769624e-12 barye h^2
-real(r8b), parameter :: dflt_cgs_enrg = dflt_cgs_mass * (dflt_cgs_vel)**2                 !< 1.98892e53 ergs/h
-real(r8b), parameter :: dflt_cgs_lum  = dflt_cgs_enrg / dflt_cgs_time                     !< 1.6847e3 Lsun
-real(r8b), parameter :: dflt_cgs_mass_solar = dflt_cgs_mass / M_solar                     !< Code Mass Msun/h
-real(r8b), parameter :: dflt_photon_per_sec_unit = 1.0d50                                 !< Code photons/s
-
 ! global variables
 !=====================
 type(particle_system_type) :: psys
@@ -154,6 +141,7 @@ type global_variables_type
    !-----------------------------------------------------------
    integer(i8b) :: bytesperpar
    integer(i8b) :: bytespersrc
+   real(r8b) :: MB
 
 
    ! these are all set in get_planning_data in main_input.f90
@@ -171,6 +159,10 @@ type global_variables_type
    real(r8b) :: cgs_lum   !< code luminosity [ergs/s]
    real(r8b) :: Lunit     !< code source luminosity unit [photons/s]
 
+   real(r8b) :: LenFac_cm  !< code (input) length -> cm = cgs_len * a / h
+   real(r8b) :: MassFac_g  !< code (input) mass -> g = cgs_mass / h
+   real(r8b) :: TimeFac_s  !< code (input) time -> s = cgs_time / h
+
    real(r8b) :: OmegaM    !< matter / critical density z=0
    real(r8b) :: OmegaB    !< baryon / critical density z=0
    real(r8b) :: OmegaL    !< lambda / critical density z=0
@@ -187,16 +179,45 @@ type global_variables_type
    real(r8b) :: dtray_code        !< time between each ray (code units)
    real(r8b) :: dtray_s           !< time between each ray (seconds)
 
-   real(r8b) :: BoxLowers(3)      !< coords of lower x,y,z corner
-   real(r8b) :: BoxUppers(3)      !< coords of upper x,y,z corner
+   real(r8b) :: BoxLwrsComoh(3)   !< comoving h-mangled input coords of lower x,y,z corner
+   real(r8b) :: BoxLwrsComo(3)    !< comoving non h-mangled input coords of lower x,y,z corner
+   real(r8b) :: BoxLwrsPhysh(3)   !< physical h-mangled input coords of lower x,y,z corner
+   real(r8b) :: BoxLwrsPhys(3)    !< physical non h-mangled input coords of lower x,y,z corner
 
-   real(r8b) :: BoxLengths(3)     !< side lengths in code units (xf-xi,yf-yi,zf-zi)
-   real(r8b) :: BoxLengths_cm(3)  !< box side lengths in cm (xf-xi,yf-yi,zf-zi)
-   real(r8b) :: BoxLengths_kpc(3) !< box side lengths in kpc (xf-xi,yf-yi,zf-zi)
+   real(r8b) :: BoxUprsComoh(3)   !< comoving h-mangled input coords of upper x,y,z corner
+   real(r8b) :: BoxUprsComo(3)    !< comoving non h-mangled input coords of upper x,y,z corner
+   real(r8b) :: BoxUprsPhysh(3)   !< physical h-mangled input coords of upper x,y,z corner
+   real(r8b) :: BoxUprsPhys(3)    !< physical non h-mangled input coords of upper x,y,z corner
 
-   real(r8b) :: BoxVol            !< box volume in code units (xlen*ylen*zlen)
-   real(r8b) :: BoxVol_cm         !< box volume in cm^3 (xlen*ylen*zlen)
-   real(r8b) :: BoxVol_kpc        !< box volume in kpc^3 (xlen*ylen*zlen)
+   real(r8b) :: BoxLensComoh(3)   !< comoving h-mangled side lengths (xf-xi,yf-yi,zf-zi)
+   real(r8b) :: BoxLensComo(3)    !< comoving non h-mangled side lengths (xf-xi,yf-yi,zf-zi)
+   real(r8b) :: BoxLensPhysh(3)   !< physical h-mangled side lengths (xf-xi,yf-yi,zf-zi)
+   real(r8b) :: BoxLensPhys(3)    !< physical non h-mangled side lengths (xf-xi,yf-yi,zf-zi)
+
+   real(r8b) :: BoxLensComoh_cm(3)  !< comoving h-mangled side lengths [cm/h] (xf-xi,yf-yi,zf-zi)
+   real(r8b) :: BoxLensComo_cm(3)   !< comoving non h-mangled side lengths [cm] (xf-xi,yf-yi,zf-zi)
+   real(r8b) :: BoxLensPhysh_cm(3)  !< physical h-mangled side lengths [cm/h] (xf-xi,yf-yi,zf-zi)
+   real(r8b) :: BoxLensPhys_cm(3)   !< physical non h-mangled side lengths [cm] (xf-xi,yf-yi,zf-zi)
+
+   real(r8b) :: BoxLensComoh_kpc(3)  !< comoving h-mangled side lengths [kpc/h] (xf-xi,yf-yi,zf-zi)
+   real(r8b) :: BoxLensComo_kpc(3)   !< comoving non h-mangled side lengths [kpc] (xf-xi,yf-yi,zf-zi)
+   real(r8b) :: BoxLensPhysh_kpc(3)  !< physical h-mangled side lengths [kpc/h] (xf-xi,yf-yi,zf-zi)
+   real(r8b) :: BoxLensPhys_kpc(3)   !< physical non h-mangled side lengths [kpc] (xf-xi,yf-yi,zf-zi)
+
+   real(r8b) :: BoxVolComoh       !< comoving h-mangled box volume (xlen*ylen*zlen)
+   real(r8b) :: BoxVolComo        !< comoving non h-mangled box volume (xlen*ylen*zlen)
+   real(r8b) :: BoxVolPhysh       !< physical h-mangled box volume (xlen*ylen*zlen)
+   real(r8b) :: BoxVolPhys        !< physical non h-mangled box volume (xlen*ylen*zlen)
+
+   real(r8b) :: BoxVolComoh_cm       !< comoving h-mangled box volume [cm^3/h^3] (xlen*ylen*zlen)
+   real(r8b) :: BoxVolComo_cm        !< comoving non h-mangled box volume [cm^3] (xlen*ylen*zlen)
+   real(r8b) :: BoxVolPhysh_cm       !< physical h-mangled box volume [cm^3/h^3] (xlen*ylen*zlen)
+   real(r8b) :: BoxVolPhys_cm        !< physical non h-mangled box volume [cm^3] (xlen*ylen*zlen)
+
+   real(r8b) :: BoxVolComoh_kpc       !< comoving h-mangled box volume [kpc^3/h^3] (xlen*ylen*zlen)
+   real(r8b) :: BoxVolComo_kpc        !< comoving non h-mangled box volume [kpc^3] (xlen*ylen*zlen)
+   real(r8b) :: BoxVolPhysh_kpc       !< physical h-mangled box volume [kpc^3/h^3] (xlen*ylen*zlen)
+   real(r8b) :: BoxVolPhys_kpc        !< physical non h-mangled box volume [kpc^3] (xlen*ylen*zlen)
 
    real(r8b) :: total_mass      !< summed mass of all particles in a snapshot
    real(r8b) :: total_lum       !< summed luminosity of sources in a snapshot
@@ -209,10 +230,22 @@ type global_variables_type
    ! and most are initialized in initialize.f90
    !----------------------------------------------------
    character(clen) :: ionfrac_file !< file where mini outputs are put 
-   integer(i8b) :: ionlun          !< lun for ionfrac_file
+   integer(i8b) :: ionlun          !< lun for ionfrac log file
 
    character(clen) :: raystat_file !< file where ray stats are put
-   integer(i8b) :: raystatlun      !< lun for ray stat file
+   integer(i8b) :: raystatlun      !< lun for ray stat log file
+
+   character(clen) :: pardata_file !< file with particle data summaries
+   integer(i8b) :: pardatalun      !< lun for particle data log file
+   
+   character(clen) :: srcdata_file !< file with source data summaries
+   integer(i8b) :: srcdatalun      !< lun for source data log file
+
+   character(clen) :: rayplan_file  !< file for ray planning
+   integer(i8b) :: rayplanlun      !< lun for ray planning file
+
+   character(clen) :: outplan_file  !< file for out planning
+   integer(i8b) :: outplanlun      !< lun for out planning file
 
    integer(i8b) :: CurSnapNum      !< current snapshot number
    integer(i8b) :: rayn            !< current ray number (src + recomb)

@@ -97,6 +97,7 @@ use source_input_mod, only: read_source_header
 
   character(clen) :: snapfile
 
+  real(r8b) :: Time_GYR
   integer(i8b) :: lun
   integer(i8b) :: loglun
   character(clen) :: logfile
@@ -127,7 +128,9 @@ use source_input_mod, only: read_source_header
         call form_Gsnapshot_file_name(GV%SnapPath,GV%ParFileBase,i,j,snapfile)
         write(snapfile,"(A,A)") trim(snapfile), ".hdf5"
         write(loglun,'(I3,"  ",A)') i,trim(snapfile)
+
         call read_gadget_header_hdf5(snapfile, ghead, fh, closefile=.false.)
+
         call hdf5_read_attribute(fh,'Units/UnitLength_in_cm',GV%cgs_len)
         call hdf5_read_attribute(fh,'Units/UnitMass_in_g',GV%cgs_mass)
         call hdf5_read_attribute(fh,'Units/UnitVelocity_in_cm_per_s',GV%cgs_vel)
@@ -135,7 +138,10 @@ use source_input_mod, only: read_source_header
         call hdf5_read_attribute(fh,'Units/UnitDensity_in_cgs',GV%cgs_rho)
         call hdf5_read_attribute(fh,'Units/UnitEnergy_in_cgs',GV%cgs_enrg)
         call hdf5_read_attribute(fh,'Units/UnitPressure_in_cgs',GV%cgs_prs)
-        GV%cgs_lum  = GLUM
+        GV%cgs_lum  = GV%cgs_enrg / GV%cgs_time
+
+        call hdf5_read_attribute(fh,'Header/Time_GYR', Time_GYR)
+
         call hdf5_close_file(fh)
         call gadget_header_to_file(ghead,loglun)
         saved_gheads(i,j) = ghead
@@ -150,10 +156,10 @@ use source_input_mod, only: read_source_header
         end if
         
         ! IsoTemp comes from config file
-        
-        GV%BoxLowers(:) = 0.0d0
-        GV%BoxUppers(:) = ghead%boxlen
-        
+
+        GV%BoxLwrsComoh(:) = 0.0d0
+        GV%BoxUprsComoh(:) = ghead%boxlen
+                
         GV%OmegaM = ghead%OmegaM
         GV%OmegaL = ghead%OmegaL
         GV%OmegaB = ghead%OmegaB
@@ -161,15 +167,17 @@ use source_input_mod, only: read_source_header
                 
         if (GV%Comoving) then
            PLAN%snap(i)%ScalefacAt = ghead%a
-           PLAN%snap(i)%TimeAt = tsinceBB(ghead%a, GV%OmegaM, GV%LittleH)
-           PLAN%snap(i)%TimeAt = PLAN%snap(i)%TimeAt * GV%LittleH / GV%cgs_time
+           PLAN%snap(i)%TimeAt = Time_GYR * Gyr2sec                              ! in seconds
+           PLAN%snap(i)%TimeAt = PLAN%snap(i)%TimeAt * GV%LittleH / GV%cgs_time  ! in code units
         else
            PLAN%snap(i)%ScalefacAt = 1.0d0 / (1.0d0 + ghead%z)
-           PLAN%snap(i)%TimeAt = ghead%a
+           PLAN%snap(i)%TimeAt = Time_GYR * Gyr2sec                              ! in seconds
+           PLAN%snap(i)%TimeAt = PLAN%snap(i)%TimeAt * GV%LittleH / GV%cgs_time  ! in code units
         end if
         
      end do
   end do
+
 
 
   ! read all source headers and write to log file
@@ -180,7 +188,7 @@ use source_input_mod, only: read_source_header
      do j = 1,sfiles
         call form_snapshot_file_name(GV%SourcePath,GV%SourceFileBase,i,j,snapfile)
         write(loglun,'(I3,"  ",A)') i,trim(snapfile)
-        call read_source_header(snapfile,verbose=.false.,closefile=.true.,shead=shead,lun=lun)
+        call read_source_header(snapfile,shead,lun,closefile=.true.)
         
         PLAN%snap(i)%RaysFromSrcHeader = shead%TotalRays
         GV%Lunit = shead%Lunit
@@ -189,8 +197,7 @@ use source_input_mod, only: read_source_header
   end do
 
 
-  
-  ! close headers log file
+    ! close headers log file
   !========================
   close(loglun)
 
@@ -231,9 +238,9 @@ subroutine read_Ghdf5_particles()
 
   character(clen), parameter :: myname="read_Ghdf5_particles" 
   logical, parameter :: crash=.true.
-
-  real(r8b) :: MB
-
+  integer, parameter :: verb=2
+  character(clen) :: str,fmt
+  
   real(r4b), allocatable :: rblck(:)
   real(r4b), allocatable :: rblck3(:,:)
   integer(i4b), allocatable :: iblck(:)
@@ -255,6 +262,7 @@ subroutine read_Ghdf5_particles()
   logical :: caseA(2)
   real(r8b) :: xvec(5)
   real(r8b) :: Tdum
+  real(r8b) :: MB
 
   ! set default values
   !===============================
@@ -276,9 +284,11 @@ subroutine read_Ghdf5_particles()
   ! calculate bytes per particle and allocate particle array
   !===========================================================
   MB = GV%bytesperpar * real(ngas) / 2.**20
+  GV%MB = GV%MB + MB
 
-  101  format(A,F10.4,A,I10,A)
-  write(*,101) "allocating ", MB, " MB for ", ngas, " particles"
+  fmt="(A,F10.4,A,I10,A)"
+  write(str,fmt) "  allocating ", MB, " MB for ", ngas, " particles"
+  call mywrite(str,verb) 
 
   allocate (psys%par(ngas), stat=err)
   if (err /= 0) call myerr("failed to allocate par",myname,crash)
@@ -292,6 +302,7 @@ subroutine read_Ghdf5_particles()
 
      call form_Gsnapshot_file_name(GV%SnapPath,GV%ParFileBase,GV%CurSnapNum,fn,snapfile)
      write(snapfile,"(A,A)") trim(snapfile), ".hdf5"
+     call mywrite("   reading particle snapshot file: "//trim(snapfile), verb, fmt="(A)")
      call hdf5_open_file(fh,snapfile)
 
      ghead = saved_gheads( GV%CurSnapNum, fn )
@@ -419,21 +430,12 @@ subroutine read_Ghdf5_particles()
      
      deallocate(rblck)
 
-
-
      ngasread = ngasread + ngas1
      call hdf5_close_file(fh)
 
   end do files
 
   
-  psys%par(:)%ye = 1.0e-5
-  psys%par(:)%xHII = 1.0e-5
-  psys%par(:)%xHI = 1.0d0 - 1.0d-5
-
-
-  call particle_info_to_screen(psys%par)
-
 
 end subroutine read_Ghdf5_particles
 
