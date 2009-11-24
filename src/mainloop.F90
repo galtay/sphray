@@ -36,7 +36,11 @@ contains
   subroutine mainloop()
     implicit none
     
-        
+    character(clen), parameter :: myname="mainloop"
+    logical, parameter :: crash=.true.
+    integer, parameter :: verb=1
+    character(clen) :: str,fmt
+
     type(raystat_type) :: raystats(raystatbuffsize)
     integer(i8b) :: raystatcnt
 
@@ -68,9 +72,8 @@ contains
     ! loop over the snapshots 
     !=========================
     snaps: do snapn = GV%StartSnapNum, GV%EndSnapNum
-       
-       
-       call readin_snapshot(psys%box,MB)
+              
+       call readin_snapshot()
        
 #ifdef incHrec
        if (snapn == GV%StartSnapNum) then
@@ -84,13 +87,18 @@ contains
        !  build oct tree.  only need to do this once per snap (for now)
        !----------------------------------------------------------------
        call buildtree(psys,tree,MB,GV%PartPerCell)
-       call setparticleorder(psys, tree)  
+       GV%MB = GV%MB + MB
+       call setparticleorder(psys, tree)             
        call prepare_raysearch(psys, globalraylist)
        
-       write(*,*) 
        
+
+
        if(GV%JustInit) then
-          write(*,*) "just initializing"
+          write(str,"(A,F10.2)") "total memory allocated [MB] = ", GV%MB
+          call mywrite(str,verb)
+          call mywrite("just initializing", verb)
+          call mywrite("",verb)
           stop
        end if
        
@@ -129,6 +137,15 @@ contains
           
           !        create a source ray and calc the impacts
           call make_source_ray(psys%src(srcn), GV%rayn, GV%dtray_s, GV%Lunit, psys%box, ray)
+
+
+          write(*,*) "source pos = ", ray%start
+          write(*,*) "min/max par pos = ", minval(psys%par(:)%pos(1)), maxval(psys%par(:)%pos(1))
+          write(*,*) 
+
+          if (rayn > 6) stop
+
+
           globalraylist%ray = ray
           call trace_ray(globalraylist%ray, globalraylist, psys, tree) 
           

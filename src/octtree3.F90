@@ -8,6 +8,7 @@
 module oct_tree_mod
 use myf90_mod
 use particle_system_mod, only: particle_system_type
+use particle_system_mod, only: adjustbox
 implicit none
  
  integer, private, parameter :: nsubcell = 2**3  !< number of daughter cells 
@@ -76,6 +77,11 @@ end subroutine check
 !> particles per leaf as an optional input (ppc)
  subroutine buildtree(psys,tree,MBalloc,ppc)
 
+   character(clen), parameter :: myname="buildtree"
+   logical, parameter :: crash=.true.
+   integer, parameter :: verb=2
+   character(clen) :: str,fmt
+
    type(particle_system_type), intent(in) :: psys !< input particle system
    type(oct_tree_type), intent(inout) :: tree !< oct-tree
    real(r8b), intent(out) :: MBalloc !< MB of memory allocated for tree
@@ -88,9 +94,11 @@ end subroutine check
       tree%ppc = PartInCell  ! default
    end if
 
-   write(*,*)  
-   write(*,'(A,I3,A)') "attempting to build oct-tree with ", &
-                        tree%ppc, " particles per cell."
+   fmt="(A,I4,A)"
+   write(str,fmt) "attempting to build oct-tree with ", &
+                        tree%ppc, " particles per cell:"
+   call mywrite(str,verb-1) 
+   call mywrite("",verb-1)
 
    tree_storage_factor=2.5/tree%ppc
 
@@ -101,8 +109,7 @@ end subroutine check
       call parttree(psys,tree,err)
       if(err.NE.0) then
          call killtree(tree)
-         write(*,'(A)') "woops, guessed wrong for tree memory, "
-         write(*,'(A)') "increasing allocation"
+         call mywrite("  woops, guessed wrong for tree memory, increasing allocation",verb)
          tree_storage_factor = 1.414 * tree_storage_factor
       else
          exit tree_allocation
@@ -112,54 +119,61 @@ end subroutine check
    call patchtree(tree)
    call makecellorder(tree)
    call shrinkcells2(psys,tree)
-   
-   write(*,'(A,F8.4)') "allocated tree cells / actual tree cells =  ", &
+
+   fmt="(A,F8.4)"
+   write(str,fmt) "  allocated tree cells / actual tree cells =  ", &
                           real(tree%maxcells)/tree%ncells
+   call mywrite(str,verb) 
+   call mywrite("",verb)
    
-!  call adjustbox(psys, tree%cell(1)%bot, tree%cell(1)%top)
+!  call adjustbox(psys%box, tree%cell(1)%bot, tree%cell(1)%top)
   
  end subroutine buildtree
 
 !-----------------------------------------------
 !> allocates the various parts of the oct-tree
 subroutine maketree(psys,tree,MBalloc)
+
+  character(clen), parameter :: myname="maketree"
+  logical, parameter :: crash=.true.
+  integer, parameter :: verb=2
+  character(clen) :: str,fmt
   
   type(particle_system_type), intent(in) :: psys !< particle system
   type(oct_tree_type), intent(inout)   :: tree !< oct-tree
   real(r8b), intent(out) :: MBalloc !< MB of memory allocated for tree
   
-  character(clen) :: string 
-  integer(i8b) :: bytes,err
+  integer(i8b) :: err
   real(r8b) :: MB
 
-  bytes = 0.
-  MBalloc = 0.
+
+  MBalloc = 0.0d0
   
-  if(allocated(tree%partorder)) call killtree(tree)
-  if(tree%maxcells.EQ.0) call error(" maxcells=0")
-  tree%np=size(psys%par)
+  if (allocated(tree%partorder)) call killtree(tree)
+  if (tree%maxcells == 0) call myerr(" maxcells=0",myname,crash)
+  tree%np = size(psys%par)
     
-  bytes = tree%np * 8
-  MB = real(bytes) / 2**20
-  string = "cant allocate oct-tree%partorder [npar]"
+  MB = tree%np * 8 / 2**20
+  str = "cant allocate oct-tree%partorder [npar]"
   allocate(tree%partorder(1:tree%np),stat=err)
-  if(err.ne.0) call error(string,err)     
+  if(err.ne.0) call myerr(str,myname,crash)     
   MBalloc = MBalloc + MB
 
-  bytes = max(tree%np,tree%maxcells) * 8
-  MB = real(bytes) / 2**20
-  string = "cant allocate oct-tree%cellorder max[npar,maxcells]"
+  MB = max(tree%np,tree%maxcells) * 8 / 2**20
+  str = "cant allocate oct-tree%cellorder max[npar,maxcells]"
   allocate(tree%cellorder(1:max(tree%np,tree%maxcells)),stat=err)
-  if(err.ne.0) call error(string,err)
+  if(err.ne.0) call myerr(str,myname,crash)
   MBalloc = MBalloc + MB     
   
-  bytes = (tree%maxcells+1) * bytespercell
-  MB = real(bytes) / 2**20
-  string = "cant allocate oct-tree%cell [maxcells] "
+  MB = (tree%maxcells+1) * bytespercell / 2**20
+  str = "cant allocate oct-tree%cell [maxcells] "
   allocate(tree%cell(0:tree%maxcells),stat=err)
-  if(err.ne.0) call error(string,tree%maxcells)     
+  if(err.ne.0) call myerr(str,myname,crash)     
   MBalloc = MBalloc + MB     
-  write(*,'(A,F12.4,A)') "allocated ", MBalloc, " MB for tree"
+
+  fmt = "(A,F12.4,A)"
+  write(str,fmt) "  allocated ", MBalloc, " MB for tree"
+  call mywrite(str,verb) 
   
 end subroutine maketree
 

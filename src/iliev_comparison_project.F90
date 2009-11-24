@@ -95,13 +95,13 @@ contains
     if (psys%src(1)%EmisPrf == -2) then
        ionVn = ( (NWionfrac - rtcpT1xHII) * 6.6**3 ) * 8  
     else
-       ionVn = (NWionfrac - rtcpT1xHII) * GV%BoxVol_kpc
+       ionVn = (NWionfrac - rtcpT1xHII) * GV%BoxVolPhys_kpc
     end if
     ionRn = (3.0 * ionVn / (4 * pi) )**(1.0/3.0)
 
 !   compute numerical Stromgren radius (Ray probe method)
     call prepare_raysearch(psys,raylist)
-    pos = GV%Boxlengths / 2.0d0
+    pos = GV%BoxLensPhys / 2.0d0
 
     dir = (/1.0,0.0,0.0/)
     call make_probe_ray( pos,dir,ray )
@@ -158,12 +158,12 @@ contains
  
 !   compute numerical Stromgren radius
     NWionfrac = number_weight_ionfrac(psys)
-    ionVn = (NWionfrac - rtcpT2xHII) * GV%BoxVol_kpc
+    ionVn = (NWionfrac - rtcpT2xHII) * GV%BoxVolPhys_kpc
     ionRn = (3.0 * ionVn / (4 * pi) )**(1.0/3.0)
 
 !   compute numerical Stromgren radius (Ray probe method)
     call prepare_raysearch(psys,raylist)
-    pos = GV%Boxlengths / 2.0d0
+    pos = GV%BoxLensPhys_kpc / 2.0d0
 
     dir = (/1.0,0.0,0.0/)
     call make_probe_ray( pos,dir,ray )

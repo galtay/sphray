@@ -53,8 +53,6 @@ subroutine initialize(config_file)
   call do_ray_planning()
 
   call initialize_global_variables()
-
-
           
 end subroutine initialize
 
@@ -73,18 +71,15 @@ subroutine do_output_planning()
 
   character(clen), parameter :: myname="do_output_planning"
   logical, parameter :: crash=.true.
-  integer, parameter :: verb=1
-
-  integer(i8b) :: i, lun
-  integer(i8b) :: Ni, Nf
-  logical :: fthere
-
-  integer(i8b) :: loglun
-  character(clen) :: logfile
+  integer, parameter :: verb=2
   character(clen) :: str
 
+  integer(i8b) :: i
+  integer(i8b) :: Ni, Nf
+  logical :: fthere
+  integer(i8b) :: lun
 
-  call mywrite(" doing output planning",verb) 
+  call mywrite("  doing output planning",verb) 
   
   Ni = GV%StartSnapNum
   Nf = GV%EndSnapNum
@@ -193,31 +188,32 @@ subroutine do_output_planning()
   end if   
 
 
-  logfile = trim(GV%OutputDir) // "/" // "output_planning.log"
-  call open_formatted_file_w(logfile,loglun)
-  write(loglun,'(A,A,A)') "planning output times (OutputTiming = ", trim(GV%OutputTiming), ")"
+  GV%outplan_file = trim(GV%OutputDir) // "/" // "output_planning.log"
+  call open_formatted_file_w(GV%outplan_file,lun)
+  write(lun,'(A,A,A)') "planning output times (OutputTiming = ", trim(GV%OutputTiming), ")"
   
-  write(loglun,'(A,I3,A)') "SPHRAY will generate", GV%NumTotOuts, " full outputs"
-  if (GV%DoInitialOutput) write(loglun,'(A)') "plus one initial full output"
-  write(loglun,*) 
+  write(lun,'(A,I3,A)') "SPHRAY will generate", GV%NumTotOuts, " full outputs"
+  if (GV%DoInitialOutput) write(lun,'(A)') "plus one initial full output"
+  write(lun,*) 
 
-  write(loglun,*) "start time [code]: ", PLAN%snap(Ni)%StartTime
-  write(loglun,*) "start time [Myr]:  ", PLAN%snap(Ni)%StartTime * GV%cgs_time / GV%LittleH / Myr2sec
-  write(loglun,*)
+  write(lun,*) "start time [code]: ", PLAN%snap(Ni)%StartTime
+  write(lun,*) "start time [Myr]:  ", PLAN%snap(Ni)%StartTime * GV%cgs_time / GV%LittleH / Myr2sec
+  write(lun,*)
 
   105 format (T3,A,I3.3,A,T20,ES12.5,T40,ES12.5)    
   110 format(T20,A,T40,A)
-  write(loglun,110) "(code units)", "(Myrs)"
+  write(lun,110) "(code units)", "(Myrs)"
   do i = GV%OutputIndx,GV%NumTotOuts
-     write(loglun,105) "output ", i, " : ", PLAN%OutputTimes(i), &
+     write(lun,105) "output ", i, " : ", PLAN%OutputTimes(i), &
                                             PLAN%OutputTimes(i) * GV%cgs_time / GV%LittleH / Myr2sec
   end do
 
-  write(loglun,*)
-  write(loglun,*) "total simulation time [code] = ", GV%TotalSimTime
-  write(loglun,*) "total simulation time [Myr]  = ", GV%TotalSimTime * GV%cgs_time / GV%LittleH / Myr2sec
+  write(lun,*)
+  write(lun,*) "total simulation time [code] = ", GV%TotalSimTime
+  write(lun,*) "total simulation time [Myr]  = ", GV%TotalSimTime * GV%cgs_time / GV%LittleH / Myr2sec
 
-  close(loglun)
+  GV%outplanlun = lun
+  close(lun)
     
 end subroutine do_output_planning
 
@@ -225,24 +221,29 @@ end subroutine do_output_planning
 !> determine the number of rays to be traced in each snapshot. 
 subroutine do_ray_planning()
 
+  character(clen), parameter :: myname="do_ray_planning"
+  logical, parameter :: crash=.true.
+  integer, parameter :: verb=2
+
   integer(i8b) :: i
   real(r8b) :: code2Myr
-  integer(i8b) :: loglun
-  character(200) :: logfile
+  integer(i8b) :: lun
 
-  write(*,'(A)') "doing raytracing planning"
+
+  call mywrite("  doing raytracing planning",verb) 
+
 
   code2Myr = GV%cgs_time / GV%LittleH / Myr2sec
 
-  logfile = trim(GV%OutputDir) // "/" // "raytracing_planning.log"
-  call open_formatted_file_w(logfile,loglun)
+  GV%rayplan_file = trim(GV%OutputDir) // "/" // "raytracing_planning.log"
+  call open_formatted_file_w(GV%rayplan_file,lun)
 
 
   if (trim(GV%RayScheme)=="header") then
      ! this works for multiple snapshots.  the number of rays to trace
      ! has already been read from the source files
-     write(loglun,*) "RayScheme in cofig file = ", trim(GV%RayScheme)
-     write(loglun,*) "Using ray numbers in source file header(s)"
+     write(lun,*) "RayScheme in cofig file = ", trim(GV%RayScheme)
+     write(lun,*) "Using ray numbers in source file header(s)"
      PLAN%snap(:)%SrcRays = PLAN%snap(:)%RaysFromSrcHeader
 
   else if(trim(GV%RayScheme)=="raynum") then
@@ -269,22 +270,22 @@ subroutine do_ray_planning()
 
 
   99 format(A,I3,4A,L5,A)
-  write(loglun,99) "ray planning: snapshots = ", GV%Nsnaps, &
+  write(lun,99) "ray planning: snapshots = ", GV%Nsnaps, &
                    " (RayScheme = ", trim(GV%RayScheme),")", &
                    " (Comoving =", GV%Comoving,")"
 
-  write(loglun,*) 
-  write(loglun,*) 
+  write(lun,*) 
+  write(lun,*) 
 
 
 
   100 format(A,  T8,A,      T22,A,      T36,A,      T50,A,      T64,A)
   101 format(I3, T8,ES12.6, T22,ES12.6, T36,ES12.6, T50,ES12.6, T64,ES12.6)
 
-  write(loglun,*) "ray plan in code units"
-  write(loglun,100) "snap", "t @ snap", "t start", "t end", "dt", "Src rays"
+  write(lun,*) "ray plan in code units"
+  write(lun,100) "snap", "t @ snap", "t start", "t end", "dt", "Src rays"
   do i = GV%StartSnapNum,GV%EndSnapNum
-     write(loglun,101) i, & 
+     write(lun,101) i, & 
                        PLAN%snap(i)%TimeAt, &
                        PLAN%snap(i)%StartTime, &
                        PLAN%snap(i)%StartTime + PLAN%snap(i)%RunTime, &
@@ -293,13 +294,13 @@ subroutine do_ray_planning()
   end do
 
 
-  write(loglun,*) 
-  write(loglun,*) 
+  write(lun,*) 
+  write(lun,*) 
 
-  write(loglun,*) "ray plan in Myrs"
-  write(loglun,100) "snap", "t @ snap", "t start", "t end", "dt", "Src rays"
+  write(lun,*) "ray plan in Myrs"
+  write(lun,100) "snap", "t @ snap", "t start", "t end", "dt", "Src rays"
   do i = GV%StartSnapNum,GV%EndSnapNum
-     write(loglun,101) i, & 
+     write(lun,101) i, & 
                        PLAN%snap(i)%TimeAt * code2Myr, &
                        PLAN%snap(i)%StartTime * code2Myr, &
                        (PLAN%snap(i)%StartTime + PLAN%snap(i)%RunTime) * code2Myr, &
@@ -308,11 +309,12 @@ subroutine do_ray_planning()
   end do
 
 
-  write(loglun,*)
-  write(loglun,*) "total simulation time [code] = ", GV%TotalSimTime
-  write(loglun,*) "total simulation time [Myr]  = ", GV%TotalSimTime * code2Myr
-  close(loglun)
+  write(lun,*)
+  write(lun,*) "total simulation time [code] = ", GV%TotalSimTime
+  write(lun,*) "total simulation time [Myr]  = ", GV%TotalSimTime * code2Myr
 
+  GV%rayplanlun =  lun
+  close(lun)
 
 end subroutine do_ray_planning
 
@@ -321,29 +323,37 @@ end subroutine do_ray_planning
 !> when a new particle snapshot is read in, this routine should be called
 !! to initialize some global variables.
 subroutine initialize_global_variables()
-  use particle_system_mod, only: calc_bytes_per_particle
+  use particle_system_mod, only: calc_bytes_per_particle_and_source
   use ray_mod, only: raystatbuffsize
 
-  logical :: verbose 
-  integer(i8b) :: StartSnapNum, EndSnapNum
-  integer(i8b) :: bpp !< bytes per particle
-  integer(i8b) :: bps !< bytes per source
+  character(clen), parameter :: myname="initialize_global_variables"
+  logical, parameter :: crash=.true.
+  integer, parameter :: verb=2
 
-  write(*,'(A)') "initializing global variables"
+  real, parameter :: zero = 0.0d0
 
+  call mywrite("  initializing global variables",verb) 
+
+  ! report ionization solver being used and particle/source mem footprint
+  !----------------------------------------------------------------------
   if (GV%IonTempSolver == 1) then
-     write(*,'(A)') "using Implicit Euler ionization solver"
+     call mywrite("  using Implicit Euler ionization solver",verb)
   else if (GV%IonTempSolver == 2) then
-     write(*,'(A)') "using Backwards Difference ionization solver"
+     call mywrite("  using Backwards Difference ionization solver",verb)
   end if
 
-  verbose = .true.
+  call calc_bytes_per_particle_and_source(GV%bytesperpar, GV%bytespersrc)
 
-  StartSnapNum = GV%StartSnapNum
-  EndSnapNum = GV%EndSnapNum
-
+  ! open log files
+  !-----------------
   GV%ionfrac_file = trim(GV%OutputDir) // "/ionfrac.log"
   call open_formatted_file_w(GV%ionfrac_file,GV%ionlun)
+
+  GV%pardata_file = trim(GV%OutputDir) // "/particle_data.log"
+  call open_formatted_file_w(GV%pardata_file,GV%pardatalun)
+
+  GV%srcdata_file = trim(GV%OutputDir) // "/source_data.log"
+  call open_formatted_file_w(GV%srcdata_file,GV%srcdatalun)
 
   GV%raystat_file = trim(GV%OutputDir) // "/raystats.dat"
   if (GV%raystats) then
@@ -351,39 +361,39 @@ subroutine initialize_global_variables()
      write(GV%raystatlun) sum(PLAN%snap(:)%SrcRays), raystatbuffsize 
   end if
 
+  
                  
+  ! initialize counters and timers
+  !---------------------------------
   GV%CurSnapNum = GV%StartSnapNum
   GV%rayn = 0
   GV%src_rayn = 0
+
+  GV%MB = zero
  
   GV%time_code = PLAN%snap(GV%StartSnapNum)%StartTime
   GV%time_s = GV%time_code * GV%cgs_time / GV%LittleH
       
-  GV%TotalSourceRaysCast = 0.0
-  GV%TotalDiffuseRaysCast = 0.0
-  GV%IonizingPhotonsPerSec = 0.0
-  GV%TotalPhotonsCast = 0.0
-  GV%TotalPhotonsAbsorbed = 0.0
-  GV%PhotonsLeavingBox = 0.0
-  GV%TotalIonizations = 0.0
-  GV%TotalRecombinations = 0.0
+  GV%TotalSourceRaysCast = zero
+  GV%TotalDiffuseRaysCast = zero
+  GV%IonizingPhotonsPerSec = zero
+  GV%TotalPhotonsCast = zero
+  GV%TotalPhotonsAbsorbed = zero
+  GV%PhotonsLeavingBox = zero
+  GV%TotalIonizations = zero
+  GV%TotalRecombinations = zero
   
-  GV%PeakUpdates = 0.0
-  GV%AverageUpdatesPerPar = 0.0
-  GV%ParticleCrossings = 0.0
-  GV%TotalDerivativeCalls = 0.0
+  GV%PeakUpdates = zero
+  GV%AverageUpdatesPerPar = zero
+  GV%ParticleCrossings = zero
+  GV%TotalDerivativeCalls = zero
   
-  ! set background radiation temperature
-  GV%Tcmb_cur = CMBtempNow / PLAN%snap(StartSnapNum)%ScalefacAt  
-
-
-  call calc_bytes_per_particle(bpp, bps)
-  GV%bytesperpar = bpp
-  GV%bytespersrc = bps
-
-  ! only important for runs with a background source (emisprf=-3)
+  ! only important for runs with a background source (src%EmisPrf=-3)
+  !-------------------------------------------------------------------
   curface = 0
 
+
+  call mywrite("",verb) 
 
 end subroutine initialize_global_variables
 

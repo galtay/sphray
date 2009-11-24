@@ -22,15 +22,18 @@ contains
 !> Read in planning data from the header of all snapshots 
 !========================================================
 subroutine get_planning_data()
-  integer, parameter :: verb=2
 
-  ! allocate global planning arrays
+  character(clen), parameter :: myname="get_planning_data"
+  logical, parameter :: crash=.true.
+  integer, parameter :: verb=1
+
+  call mywrite("getting planning data:", verb)
+  call mywrite("",verb) 
+
+
   GV%Nsnaps = GV%EndSnapNum - GV%StartSnapNum + 1
-
   allocate( PLAN%snap(GV%StartSnapNum : GV%EndSnapNum) )
 
-  call mywrite("",verb) 
-  call mywrite("getting planning data:", verb)
 
   if (GV%InputType == 1 .or. GV%InputType == 2) then
      call get_planning_data_gadget()
@@ -43,26 +46,38 @@ end subroutine get_planning_data
 
 !> read in particle, box, and source data 
 !============================================
-subroutine readin_snapshot(box,MBalloc)
+subroutine readin_snapshot()
 use particle_system_mod, only: enforce_x_and_T_minmax
 use particle_system_mod, only: particle_info_to_screen
 use physical_constants_mod, only: M_H, erg2eV, CMBtempNow, cm2kpc3, cm2kpc
 use atomic_rates_mod, only: set_cmb_atomic_rates
+  
+  character(clen), parameter :: myname="readin_snapshot"
+  logical, parameter :: crash=.true.
+  integer, parameter :: verb=2
+  character(clen) :: str,fmt
+  
+  logical :: first
+  real(r8b) :: MB
+  integer(i8b) :: i
+  real(r8b) :: a     !< scale factor
+  real(r8b) :: h     !< Hubble paraemter (little H)
+  character(clen) :: snpbase
+  character(clen) :: srcbase
 
-type(box_type), intent(inout) :: box   !< simulation vol. 
-real(r8b), intent(out) :: MBalloc      !< MB allocated
+  call mywrite("reading in particle and source snapshots:", verb-1)
+  call mywrite("",verb-1) 
 
-logical :: verbose, first
-real(r8b) :: MB
-integer(i8b) :: i
+  ! set local variables
+  !======================
+  a = PLAN%snap(GV%CurSnapNum)%ScalefacAt 
+  h = GV%LittleH
 
-character(clen), parameter :: myname="readin_snapshot"
-logical, parameter :: crash=.true.
-integer, parameter :: verb=1
-
-  call mywrite(' input type = ', verb, fmt='(A)', adv=.false.)
+  ! report readin type
+  !======================
+  call mywrite('   input type = ', verb, fmt='(A)', adv=.false.)
   if (GV%InputType==1) then
-   call mywrite(" Gadget-2 public (SnapFormat=1)", verb)
+     call mywrite(" Gadget-2 public (SnapFormat=1)", verb)
   else if (GV%InputType==2) then
      call mywrite(" Gadget w/ cooling, stars, UVB (SnapFormat=1)", verb)
   else if (GV%InputType==3) then
@@ -70,11 +85,9 @@ integer, parameter :: verb=1
   end if
 
 
-  ! read in the particle and box data
-  !============================================
-  MBalloc = 0.0
 
-  verbose=.true.
+  ! read in the particle data
+  !=============================
   first = .false.
   if (GV%CurSnapNum == GV%StartSnapNum) then
      first = .true.
@@ -83,34 +96,30 @@ integer, parameter :: verb=1
   end if
 
 
-! public gadget
-!---------------------------------------------------------------
+  ! public gadget
+  !---------------------------------------------------------------
   if (GV%InputType == 1) then
 
      if (first) then
-        call read_Gpub_particles(MB)
+        call read_Gpub_particles()
         psys%par(:)%lasthit = 0
      else
-        call update_particles(MB)
+        call update_particles()
      end if
 
-     MBalloc = MBalloc + MB
-
-! gadget w/ cooling, stars, met
-!---------------------------------------------------------------
+  ! gadget w/ cooling, stars, met
+  !---------------------------------------------------------------
   else if (GV%InputType == 2) then
 
      if (first) then
-        call read_Gtiz_particles(MB)
+        call read_Gtiz_particles()
         psys%par(:)%lasthit = 0
      else
-        call update_particles(MB)
+        call update_particles()
      end if
      
-     MBalloc = MBalloc + MB
-
-! gadget w/ HDF5
-!---------------------------------------------------------------
+  ! gadget w/ HDF5
+  !---------------------------------------------------------------
   else if (GV%InputType == 3) then 
      
      if (first) then
@@ -120,14 +129,53 @@ integer, parameter :: verb=1
         call update_hdf5_particles()
      end if
      
-! not recognized
-!---------------------------------------------------------------
+  ! not recognized
+  !---------------------------------------------------------------
   else
-     write(*,*) "<readin_snapshot> input type, ", GV%InputType, "not recognized"
-     stop
+     write(str,*) "input type, ", GV%InputType, "not recognized" 
+     call myerr(str,myname,crash)
   end if
 
 
+  ! copy over box properties
+  !==================================================
+  psys%box%top = GV%BoxUprsComoh
+  psys%box%bot = GV%BoxLwrsComoh
+  psys%box%tbound = GV%BndryCond
+  psys%box%bbound = GV%BndryCond
+
+
+  ! read in the source data
+  !============================================
+  call read_src_snapshot()
+  call order_sources_lum(psys%src)
+  psys%src%lastemit = GV%rayn
+
+
+  ! set par and src file bases for output to logfiles
+  !====================================================
+  fmt = "(A,'/',A,'_',I3.3)"
+  write(snpbase,fmt) trim(GV%SnapPath),   trim(GV%ParFileBase),    GV%CurSnapNum
+  write(srcbase,fmt) trim(GV%SourcePath), trim(GV%SourceFileBase), GV%CurSnapNum
+ 
+
+  ! write fresh reads to the particle_data.log and source_data.log files
+  !========================================================================
+  fmt = "(A,A)"
+  write(str,fmt) "Fresh read from ", trim(snpbase)
+  call particle_info_to_screen(psys,str,GV%pardatalun)
+  write(GV%pardatalun,*)
+  write(GV%pardatalun,*)
+
+  write(str,fmt) "Fresh read from ", trim(srcbase)
+  call source_info_to_screen(psys,str,GV%srcdatalun)
+  write(GV%srcdatalun,*)
+  write(GV%srcdatalun,*)
+
+
+
+  ! set ionization conditions for Helium test if we need to
+  !==========================================================
   if (GV%DoTestScenario) then 
      if ( trim(GV%TestScenario) == "iliev_test1He" ) then
         psys%par(:)%xHI = 1.0d0
@@ -141,46 +189,112 @@ integer, parameter :: verb=1
   end if
 
 
+  ! set ionization conditions for OWLS test if we need to
+  !=======================================================
+#ifdef OWLS
+  psys%par(:)%ye = 1.0e-5
+  psys%par(:)%xHII = 1.0e-5
+  psys%par(:)%xHI = 1.0d0 - 1.0d-5
+#endif
 
+
+  ! set constant temperature if we have one
+  !=======================================================
   if (GV%IsoTemp /= 0.0) psys%par(:)%T = GV%IsoTemp
+
 
   ! these quantities track the photoionization rate.  they are 
   ! rezeroed at inputs (because new source files are loaded) and 
   ! outputs (for time dependence)
+  !===============================================================
 #ifdef outGamma
   psys%par(:)%gammaHI = 0.0
   psys%par(:)%time = 0.0
 #endif
 
+  ! cap the ionization fractions and temperatures if we have to
+  !================================================================
+  call enforce_x_and_T_minmax(psys%par, GV%xfloor, GV%xceiling, GV%Tfloor, GV%Tceiling)
 
-  ! read in the source data
-  !============================================
-  call read_src_snapshot(GV,verbose,MB)
-  MBalloc = MBalloc + MB
+  ! write data after above conditionals to the particle and source log files
+  !==========================================================================
+  fmt = "(A,A)"
+  write(str,fmt) "After test conditionals from ", trim(snpbase)
+  call particle_info_to_screen(psys,str,GV%pardatalun)
+  write(GV%pardatalun,*)
+  write(GV%pardatalun,*)
+ 
+  write(str,fmt) "After test conditionals from ", trim(srcbase)
+  call source_info_to_screen(psys,str,GV%srcdatalun)
+  write(GV%srcdatalun,*)
+  write(GV%srcdatalun,*)
 
 
-  call particle_info_to_screen(psys%par)
+  ! scale the data if we need to
+  !=====================================================================
+  if(GV%Comoving) then
+     call scale_comoving_to_physical(a, psys%par, psys%src, psys%box, h )
+  endif
+
+  ! write data after rescaling to the particle_data.log file
+  !=====================================================================
+  fmt = "(A,F5.3,A,F5.3,A,A)"
+  write(str,fmt) "After rescaling (a=",a,",h=",h,") from ", trim(snpbase)
+  call particle_info_to_screen(psys,str,GV%pardatalun)
+  write(GV%pardatalun,*)
+  write(GV%pardatalun,*)
+
+  write(str,fmt) "After rescaling (a=",a,",h=",h,") from ", trim(srcbase)
+  call source_info_to_screen(psys,str,GV%srcdatalun)
+  write(GV%srcdatalun,*)
+  write(GV%srcdatalun,*)
+
    
-  ! now that we've got the data we will set the global variables
+  ! take care of all the box variables
   !===============================================================
+  GV%BoxLwrsComo = GV%BoxLwrsComoh / h
+  GV%BoxLwrsPhys = GV%BoxLwrsComoh / h * a
 
-  psys%box%top = GV%BoxUppers
-  psys%box%bot = GV%BoxLowers
-  psys%box%tbound = GV%BndryCond
-  psys%box%bbound = GV%BndryCond
+  GV%BoxUprsComo = GV%BoxUprsComoh / h
+  GV%BoxUprsPhys = GV%BoxUprsComoh / h * a
+ 
+  GV%BoxLensComoh = GV%BoxUprsComoh - GV%BoxLwrsComoh
+  GV%BoxLensComo  = GV%BoxUprsComo  - GV%BoxLwrsComo
+  GV%BoxLensPhysh = GV%BoxUprsPhysh - GV%BoxLwrsPhysh
+  GV%BoxLensPhys  = GV%BoxUprsPhys  - GV%BoxLwrsPhys
+
+  GV%BoxLensComoh_cm = GV%BoxLensComoh * GV%cgs_len
+  GV%BoxLensComo_cm  = GV%BoxLensComo  * GV%cgs_len
+  GV%BoxLensPhysh_cm = GV%BoxLensPhysh * GV%cgs_len
+  GV%BoxLensPhys_cm  = GV%BoxLensPhys  * GV%cgs_len
+ 
+  GV%BoxLensComoh_kpc = GV%BoxLensComoh_cm * cm2kpc
+  GV%BoxLensComo_kpc  = GV%BoxLensComo_cm  * cm2kpc
+  GV%BoxLensPhysh_kpc = GV%BoxLensPhysh_cm * cm2kpc
+  GV%BoxLensPhys_kpc  = GV%BoxLensPhys_cm  * cm2kpc
+
+  GV%BoxVolComoh = product( GV%BoxLensComoh )
+  GV%BoxVolComo  = product( GV%BoxLensComo  )
+  GV%BoxVolPhysh = product( GV%BoxLensPhysh )
+  GV%BoxVolPhys  = product( GV%BoxLensPhys  )
+
+  GV%BoxVolComoh_cm = product( GV%BoxLensComoh_cm )
+  GV%BoxVolComo_cm  = product( GV%BoxLensComo_cm  )
+  GV%BoxVolPhysh_cm = product( GV%BoxLensPhysh_cm )
+  GV%BoxVolPhys_cm  = product( GV%BoxLensPhys_cm  )
+
+  GV%BoxVolComoh_kpc = product( GV%BoxLensComoh_kpc )
+  GV%BoxVolComo_kpc  = product( GV%BoxLensComo_kpc  )
+  GV%BoxVolPhysh_kpc = product( GV%BoxLensPhysh_kpc )
+  GV%BoxVolPhys_kpc  = product( GV%BoxLensPhys_kpc  )
   
+
+  ! and the rest of the stuff
+  !===============================================================
   GV%dtray_code = PLAN%snap(GV%CurSnapNum)%RunTime / PLAN%snap(GV%CurSnapNum)%SrcRays
-  GV%dtray_s    = GV%dtray_code * GV%cgs_time / GV%LittleH
+  GV%dtray_s    = GV%dtray_code * GV%cgs_time / h
 
-  GV%BoxLengths(1:3) = GV%BoxUppers(1:3) - GV%BoxLowers(1:3)
-  GV%BoxLengths_cm   = GV%BoxLengths * GV%cgs_len / GV%LittleH
-  GV%BoxLengths_kpc  = GV%BoxLengths_cm * cm2kpc 
-
-  GV%BoxVol = GV%BoxLengths(1) * GV%BoxLengths(2) * GV%BoxLengths(3) 
-  GV%BoxVol_cm  = GV%BoxLengths_cm(1) * GV%BoxLengths_cm(2) * GV%BoxLengths_cm(3) 
-  GV%BoxVol_kpc = GV%BoxLengths_kpc(1) * GV%BoxLengths_kpc(2) * GV%BoxLengths_kpc(3) 
-  
-  GV%Tcmb_cur = CMBtempNow / PLAN%snap(GV%CurSnapNum)%ScalefacAt
+  GV%Tcmb_cur = CMBtempNow / a
   call set_cmb_atomic_rates(GV%Tcmb_cur)  
 
   GV%total_mass = 0.0d0
@@ -193,23 +307,28 @@ integer, parameter :: verb=1
      GV%total_lum = GV%total_lum + psys%src(i)%L
   end do
   
-  GV%total_atoms = GV%total_mass * GV%cgs_mass / GV%LittleH * (GV%H_mf / M_H + GV%He_mf / M_He)
-  GV%total_photons = GV%TotalSimTime * GV%cgs_time / GV%LittleH * GV%total_lum * GV%Lunit
-  
-  write(*,*) 
-  write(*,'(A,ES12.5)') "dt/ray [code] = ", GV%dtray_code
-  write(*,'(A,ES12.5)') "dt/ray [s]    = ", GV%dtray_s
-  write(*,'(A,ES12.5)') "dt/ray [Myr]  = ", GV%dtray_s * s2Myr
-  write(*,*)
-  write(*,'(A,ES12.5)') "total photons = ", GV%total_photons
-  write(*,'(A,ES12.5)') "total atoms   = ", GV%total_atoms
-  write(*,'(A,ES12.5)') "photons / atoms = ", GV%total_photons / GV%total_atoms
-  write(*,*)
+  GV%total_atoms = GV%total_mass * GV%cgs_mass * (GV%H_mf / M_H + GV%He_mf / M_He)
+  GV%total_photons = (GV%TotalSimTime * GV%cgs_time / GV%LittleH) * (GV%total_lum * GV%Lunit)
 
-  call order_sources_lum(psys%src)
-  call enforce_x_and_T_minmax(psys%par, GV%xfloor, GV%xceiling, GV%Tfloor, GV%Tceiling)
-  if(GV%Comoving) call scale_comoving_to_physical(PLAN%snap(GV%CurSnapNum)%ScalefacAt, psys%par, psys%src, box )
-  if (verbose) call particle_info_to_screen(psys%par)  
+  
+  ! write some final data to the source log file
+  !=====================================================================
+  fmt = "(A,A)"
+  100 format(72("-"))
+
+  write(GV%srcdatalun,100)
+  write(GV%srcdatalun,fmt) "Ray / Luminosity info from ", trim(srcbase)
+  write(GV%srcdatalun,*) 
+  write(GV%srcdatalun,'(A,ES12.5)') "dt/ray [code] = ", GV%dtray_code
+  write(GV%srcdatalun,'(A,ES12.5)') "dt/ray [s]    = ", GV%dtray_s
+  write(GV%srcdatalun,'(A,ES12.5)') "dt/ray [Myr]  = ", GV%dtray_s * s2Myr
+  write(GV%srcdatalun,*)
+  write(GV%srcdatalun,'(A,ES12.5)') "total photons = ", GV%total_photons
+  write(GV%srcdatalun,'(A,ES12.5)') "total atoms   = ", GV%total_atoms
+  write(GV%srcdatalun,'(A,ES12.5)') "photons / atoms = ", GV%total_photons / GV%total_atoms
+  write(GV%srcdatalun,*)
+  write(GV%srcdatalun,100)
+
  
 
 end subroutine readin_snapshot
