@@ -461,7 +461,7 @@ do i=1,size(psys%par)
    !---------------
    if(show_temp.EQ.4) then
       temp = psys%par(i)%xHII 
-      if (temp <= 0.01) then
+      if (temp <= 0.05) then
          green = 0.2
          red = 0.5
          blue=0.5
@@ -480,7 +480,7 @@ do i=1,size(psys%par)
    !---------------
    if(show_temp.EQ.5) then
       temp = psys%par(i)%xHI 
-      if (temp <= 0.01) then
+      if (temp <= 0.05) then
          green = 0.2
          red = 0.5
          blue=0.5
