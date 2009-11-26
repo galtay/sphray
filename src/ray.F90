@@ -237,24 +237,35 @@ contains
 
 !> creates a recombination ray (as opposed to source)
 !-----------------------------------------------------------------------  
-  subroutine make_recomb_ray(par, DfltMass, Munit, H_mf, He_mf, ray)
+  subroutine make_recomb_ray(par, Dflt_Mass, Munit, Dflt_Hmf, Dflt_Hemf, ray)
   use physical_constants_mod, only: HI_th_erg, M_H, M_He
 
     type(particle_type), intent(in) :: par  !< recombining particle
-    real(r8b), intent(in) :: DfltMass            !< default mass
-    real(r8b), intent(in) :: Munit               !< cgs mass unit
-    real(r8b), intent(in) :: H_mf                !< Hydrogen mass fraction
-    real(r8b), intent(in) :: He_mf               !< Helium mass fraction
+    real(r8b), intent(in) :: Dflt_Mass      !< default mass
+    real(r8b), intent(in) :: Munit          !< cgs mass unit
+    real(r8b), intent(in) :: Dflt_Hmf       !< Hydrogen mass fraction
+    real(r8b), intent(in) :: Dflt_Hemf      !< Helium mass fraction
     type(ray_type), intent(out) :: ray      !< output ray
 
-    real(r8b) :: mass, H_nuclei, He_nuclei
+    real(r8b) :: mass, H_mf, He_mf, H_nuclei, He_nuclei
     real(r8b) :: r,xx,yy,zz
     integer :: i
 
-    mass = DfltMass
+    mass = Dflt_Mass
 #ifdef incmass
     mass = par%mass
 #endif
+
+    H_mf = Dflt_Hmf
+#ifdef incHmf
+    H_mf = par%Hmf
+#endif
+    
+    He_mf = Dflt_Hemf
+#ifdef incHemf
+    He_mf = par%Hemf
+#endif
+
 
     H_nuclei  = mass * Munit * H_mf  / M_H
     He_nuclei = mass * Munit * He_mf / M_He
@@ -287,8 +298,8 @@ contains
     ray%freq = 1.0
     ray%enrg = ray%freq * HI_th_erg  
 
-!   set the number of photons in the ray.  need the macro for compiler issues
-#ifdef increc
+!   set the number of photons in the ray.  
+#ifdef incHrec
     ray%pini = H_nuclei * par%xHIIrc
 #endif
     ray%pcnt = ray%pini

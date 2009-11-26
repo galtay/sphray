@@ -107,7 +107,10 @@ contains
      integer(i8b) :: lun, Nread, Nfile
      integer(i4b) :: ipar, ifile
 
+     integer(i8b) :: i,j
+
      real(r8b) :: nHe_over_nH
+     real(r8b) :: Hmf, Hemf
      real(r4b), allocatable :: mu(:), uint(:)
      real(r4b), allocatable :: rblock3(:,:)
 
@@ -175,16 +178,53 @@ contains
            write(lun) pars(Nread+1:Nread+Nfile)%mass
 
 
-           ! calculate some quantities for the next round of outputs
+           ! do some conversions
+           !------------------------
            allocate( mu(Nfile), uint(Nfile) )
 
+           ! always have these electrons
            pars(:)%ye = pars(:)%xHII 
-#ifdef incHe
-           nHe_over_nH = 0.25d0 * GV%He_mf / GV%H_mf
-           pars(:)%ye = pars(:)%ye + ( pars(:)%xHeII + 2.0d0 * pars(:)%xHeIII ) * nHe_over_nH
-#endif
 
-           mu = 4.0d0 / (3.0d0 * GV%H_mf + 1.0d0 + 4.0d0 * GV%H_mf * pars(Nread+1:Nread+Nfile)%ye)
+
+           do i = Nread+1, Nread+Nfile
+                      
+! conditional Hydrogen mass fraction
+#ifdef incHmf
+              Hmf=pars(i)%Hmf
+#else
+              Hmf=GV%H_mf
+#endif
+              
+              
+#ifdef incHe
+              
+              
+! conditional Helium mass fraction
+#ifdef incHemf
+              Hemf=pars(i)%Hemf
+#else
+              Hemf=GV%He_mf
+#endif
+              
+              nHe_over_nH = 0.25d0 * Hemf / Hmf
+              pars(i)%ye = pars(i)%ye + ( pars(i)%xHeII + 2.0d0 * pars(i)%xHeIII ) * nHe_over_nH
+              
+#endif
+           end do
+
+
+           j=1
+           do i = Nread+1, Nread+Nfile
+#ifdef incHmf
+              Hmf=pars(i)%Hmf
+#else
+              Hmf=GV%H_mf
+#endif     
+              mu(j) = 4.0d0 / ( 3.0d0 * Hmf + 1.0d0 + 4.0d0 * Hmf * pars(i)%ye )
+              j = j+1
+           end do
+
+
            uint = ( k_erg_K * pars(Nread+1:Nread+Nfile)%T ) / ( mu * M_p * 2.0d0/3.0d0 * GV%cgs_enrg / GV%cgs_mass) 
 
            write(lun) uint(1:Nfile)
@@ -194,10 +234,14 @@ contains
            write(lun) pars(Nread+1:Nread+Nfile)%hsml 
 
            write(lun) pars(Nread+1:Nread+Nfile)%T
+
+
 #ifdef incHe
            write(lun) pars(Nread+1:Nread+Nfile)%xHeI
            write(lun) pars(Nread+1:Nread+Nfile)%xHeII
 #endif
+
+
 #ifdef outGamma
            do ipar = Nread+1, Nread+Nfile
               if (pars(ipar)%time > 0.0) then
@@ -211,6 +255,7 @@ contains
            pars(Nread+1:Nread+Nfile)%gammaHI = 0.0
            pars(Nread+1:Nread+Nfile)%time = 0.0
 #endif
+
 
            write(lun) pars(Nread+1:Nread+Nfile)%lasthit
 

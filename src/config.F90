@@ -223,7 +223,7 @@ subroutine dummy_check_config_variables()
 
   if (GV%InputType /= 1 .and. GV%InputType /= 2 .and. GV%InputType /= 3) then
      write(*,*) "Input Type ", GV%InputType, " not recognized"
-     write(*,*) "must be 1 (Sphray), 2 (Gadget Public), or 3 (Gadget Tiziana)"
+     write(*,*) "must be 1 (Gadget2 Public Standard), 2 (Gadget w/ xHI), or 3 (Gadget HDF5)"
      config_good = .false. 
   end if
 

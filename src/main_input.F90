@@ -249,8 +249,7 @@ use atomic_rates_mod, only: set_cmb_atomic_rates
   !=======================================================
 #ifdef OWLS
   psys%par(:)%ye = 1.0e-5
-  psys%par(:)%xHII = 1.0e-5
-  psys%par(:)%xHI = 1.0d0 - 1.0d-5
+
 #endif
 
 

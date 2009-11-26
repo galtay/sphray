@@ -15,18 +15,26 @@
 # in the case of the recombination macros.  The default is for all
 # these flags to be commented out. 
 
-#OPT += -DincHmf     # if you want individual Hydrogen mass fractions
-#OPT += -DincHemf    # if you want individual Helium mass fractions
-
 #OPT += -DincHe      # if you want to include Helium
 #OPT += -DoutGammaHI # if you want to output HI photoionization rate
+
+#OPT += -DincHmf     # if you want individual Hydrogen mass fractions
+#OPT += -DincHemf    # if you want individual Helium mass fractions
 
 #OPT += -DincHrec  # if you want seperate rays traced for H recomb. radiation
 #OPT += -DincHerec # if you want seperate rays traced for He recomb. radiation
 
-OPT += -Dhdf5     # if you are using the hdf
+#OPT += -Dhdf5     # if you are using the hdf
 
-OPT += -DOWLS
+OPT += -DOWLS     # selects input as an OWLS snapshot
+
+
+ifeq (OWLS,$(findstring OWLS, $(OPT)))	
+   OPT += -DincHmf
+   OPT += -Dhdf5     
+   OPT += -DoutGammaHI 
+#   OPT += -DincHemf
+endif
 
 # System Definitions
 #=============================================================================
