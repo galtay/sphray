@@ -480,7 +480,12 @@ subroutine particle_info_to_screen(psys,str,lun)
   
   write(outlun,100) "xHII",   minval(psys%par%xHII), maxval(psys%par%xHII), &
        meanval_real(psys%par%xHII)
-  
+
+#ifdef incHmf  
+  write(outlun,100) "Hmf",    minval(psys%par%Hmf), maxval(psys%par%Hmf), &
+       meanval_real(psys%par%Hmf)
+#endif
+
   write(outlun,100) "hsml", minval(psys%par%hsml), maxval(psys%par%hsml), &
        meanval_real(psys%par%hsml)
   
@@ -494,6 +499,13 @@ subroutine particle_info_to_screen(psys,str,lun)
   write(outlun,100) "xHeIII", minval(psys%par%xHeIII), maxval(psys%par%xHeIII), &
        meanval_real(psys%par%xHeIII)
 #endif
+
+
+#ifdef incHemf  
+  write(outlun,100) "Hemf",    minval(psys%par%Hemf), maxval(psys%par%Hemf), &
+       meanval_real(psys%par%Hemf)
+#endif
+
 
 #ifdef outGamma
   write(outlun,100) "gammaHI",   minval(psys%par%gammaHI), maxval(psys%par%gammaHI), &

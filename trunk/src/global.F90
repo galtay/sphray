@@ -225,6 +225,7 @@ type global_variables_type
    real(r8b) :: total_photons   !< sum of all photons to be released
    real(r8b) :: Tcmb_cur        !< CMB temperature for the current snapshot
 
+   real(r8b) :: sf_gamma_eos    !< index for polytropic equation of state for star forming gas.
    
    ! these are updated continuosly while the code runs 
    ! and most are initialized in initialize.f90

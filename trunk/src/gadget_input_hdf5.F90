@@ -4,6 +4,7 @@
 !<
 
 module gadget_input_hdf5_mod
+use global_mod, only: GV
 use gadget_input_mod
 #ifdef hdf5
 use hdf5_wrapper
@@ -131,6 +132,8 @@ use source_input_mod, only: read_source_header
 
         call read_gadget_header_hdf5(snapfile, ghead, fh, closefile=.false.)
 
+        call hdf5_read_attribute(fh,'Parameters/StellarEvolutionParameters/SF_EOSGammaEffective',GV%sf_gamma_eos)
+
         call hdf5_read_attribute(fh,'Units/UnitLength_in_cm',GV%cgs_len)
         call hdf5_read_attribute(fh,'Units/UnitMass_in_g',GV%cgs_mass)
         call hdf5_read_attribute(fh,'Units/UnitVelocity_in_cm_per_s',GV%cgs_vel)
@@ -242,6 +245,7 @@ subroutine read_Ghdf5_particles()
   character(clen) :: str,fmt
   
   real(r4b), allocatable :: rblck(:)
+  real(r4b), allocatable :: eosblck(:)
   real(r4b), allocatable :: rblck3(:,:)
   integer(i4b), allocatable :: iblck(:)
   integer(i8b) :: ngasread
@@ -263,6 +267,7 @@ subroutine read_Ghdf5_particles()
   real(r8b) :: xvec(5)
   real(r8b) :: Tdum
   real(r8b) :: MB
+  real(r8b) :: Hmf
 
   ! set default values
   !===============================
@@ -394,11 +399,23 @@ subroutine read_Ghdf5_particles()
      VarName = 'Temperature'
      call hdf5_read_data(fh,trim(GroupName)//trim(VarName),rblck)
 
+#ifdef OWLS
+     allocate(eosblck(ngas1), stat=err)
+     if(err/=0) call myerr("allocating eosblck for EOS",myname,crash)
+
+     VarName = 'OnEquationOfState'
+     call hdf5_read_data(fh,trim(GroupName)//trim(VarName),eosblck)
+#endif
+
      do i = 1,ngas1
         psys%par(ngasread+i)%T = rblck(i) 
+#ifdef OWLS
+        if ( eosblck(i) == 1.0 ) psys%par(ngasread+i)%T = 1.0e4
+#endif
      end do
 
      deallocate(rblck)
+     if (allocated(eosblck)) deallocate(eosblck)
 
 
      ! read density 
@@ -430,10 +447,119 @@ subroutine read_Ghdf5_particles()
      
      deallocate(rblck)
 
+
+     ! read Hydrogen mass fractions
+     !-----------------------------------------------------------!  
+#ifdef incHmf
+     allocate(rblck(ngas1), stat=err)
+     if(err/=0) call myerr("allocating rblck for Hmf",myname,crash)
+
+     VarName = 'ElementAbundance/Hydrogen'
+     call hdf5_read_data(fh,trim(GroupName)//trim(VarName),rblck)
+
+     do i = 1, ngas1
+        psys%par(ngasread+i)%Hmf = rblck(i)
+     end do
+     
+     deallocate(rblck)
+#endif
+
+
+     ! read Helium mass fractions
+     !-----------------------------------------------------------!  
+#ifdef incHemf
+     allocate(rblck(ngas1), stat=err)
+     if(err/=0) call myerr("allocating rblck for Hemf",myname,crash)
+
+     VarName = 'ElementAbundance/Helium'
+     call hdf5_read_data(fh,trim(GroupName)//trim(VarName),rblck)
+
+     do i = 1, ngas1
+        psys%par(ngasread+i)%Hemf = rblck(i)
+     end do
+     
+     deallocate(rblck)
+#endif
+
+
+     ! read xHI (really HI mass and convert) 
+     !-----------------------------------------------------------!  
+     allocate(rblck(ngas1), stat=err)
+     if(err/=0) call myerr("allocating rblck for xHI",myname,crash)
+
+     VarName = 'IonMass/h1'
+     call hdf5_read_data(fh,trim(GroupName)//trim(VarName),rblck)
+
+     do i = 1, ngas1
+#ifdef incHmf
+        Hmf = psys%par(ngasread+i)%Hmf
+#else
+        Hmf = GV%H_mf
+#endif
+        psys%par(ngasread+i)%xHI = rblck(i) / ( psys%par(ngasread+i)%mass * Hmf )
+     end do
+     
+     deallocate(rblck)
+
+
+
+
+
+
+
      ngasread = ngasread + ngas1
      call hdf5_close_file(fh)
 
+
   end do files
+
+
+  ! set xHII from xHI
+  !-----------------------------------------------------------!  
+  psys%par%xHII = 1.0d0 - psys%par%xHI
+
+
+
+  ! if we have Helium, initialize the ionization fractions to 
+  ! collisional equilibrium
+  !------------------------------------------------------------------------
+#ifdef incHe
+
+  ! set caseA true or false for collisional equilibrium
+  !-----------------------------------------------------
+  caseA = .false.
+  if (.not. GV%OnTheSpotH  .or. GV%HydrogenCaseA) caseA(1) = .true.
+  if (.not. GV%OnTheSpotHe .or. GV%HeliumCaseA  ) caseA(2) = .true.
+
+  ! if we have a single temperature
+  !------------------------------------
+  if (GV%IsoTemp /= 0.0) then
+
+     call calc_colion_eq_fits(GV%IsoTemp, caseA, xvec)
+     psys%par(:)%xHeI = xvec(3)
+     psys%par(:)%xHeII = xvec(4)
+     psys%par(:)%xHeIII = xvec(5)
+     
+  ! if we have individual temperatures
+  !------------------------------------
+  else
+     
+     do i = 1,ngas
+        Tdum = psys%par(i)%T
+        call calc_colion_eq_fits(Tdum, caseA, xvec)
+        psys%par(i)%xHeI   = xvec(3)
+        psys%par(i)%xHeII  = xvec(4)
+        psys%par(i)%xHeIII = xvec(5)
+     end do
+
+  end if
+
+#endif
+
+
+
+
+
 
   
 
@@ -447,23 +573,11 @@ subroutine update_hdf5_particles()
 end subroutine update_hdf5_particles
 
 
-subroutine read_gadget_hdf5_box(box)
-  type(box_type), intent(out) :: box  !< box 
- 
-!  box%bot = 0.0
-!  box%top = ghead%boxlen
-!  box%bbound = GV%BndryCond
-!  box%tbound = GV%BndryCond
-  
-  box%bot = 0.0
-  box%top = 0.0 
-  box%bbound = 0.0 
-  box%tbound = 0.0 
-
-end subroutine read_gadget_hdf5_box
-
 
 subroutine gadget_output_hdf5()
+
+  stop "gadget_output_hdf5 not implemented"
+
 end subroutine gadget_output_hdf5
 
 
