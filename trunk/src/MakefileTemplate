@@ -24,9 +24,13 @@
 #OPT += -DincHrec  # if you want seperate rays traced for H recomb. radiation
 #OPT += -DincHerec # if you want seperate rays traced for He recomb. radiation
 
+#OPT += -DstartNeutral # starts all particles with xHI = 1.0 - 1.0e-6
+#OPT += -DstartIonized # starts all particles with xHII = 1.0 - 1.0e-6
+
+
 #OPT += -Dhdf5     # if you are using the hdf
 
-OPT += -DOWLS     # selects input as an OWLS snapshot
+#OPT += -DOWLS     # selects input as an OWLS snapshot
 
 
 ifeq (OWLS,$(findstring OWLS, $(OPT)))	
@@ -70,7 +74,7 @@ IFORTFLAGS= -ftz -fpe0 -g -traceback -heap-arrays -fpp
 
 ifeq ($(SYSTEM),generic_ifort_opt)
    FC= ifort
-   FFLAGS= $(IFORTFLAGS) -O3 
+   FFLAGS= $(IFORTFLAGS) -xHost -O3 -ipo
 endif
 
 ifeq ($(SYSTEM),generic_ifort_fast)
@@ -136,13 +140,14 @@ SRC= 	myf90.o \
 	physical_constants.o \
 	mt19937.o \
 	m_mrgrnk.o \
+	hui_gnedin_atomic_rates.o \
+	cen_atomic_rates.o \
+	hummer_atomic_rates.o  \
+	atomic_rates.o \
 	pluecker.o \
 	cosmology.o \
 	particle_system.o \
 	b2cd.o \
-	hui_gnedin_atomic_rates.o \
-	cen_atomic_rates.o \
-	hummer_atomic_rates.o  \
 	spectra.o \
 	sphpar.o \
 	octtree3.o \
@@ -150,7 +155,6 @@ SRC= 	myf90.o \
 	raylist.o \
 	global.o \
 	config.o \
-	atomic_rates.o \
 	source_input.o \
 	gadget_input.o \
 	gadget_input_hdf5.o \

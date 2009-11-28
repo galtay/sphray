@@ -5,10 +5,9 @@
 
 module gadget_input_mod
 use myf90_mod
-use particle_system_mod
+use particle_system_mod, only: particle_system_type
+use particle_system_mod, only: set_x_eq, set_ye
 use source_input_mod, only: source_header_type
-use atomic_rates_mod, only: calc_colion_eq_table
-use atomic_rates_mod, only: calc_colion_eq_fits
 use global_mod, only: psys, PLAN, GV
 use physical_constants_mod
 implicit none
@@ -32,7 +31,7 @@ real(r8b), parameter :: GMASS_solar = GMASS / M_solar
 
 real(r8b), parameter, private :: BOLTZMANN = 1.3806d-16   !< boltzmann's constant
 real(r8b), parameter, private :: PROTONMASS = 1.6726d-24  !< proton mass (cgs)
-real(r8b), parameter, private :: GAMMA = 5.0d0/3.0d0
+real(r8b), parameter, private :: GAMMA = 5.0d0/3.0d0      !< adiabatic ideal gas index
 
 
 !> gadget header type
@@ -264,14 +263,8 @@ subroutine read_Gpub_particles()
 
   real(r8b) :: meanweight
   logical :: caseA(2)
-  real(r8b) :: xvec(5)
-  real(r8b) :: Tdum
-  real(r8b) :: nHe_over_nH
   real(r8b) :: MB 
 
-  ! set default values
-  !===============================
-  nHe_over_nH = 0.0
 
   ! read header from first file
   !============================
@@ -444,19 +437,19 @@ subroutine read_Gpub_particles()
 
   end do files
 
+  
+  ! assume the particles are neutral to compute the temperature
+  !---------------------------------------------------------------
+  psys%par(:)%xHI = 1.0d0 - 1.0d-5
+  psys%par(:)%xHII = 1.0d-5
+  psys%par(:)%ye = psys%par(:)%xHII
 
-  ! if not iso-temp convert internal energies / unit mass to temperature K
-  !-------------------------------------------------------------------------
+
   if (GV%IsoTemp == 0.0) then
-     do i = 1,ngas
-        meanweight = 4.0d0 / (3.0d0 * GV%H_mf + 1.0d0 + 4.0d0)
-        Tdum = meanweight * PROTONMASS / BOLTZMANN * (GAMMA - 1.0d0) * psys%par(i)%T
-        psys%par(i)%T = Tdum * GENRG / GMASS
-     end do
+     call set_temp_from_u(psys, GV%H_mf, GV%cgs_enrg, GV%cgs_mass)
   else
      psys%par(:)%T = GV%IsoTemp
-  end if
-
+  endif
 
 
   ! set caseA true or false for collisional equilibrium
@@ -465,42 +458,10 @@ subroutine read_Gpub_particles()
   if (.not. GV%OnTheSpotH  .or. GV%HydrogenCaseA) caseA(1) = .true.
   if (.not. GV%OnTheSpotHe .or. GV%HeliumCaseA)   caseA(2) = .true.
 
-  
-  ! if we have a single temperature
-  !------------------------------------
-  if (GV%IsoTemp /= 0.0) then
-     call calc_colion_eq_fits(GV%IsoTemp, caseA, xvec)
-     psys%par(:)%xHI = xvec(1)
-     psys%par(:)%xHII = xvec(2)
-#ifdef incHe
-     psys%par(:)%xHeI = xvec(3)
-     psys%par(:)%xHeII = xvec(4)
-     psys%par(:)%xHeIII = xvec(5)
-#endif
+  call set_x_eq(psys, caseA, GV%IsoTemp)
+  call set_ye(psys, GV%H_mf, GV%He_mf)
 
-  ! if we have individual temperatures
-  !------------------------------------
-  else
 
-     do i = 1,ngas
-        Tdum = psys%par(i)%T
-        call calc_colion_eq_fits(Tdum, caseA, xvec)
-        psys%par(i)%xHI  = xvec(1)
-        psys%par(i)%xHII = xvec(2)
-#ifdef incHe
-        psys%par(i)%xHeI   = xvec(3)
-        psys%par(i)%xHeII  = xvec(4)
-        psys%par(i)%xHeIII = xvec(5)
-#endif
-     end do
-
-  end if
-
-  psys%par(:)%ye = psys%par(:)%xHII 
-#ifdef incHe
-  nHe_over_nH = 0.25d0 * GV%He_mf / GV%H_mf
-  psys%par(:)%ye = psys%par(:)%ye + ( psys%par(:)%xHeII + 2.0d0 * psys%par(:)%xHeIII ) * nHe_over_nH
-#endif
 
 
 end subroutine read_Gpub_particles
@@ -757,59 +718,30 @@ subroutine read_Gtiz_particles()
   end do files
 
 
-  ! initialize xHII
-  !-------------------------------------------------------------------------
-  psys%par(:)%xHII = 1.0d0 - psys%par(:)%xHI
 
-  ! if not iso-temp convert internal energies / unit mass to temperature K
-  !-------------------------------------------------------------------------
-  if (GV%IsoTemp == 0.0) then
-     do i = 1,ngas
-        meanweight = 4.0d0 / (3.0d0 * GV%H_mf + 1.0d0 + 4.0d0 * GV%H_mf * psys%par(i)%ye)
-        Tdum = meanweight * PROTONMASS / BOLTZMANN * (GAMMA - 1.0d0) * psys%par(i)%T
-        psys%par(i)%T = Tdum * GENRG / GMASS
-     end do
-  else
-     psys%par(:)%T = GV%IsoTemp
-  end if
+  ! set xHII from xHI 
+  !-----------------------------------------------------------!  
+  psys%par%xHII = 1.0d0 - psys%par%xHI
 
-  
-
-  ! if we have Helium, initialize the ionization fractions to 
-  ! collisional equilibrium
-  !------------------------------------------------------------------------
-#ifdef incHe
 
   ! set caseA true or false for collisional equilibrium
   !-----------------------------------------------------
   caseA = .false.
   if (.not. GV%OnTheSpotH  .or. GV%HydrogenCaseA) caseA(1) = .true.
-  if (.not. GV%OnTheSpotHe .or. GV%HeliumCaseA  ) caseA(2) = .true.
+  if (.not. GV%OnTheSpotHe .or. GV%HeliumCaseA)   caseA(2) = .true.
 
-  ! if we have a single temperature
-  !------------------------------------
-  if (GV%IsoTemp /= 0.0) then
 
-     call calc_colion_eq_fits(GV%IsoTemp, caseA, xvec)
-     psys%par(:)%xHeI = xvec(3)
-     psys%par(:)%xHeII = xvec(4)
-     psys%par(:)%xHeIII = xvec(5)
+  ! if Helium, initialize ionization fractions to collisional equilibrium
+  !------------------------------------------------------------------------
+  call set_x_eq(psys, caseA, GV%IsoTemp, JustHe=.true.)
 
-  ! if we have individual temperatures
-  !------------------------------------
-  else
 
-     do i = 1,ngas
-        Tdum = psys%par(i)%T
-        call calc_colion_eq_fits(Tdum, caseA, xvec)
-        psys%par(i)%xHeI   = xvec(3)
-        psys%par(i)%xHeII  = xvec(4)
-        psys%par(i)%xHeIII = xvec(5)
-     end do
+  ! set the electron fractions from the ionization fractions
+  !----------------------------------------------------------
+  call set_ye(psys, GV%H_mf, GV%He_mf)
 
-  end if
 
-#endif
+
 
  
 end subroutine read_Gtiz_particles
@@ -964,6 +896,36 @@ subroutine update_particles()
 
 end subroutine update_particles
 
+
+!> converts internal energies / unit mass to temperature K
+!=======================================================================================
+subroutine set_temp_from_u(psys, dfltH_mf, cgs_enrg, cgs_mass)
+
+  type(particle_system_type) :: psys
+  real(r8b), intent(in) :: dfltH_mf
+  real(r8b), intent(in) :: cgs_enrg
+  real(r8b), intent(in) :: cgs_mass
+  integer(i8b) :: i
+  real(r8b) :: Hmf
+  real(r8b) :: mu
+  real(r8b) :: Tdum
+  
+  do i = 1,size(psys%par)
+
+#ifdef incHmf
+     Hmf = psys%par(i)%Hmf
+#else
+     Hmf = dfltH_mf
+#endif
+
+     mu = 4.0d0 / (3.0d0 * Hmf + 1.0d0 + 4.0d0 * Hmf * psys%par(i)%ye)
+     Tdum = mu * PROTONMASS / BOLTZMANN * (GAMMA - 1.0d0) * psys%par(i)%T
+     psys%par(i)%T = Tdum * cgs_enrg / cgs_mass
+
+  end do
+
+
+end subroutine set_temp_from_u
 
 
 

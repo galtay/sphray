@@ -13,6 +13,7 @@ use particle_system_mod, only: source_type
 use particle_system_mod, only: box_type
 use particle_system_mod, only: scale_comoving_to_physical
 use particle_system_mod, only: scale_physical_to_comoving
+use particle_system_mod, only: set_ye
 use global_mod, only: psys, PLAN, GV
 implicit none
 
@@ -216,6 +217,7 @@ use atomic_rates_mod, only: set_cmb_atomic_rates
   ! convert number density to flux for planar sources
   !==========================================================
   do i = 1,size(psys%src)
+
      if (psys%src(i)%EmisPrf == -3) then 
         ! if this is true the input luminosity is a number density [photons/cm^3]
         ! we want the flux from all 6 walls that would produce this number 
@@ -245,12 +247,40 @@ use atomic_rates_mod, only: set_cmb_atomic_rates
   end if
 
 
-  ! set ionization conditions for OWLS test if we need to
+  ! set neutral or ionized if we need to
   !=======================================================
-#ifdef OWLS
-  psys%par(:)%ye = 1.0e-5
+if (first) then
 
+#ifdef startNeutral
+   psys%par(:)%xHI  = 1.0d0 - 1.0d-5
+   psys%par(:)%xHII = 1.0d-5 
+
+#ifdef incHe
+   psys%par(:)%xHeI   = 1.0d0 - 1.0d-5
+   psys%par(:)%xHeII  = 1.0d-5
+   psys%par(:)%xHeIII = 0.0d0
 #endif
+
+  call set_ye(psys, GV%H_mf, GV%He_mf)
+#endif
+
+
+#ifdef startIonized
+   psys%par(:)%xHII = 1.0d0 - 1.0d-5
+   psys%par(:)%xHI  = 1.0d-5
+
+#ifdef incHe
+   psys%par(:)%xHeIII = 1.0d0 - 1.0d-5
+   psys%par(:)%xHeII  = 1.0d-5 / 2.
+   psys%par(:)%xHeI   = 1.0d-5 / 2.
+#endif
+
+  call set_ye(psys, GV%H_mf, GV%He_mf)
+#endif
+ 
+
+endif
+
 
 
   ! set constant temperature if we have one

@@ -505,63 +505,35 @@ subroutine read_Ghdf5_particles()
 
 
 
-
-
      ngasread = ngasread + ngas1
      call hdf5_close_file(fh)
 
 
   end do files
 
-
-  ! set xHII from xHI
+ 
+  ! set xHII from xHI 
   !-----------------------------------------------------------!  
   psys%par%xHII = 1.0d0 - psys%par%xHI
 
-
-
-  ! if we have Helium, initialize the ionization fractions to 
-  ! collisional equilibrium
-  !------------------------------------------------------------------------
-#ifdef incHe
 
   ! set caseA true or false for collisional equilibrium
   !-----------------------------------------------------
   caseA = .false.
   if (.not. GV%OnTheSpotH  .or. GV%HydrogenCaseA) caseA(1) = .true.
-  if (.not. GV%OnTheSpotHe .or. GV%HeliumCaseA  ) caseA(2) = .true.
-
-  ! if we have a single temperature
-  !------------------------------------
-  if (GV%IsoTemp /= 0.0) then
-
-     call calc_colion_eq_fits(GV%IsoTemp, caseA, xvec)
-     psys%par(:)%xHeI = xvec(3)
-     psys%par(:)%xHeII = xvec(4)
-     psys%par(:)%xHeIII = xvec(5)
-     
-  ! if we have individual temperatures
-  !------------------------------------
-  else
-     
-     do i = 1,ngas
-        Tdum = psys%par(i)%T
-        call calc_colion_eq_fits(Tdum, caseA, xvec)
-        psys%par(i)%xHeI   = xvec(3)
-        psys%par(i)%xHeII  = xvec(4)
-        psys%par(i)%xHeIII = xvec(5)
-     end do
-
-  end if
-
-#endif
+  if (.not. GV%OnTheSpotHe .or. GV%HeliumCaseA)   caseA(2) = .true.
 
 
+  ! if Helium, initialize ionization fractions to collisional equilibrium
+  !------------------------------------------------------------------------
+  call set_x_eq(psys, caseA, GV%IsoTemp, JustHe=.true.)
 
 
+  ! set the electron fractions from the ionization fractions
+  !----------------------------------------------------------
+  call set_ye(psys, GV%H_mf, GV%He_mf)
 
 
-  
 
 end subroutine read_Ghdf5_particles
 
