@@ -283,7 +283,7 @@ contains
      !================================================================
 
 
-     if (GV%Comoving) call scale_comoving_to_physical(PLAN%snap(GV%CurSnapNum)%ScalefacAt,pars)
+     if (GV%Comoving) call scale_comoving_to_physical(PLAN%snap(GV%CurSnapNum)%ScalefacAt,pars, hub=GV%LittleH)
 
   end subroutine output_total_snap
 
