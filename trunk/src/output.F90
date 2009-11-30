@@ -125,7 +125,7 @@ contains
      write(*,*) "time (elapsed code) ", GV%time_elapsed_code
      write(*,*) "time (elapsed myr)  ", GV%time_elapsed_s * s2Myr
 
-     if (GV%Comoving) call scale_physical_to_comoving(PLAN%snap(GV%CurSnapNum)%ScalefacAt, pars)
+     if (GV%Comoving) call scale_physical_to_comoving(PLAN%snap(GV%CurSnapNum)%ScalefacAt, pars, hub=GV%LittleH)
 
      100 format(I3.3)
      write(label,100) GV%OutputIndx
