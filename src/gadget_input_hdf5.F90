@@ -482,8 +482,23 @@ subroutine read_Ghdf5_particles()
 #endif
 
 
-     
+     ! read xHI (really HI mass and convert)
+     !-----------------------------------------------------------!
+     allocate(rblck(ngas1), stat=err)
+     if(err/=0) call myerr("allocating rblck for xHI",myname,crash)
 
+     VarName = 'IonMass/h1'
+     call hdf5_read_data(fh,trim(GroupName)//trim(VarName),rblck)
+
+     do i = 1, ngas1
+#ifdef incHmf
+        Hmf = psys%par(ngasread+i)%Hmf
+#else
+        Hmf = GV%H_mf
+#endif
+        psys%par(ngasread+i)%xHI = rblck(i) / ( psys%par(ngasread+i)%mass * Hmf )
+     end do
+     deallocate(rblck)
 
 
 
