@@ -49,7 +49,7 @@ contains
        ghead%z = 1.0d0 / ghead%a - 1.0d0
     else
        ghead%a = GV%time_code
-       ghead%z = 1.0d0 / ghead%a - 1.0d0
+       ghead%z = saved_gheads(GV%CurSnapNum,fnum)%z
     end if
 
     ghead%boxlen  = saved_gheads(GV%CurSnapNum,fnum)%boxlen
