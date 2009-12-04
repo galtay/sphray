@@ -262,8 +262,6 @@ if (first) then
 #endif
 
   call set_ye(psys, GV%H_mf, GV%He_mf)
-  write(*,*) "BUCK BUCK"
-
 #endif
 
 
