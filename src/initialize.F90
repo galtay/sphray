@@ -56,6 +56,63 @@ subroutine initialize(config_file)
           
 end subroutine initialize
 
+
+
+!> skewers initialization routine
+!---------------------------------
+subroutine initialize_skewers(config_file)
+
+  character(clen), intent(in) :: config_file !< configuration file
+  
+  ! these subroutines are in other files 
+  ! indicated in the use statements above
+
+
+
+  call read_config_file(config_file)
+
+  call get_planning_data()
+  call do_output_planning()
+  call do_ray_planning()
+  call initialize_global_variables()
+
+
+  ! rearrange some of the config variables
+  GV%IsoTemp = 0.0d0
+  GV%FixSnapTemp = .true.
+  GV%InputType = 2
+  GV%SnapPath = GV%OutputDir
+  GV%ParFileBase = GV%OutputFileBase
+  GV%StartSnapNum = 0
+  GV%EndSnapNum = GV%NumTotOuts
+  GV%RayScheme = "raynum"
+  GV%ForcedRayNumber = 1.0d7
+  GV%BndryCond = 0
+
+  GV%OutputDir = trim(GV%OutputDir) // "/skewers"
+
+  GV%OutputFileBase = trim(GV%OutputFileBase) // "_skw"
+
+  
+  call get_planning_data(skewers=.true.)
+  call initialize_global_variables()
+
+ 
+  call init_mersenne_twister(GV%IntSeed)
+  call read_b2cd_file(GV%b2cdFile)
+  call read_atomic_rates_file(GV%AtomicRatesFile, GV%OutputDir)
+  call set_xHII_atomic_rates(1.0d4)
+  if (GV%IsoTemp /= 0.0) then
+     call set_iso_atomic_rates(GV%IsoTemp)
+  end if
+  call initialize_iliev_tests()
+
+
+          
+end subroutine initialize_skewers
+
+
+
   
 !-----------------------------------------------------------------------------
 !> Plans output times.  For a single snapshot (static field) this 

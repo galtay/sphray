@@ -7,7 +7,6 @@ module gadget_input_mod
 use myf90_mod
 use particle_system_mod, only: particle_system_type
 use particle_system_mod, only: set_x_eq, set_ye
-use source_input_mod, only: source_header_type
 use global_mod, only: psys, PLAN, GV
 use physical_constants_mod
 implicit none
@@ -68,13 +67,13 @@ type(gadget_header_type), allocatable :: saved_gheads(:,:)
 
 contains
 
-!>   reads in a particle header, prints the header to the screen if verbose 
-!==========================================================================
+!>   reads in a particle header
+!==================================
 subroutine read_gadget_header(snapfile,ghead,lun,closefile)
 
-  character(*), intent(in) :: snapfile  !< snapshot file name
+  character(*), intent(in) :: snapfile            !< snapshot file name
   type(gadget_header_type), intent(out) :: ghead  !< particle header
-  integer(i8b), intent(out) :: lun           !< logical unit number used
+  integer(i8b), intent(out) :: lun                !< logical unit number used
   logical, intent(in), optional :: closefile      !< close file when done
 
   logical :: closef
@@ -95,23 +94,20 @@ end subroutine read_gadget_header
 !>   gets run planning data from Gadget Headers
 !===============================================
 subroutine get_planning_data_gadget()
-use cosmology_mod, only: tsinceBB
-use source_input_mod, only: read_source_header
+  use cosmology_mod, only: tsinceBB
 
-  logical :: verbose
   logical :: closefile
   integer(i8b) :: lun
   type(gadget_header_type) :: ghead
-  type(source_header_type) :: shead
 
   integer(i8b) :: iSnap, fSnap    ! initial and final snapshot numbers
-  integer(i8b) :: pfiles, sfiles  ! files/snap for particles and sources   
+  integer(i8b) :: pfiles          ! files/snap for particles    
   integer(i8b) :: i,j             ! counters
-  character(clen) :: snapfile ! snapshot file name
+  character(clen) :: snapfile     ! snapshot file name
 
   integer(i8b) :: loglun
   character(clen) :: logfile
- 
+
 
   ! open up the planning data log file
   !======================================================
@@ -123,90 +119,75 @@ use source_input_mod, only: read_source_header
   !======================================================
   iSnap = GV%StartSnapNum
   fSnap = GV%EndSnapNum
-    
+
   pfiles = GV%ParFilesPerSnap
-  sfiles = GV%SourceFilesPerSnap
-    
+
+
+  if ( allocated(saved_gheads) ) deallocate(saved_gheads)
   allocate( saved_gheads(iSnap:fSnap, 0:pfiles-1) )
 
   ! read in and report to screen
   !==============================
   closefile = .true.
-  verbose = .false.
 
   ! read all particle headers and write to log file
   !===================================================
   write(loglun,'(A)') "reading all GADGET particle header(s) ... "
-    do i = iSnap,fSnap
-       do j = 0,pfiles-1
+  do i = iSnap,fSnap
+     do j = 0,pfiles-1
 
-          call form_Gsnapshot_file_name(GV%SnapPath,GV%ParFileBase,i,j,snapfile)
-          write(loglun,'(I3,"  ",A)') i,trim(snapfile)
-          call read_gadget_header(snapfile,ghead,lun,closefile)
-          call gadget_header_to_file(ghead,loglun)
+        call form_Gsnapshot_file_name(GV%SnapPath,GV%ParFileBase,i,j,snapfile)
+        write(loglun,'(I3,"  ",A)') i,trim(snapfile)
+        call read_gadget_header(snapfile,ghead,lun,closefile)
+        call gadget_header_to_file(ghead,loglun)
 
-          saved_gheads(i,j) = ghead
+        saved_gheads(i,j) = ghead
 
-          ! make sure there is gas in this snapshot
-          if (.not. ghead%npar_all(1) > 0) then
-             write(*,*) "Gadget snapshot does not contain any gas particles"
-             write(*,*) "Sphray cannot read dark matter particles directly, "
-             write(*,*) "please calculate smoothing lengths for these particles"
-             write(*,*) "and write them as gas particles. "
-             stop
-          end if
+        ! make sure there is gas in this snapshot
+        if (.not. ghead%npar_all(1) > 0) then
+           write(*,*) "Gadget snapshot does not contain any gas particles"
+           write(*,*) "Sphray cannot read dark matter particles directly, "
+           write(*,*) "please calculate smoothing lengths for these particles"
+           write(*,*) "and write them as gas particles. "
+           stop
+        end if
 
-          ! IsoTemp comes from config file
+        ! IsoTemp comes from config file
 
-          GV%BoxLwrsComoh(:) = 0.0d0
-          GV%BoxUprsComoh(:) = ghead%boxlen
+        GV%BoxLwrsComoh(:) = 0.0d0
+        GV%BoxUprsComoh(:) = ghead%boxlen
 
-          GV%OmegaM = ghead%OmegaM
-          GV%OmegaL = ghead%OmegaL
-          GV%OmegaB = 0.04
-          GV%LittleH = ghead%h
+        GV%OmegaM = ghead%OmegaM
+        GV%OmegaL = ghead%OmegaL
+        GV%OmegaB = 0.04
+        GV%LittleH = ghead%h
 
-          GV%cgs_len  = GLEN
-          GV%cgs_mass = GMASS
-          GV%cgs_vel  = GVEL
+        GV%cgs_len  = GLEN
+        GV%cgs_mass = GMASS
+        GV%cgs_vel  = GVEL
 
-          GV%cgs_time = GTIME
-          GV%cgs_rho  = GRHO
-          GV%cgs_prs  = GPRS
-          GV%cgs_enrg = GENRG
-          GV%cgs_lum  = GLUM
+        GV%cgs_time = GTIME
+        GV%cgs_rho  = GRHO
+        GV%cgs_prs  = GPRS
+        GV%cgs_enrg = GENRG
+        GV%cgs_lum  = GLUM
 
-          if (GV%Comoving) then
-             PLAN%snap(i)%ScalefacAt = ghead%a
-             PLAN%snap(i)%TimeAt = tsinceBB(ghead%a, GV%OmegaM, GV%LittleH)       ! in seconds
-             PLAN%snap(i)%TimeAt = PLAN%snap(i)%TimeAt * GV%LittleH / GV%cgs_time ! in code units
-          else
-             PLAN%snap(i)%ScalefacAt = 1.0d0 / (1.0d0 + ghead%z)
-             PLAN%snap(i)%TimeAt = ghead%a
-          end if
+        if (GV%Comoving) then
+           PLAN%snap(i)%ScalefacAt = ghead%a
+           PLAN%snap(i)%TimeAt = tsinceBB(ghead%a, GV%OmegaM, GV%LittleH)       ! in seconds
+           PLAN%snap(i)%TimeAt = PLAN%snap(i)%TimeAt * GV%LittleH / GV%cgs_time ! in code units
+        else
+           PLAN%snap(i)%ScalefacAt = 1.0d0 / (1.0d0 + ghead%z)
+           PLAN%snap(i)%TimeAt = ghead%a
+        end if
 
-       end do
-    end do
+     end do
+  end do
 
-    ! read all source headers and write to log file
-    !===================================================
-    write(loglun,*) 
-    write(loglun,'(A)') "reading all Gadget source header(s) ... "
-    do i = iSnap,fSnap
-       do j = 1,sfiles
-          call form_snapshot_file_name(GV%SourcePath,GV%SourceFileBase,i,j,snapfile)
-          write(loglun,'(I3,"  ",A)') i,trim(snapfile)
-          call read_source_header(snapfile,shead,lun,closefile)
 
-          PLAN%snap(i)%RaysFromSrcHeader = shead%TotalRays
-          GV%Lunit = shead%Lunit
-
-       end do
-    end do
-
-    ! close headers log file
-    !========================
-    close(loglun)
+  ! close headers log file
+  !========================
+  close(loglun)
 
 
   ! write units to log file
@@ -215,7 +196,7 @@ use source_input_mod, only: read_source_header
   logfile = trim(GV%OutputDir) // "/" // "code_units.log"
   call open_formatted_file_w(logfile,loglun)
 
-  106    format(A,ES12.5,A)
+106 format(A,ES12.5,A)
   write(loglun,*) 
   write(loglun,'(A)') "setting code units ..."
   write(loglun,106) "  Hubble:     ", GV%LittleH, " = H0[km/s/Mpc] / 100 "
@@ -228,10 +209,10 @@ use source_input_mod, only: read_source_header
   write(loglun,106) "  energy:     ", GV%cgs_enrg, " [ergs/h]"
   write(loglun,106) "  luminosity: ", GV%cgs_lum / L_solar, " [Lsun]"
   write(loglun,*) 
-  
+
   close(loglun)
 
-  
+
 end subroutine get_planning_data_gadget
 
 
@@ -327,9 +308,9 @@ subroutine read_Gpub_particles()
         psys%par(ngasread+i)%pos(2) = rblck3(2,i)
         psys%par(ngasread+i)%pos(3) = rblck3(3,i)
      end do
-  
+
      deallocate(rblck3)
-     
+
      ! read velocities 
      !-----------------------------------------------------------!  
 #ifdef incVel
@@ -343,7 +324,7 @@ subroutine read_Gpub_particles()
         psys%par(ngasread+i)%vel(2) = rblck3(2,i)
         psys%par(ngasread+i)%vel(3) = rblck3(3,i)
      end do
-  
+
      deallocate(rblck3)
 #else
      read(lun, iostat=err)
@@ -414,9 +395,9 @@ subroutine read_Gpub_particles()
      do i = 1, ngas1
         psys%par(ngasread+i)%rho = rblck(i)
      end do
-     
+
      deallocate(rblck)
-     
+
      ! read smoothing lengths 
      !-----------------------------------------------------------!  
      allocate(rblck(ngas1), stat=err)
@@ -427,9 +408,9 @@ subroutine read_Gpub_particles()
      do i = 1, ngas1
         psys%par(ngasread+i)%hsml = rblck(i)
      end do
-     
+
      deallocate(rblck)
-     
+
 
 
      ngasread = ngasread + ngas1
@@ -437,7 +418,7 @@ subroutine read_Gpub_particles()
 
   end do files
 
-  
+
   ! assume the particles are neutral to compute the temperature
   !---------------------------------------------------------------
   psys%par(:)%xHI = 1.0d0 - 1.0d-5
@@ -500,7 +481,7 @@ subroutine read_Gtiz_particles()
   real(r8b) :: Tdum
   real(r8b) :: MB 
 
-  
+
   ! set default values
   !===============================
   caseA=.false.
@@ -570,9 +551,9 @@ subroutine read_Gtiz_particles()
         psys%par(ngasread+i)%pos(2) = rblck3(2,i)
         psys%par(ngasread+i)%pos(3) = rblck3(3,i)
      end do
-  
+
      deallocate(rblck3)
-     
+
      ! read velocities 
      !-----------------------------------------------------------!  
 #ifdef incVel
@@ -586,7 +567,7 @@ subroutine read_Gtiz_particles()
         psys%par(ngasread+i)%vel(2) = rblck3(2,i)
         psys%par(ngasread+i)%vel(3) = rblck3(3,i)
      end do
-  
+
      deallocate(rblck3)
 #else
      read(lun, iostat=err)
@@ -658,10 +639,10 @@ subroutine read_Gtiz_particles()
      do i = 1, ngas1
         psys%par(ngasread+i)%rho = rblck(i)
      end do
-     
+
      deallocate(rblck)
 
-        
+
      ! read electron fraction 
      !-----------------------------------------------------------!  
      allocate(rblck(ngas1), stat=err)
@@ -674,7 +655,7 @@ subroutine read_Gtiz_particles()
      end do
 
      deallocate(rblck)
- 
+
      ! read neutral hydrogen fraction (xHI)
      !-----------------------------------------------------------!  
      allocate(rblck(ngas1), stat=err)
@@ -685,9 +666,9 @@ subroutine read_Gtiz_particles()
      do i = 1, ngas1
         psys%par(ngasread+i)%xHI = rblck(i)
      end do
-     
+
      deallocate(rblck)
-     
+
 
      ! read smoothing lengths 
      !-----------------------------------------------------------!  
@@ -699,9 +680,9 @@ subroutine read_Gtiz_particles()
      do i = 1, ngas1
         psys%par(ngasread+i)%hsml = rblck(i)
      end do
-     
+
      deallocate(rblck)
-     
+
 
      ! the following data blocks are also in the snapshot file
      ! but we make no use of them for the time being
@@ -743,7 +724,7 @@ subroutine read_Gtiz_particles()
 
 
 
- 
+
 end subroutine read_Gtiz_particles
 
 
@@ -764,7 +745,7 @@ subroutine update_particles()
   real(r4b), allocatable :: yeold(:)
   real(r4b), allocatable :: xHIold(:)
   real(r4b), allocatable :: xHIIold(:)
-  
+
   real(r4b), allocatable :: xHeIold(:)
   real(r4b), allocatable :: xHeIIold(:)
   real(r4b), allocatable :: xHeIIIold(:)
@@ -777,7 +758,7 @@ subroutine update_particles()
 
   integer(i8b) :: i, idnew, indx, err
 
-  
+
 
 
   ! store carry over variables
@@ -788,11 +769,11 @@ subroutine update_particles()
   idold = psys%par%id
   minIDold = minval(idold)
   maxIDold = maxval(idold)
-  
+
   allocate( Told(size(psys%par)), stat=err)
   if (err /= 0) call myerr("failed to allocate Told",myname,crash)     
   Told = psys%par%T
-  
+
   allocate( yeold(size(psys%par)), stat=err)
   if (err /= 0) call myerr("failed to allocate yeold",myname,crash)     
   yeold = psys%par%ye
@@ -800,7 +781,7 @@ subroutine update_particles()
   allocate( xHIold(size(psys%par)), stat=err)
   if (err /= 0) call myerr("failed to allocate xHIold",myname,crash)     
   xHIold = psys%par%xHI
-  
+
   allocate( xHIIold(size(psys%par)), stat=err)
   if (err /= 0) call myerr("failed to allocate xHIIold",myname,crash)     
   xHIIold = psys%par%xHII
@@ -822,11 +803,11 @@ subroutine update_particles()
 #endif
 
 
-  
+
   allocate( lasthitold(size(psys%par)), stat=err)
   if (err /= 0) call myerr("failed to allocate lasthitold",myname,crash)     
   lasthitold = psys%par%lasthit
-  
+
 
   ! deallocate the current particle array and read new particle data
   !==================================================================
@@ -842,8 +823,8 @@ subroutine update_particles()
 
   ! match id's from new snapshot data to the old IDs
   !===================================================
- 
-  
+
+
   ! create an indexing array for the old particle array ID's
   ! ID's that are no longer present will be indexed with minIDold - 1
   !--------------------------------------------------------------------
@@ -857,14 +838,14 @@ subroutine update_particles()
   do i = 1,size(idold)
      orderold(idold(i)) = i
   end do
-     
+
   ! transfer all carryover variables
   !-----------------------------------
   do i = 1,size(psys%par)
 
      idnew = psys%par(i)%id   
      indx  = orderold(idnew)
-     
+
      if ( idnew /= idold(indx) ) then
         write(*,*) "i,idnew,idold", i, idnew, idold(indx)
         if (err/=0) call myerr("reordering id error",myname,crash)
@@ -909,7 +890,7 @@ subroutine set_temp_from_u(psys, dfltH_mf, cgs_enrg, cgs_mass)
   real(r8b) :: Hmf
   real(r8b) :: mu
   real(r8b) :: Tdum
-  
+
   do i = 1,size(psys%par)
 
 #ifdef incHmf
@@ -939,12 +920,12 @@ subroutine form_Gsnapshot_file_name(path,base,SnapNum,FileNum,SnapFile)
   integer(i8b), intent(in) :: SnapNum       !< snapshot number
   integer(i8b), intent(in) :: FileNum       !< file number of snapshot
   character(clen), intent(out) :: SnapFile   !< snapshot filename
-  
+
   character(10) :: FileNumChar
   logical :: Fthere
 
   write(FileNumChar,"(I6)") FileNum
-  100 format(A,"/",A,"_",I3.3)
+100 format(A,"/",A,"_",I3.3)
 
   ! first write a file with no extension
   !--------------------------------------
@@ -971,15 +952,15 @@ subroutine form_snapshot_file_name(Path,FileBase,SnapNum,FileNum,SnapFile)
   integer(i8b), intent(in) :: SnapNum      !< snapshot number
   integer(i8b), intent(in) :: FileNum      !< file number in snapshot
   character(clen), intent(out) :: SnapFile  !< file name to return
-  
+
   character(10) :: FileNumChar
-  
+
   write(FileNumChar,"(I6)") FileNum
-  
-  100 format(A,"/",A,"_",I3.3,".",A)
+
+100 format(A,"/",A,"_",I3.3,".",A)
   write(SnapFile,100) trim(Path), trim(FileBase), SnapNum, &
-                      trim(adjustl(FileNumChar))
-  
+       trim(adjustl(FileNumChar))
+
 end subroutine form_snapshot_file_name
 
 
@@ -989,8 +970,8 @@ subroutine gadget_header_to_screen(ghead)
   type(gadget_header_type), intent(in) :: ghead !< particle header to print
   integer(i8b) :: i
 
-98  format (A,T12,I12,T36,I12)
-99  format (T17,A,T30,A,T40,A)
+98 format (A,T12,I12,T36,I12)
+99 format (T17,A,T30,A,T40,A)
 100 format (A,I1,A,A,A,I12,ES12.3,I12)
 101 format (A,F8.5,A,F10.5,A,F8.4)  
 102 format (A,F8.5,A,F8.5,A,F13.4)  
@@ -1001,24 +982,24 @@ subroutine gadget_header_to_screen(ghead)
   write(*,99) "n_all","mass","n_file"
   do i = 1,6
      write(*,100) "type",i,"(",ptype_names(i),")",&
-                   ghead%npar_all(i),ghead%mass(i),ghead%npar_file(i)
+          ghead%npar_all(i),ghead%mass(i),ghead%npar_file(i)
   end do
   write(*,98) "total:", sum(ghead%npar_all), sum(ghead%npar_file)
 
   write(*,101) "a   = ", ghead%a, &
-               ", z    = ", ghead%z, &
-               ", h       = ", ghead%h
+       ", z    = ", ghead%z, &
+       ", h       = ", ghead%h
   write(*,102) "OmegaM = ", ghead%OmegaM, &
-               ", OmegaL = ", ghead%OmegaL, & 
-               ", boxsize = ", ghead%boxlen 
+       ", OmegaL = ", ghead%OmegaL, & 
+       ", boxsize = ", ghead%boxlen 
   write(*,104) "nfiles  = ", ghead%nfiles
   write(*,103) "/flags/ ",&
-             "  sfr=",ghead%flag_sfr, &
-             ", feedback=",ghead%flag_feedback, &
-             ", cooling=",ghead%flag_cooling, &
-             ", age=",ghead%flag_age, &
-             ", metals=",ghead%flag_metals, &
-             ", entr_ics=", ghead%flag_entr_ics
+       "  sfr=",ghead%flag_sfr, &
+       ", feedback=",ghead%flag_feedback, &
+       ", cooling=",ghead%flag_cooling, &
+       ", age=",ghead%flag_age, &
+       ", metals=",ghead%flag_metals, &
+       ", entr_ics=", ghead%flag_entr_ics
   write(*,*) 
 
 end subroutine gadget_header_to_screen
@@ -1032,8 +1013,8 @@ subroutine gadget_header_to_file(ghead,lun)
 
   integer(i8b) :: i
 
-98  format (A,T12,I12,T36,I12)
-99  format (T17,A,T30,A,T40,A)
+98 format (A,T12,I12,T36,I12)
+99 format (T17,A,T30,A,T40,A)
 100 format (A,I1,A,A,A,I12,ES12.3,I12)
 101 format (A,F8.5,A,F10.5,A,F8.4)  
 102 format (A,F8.5,A,F8.5,A,F13.4)  
@@ -1044,24 +1025,24 @@ subroutine gadget_header_to_file(ghead,lun)
   write(lun,99) "n_all","mass","n_file"
   do i = 1,6
      write(lun,100) "type",i,"(",ptype_names(i),")",&
-                   ghead%npar_all(i),ghead%mass(i),ghead%npar_file(i)
+          ghead%npar_all(i),ghead%mass(i),ghead%npar_file(i)
   end do
   write(lun,98) "total:", sum(ghead%npar_all), sum(ghead%npar_file)
 
   write(lun,101) "a   = ", ghead%a, &
-               ", z    = ", ghead%z, &
-               ", h       = ", ghead%h
+       ", z    = ", ghead%z, &
+       ", h       = ", ghead%h
   write(lun,102) "OmegaM = ", ghead%OmegaM, &
-               ", OmegaL = ", ghead%OmegaL, & 
-               ", boxsize = ", ghead%boxlen 
+       ", OmegaL = ", ghead%OmegaL, & 
+       ", boxsize = ", ghead%boxlen 
   write(lun,104) "nfiles  = ", ghead%nfiles
   write(lun,103) "/flags/ ",&
-             "  sfr=",ghead%flag_sfr, &
-             ", feedback=",ghead%flag_feedback, &
-             ", cooling=",ghead%flag_cooling, &
-             ", age=",ghead%flag_age, &
-             ", metals=",ghead%flag_metals, &
-             ", entr_ics=", ghead%flag_entr_ics
+       "  sfr=",ghead%flag_sfr, &
+       ", feedback=",ghead%flag_feedback, &
+       ", cooling=",ghead%flag_cooling, &
+       ", age=",ghead%flag_age, &
+       ", metals=",ghead%flag_metals, &
+       ", entr_ics=", ghead%flag_entr_ics
   write(lun,*) 
 
 end subroutine gadget_header_to_file

@@ -90,11 +90,9 @@ use source_input_mod, only: read_source_header
   integer(i8b) :: iSnap   !< first snap number
   integer(i8b) :: fSnap   !< last snap number
   integer(i8b) :: pfiles  !< nfiles for particle snapshots
-  integer(i8b) :: sfiles  !< nfiles for source snapshosts
   integer(i8b) :: i,j     !< counters
 
   type(gadget_header_type) :: ghead
-  type(source_header_type) :: shead
 
   character(clen) :: snapfile
 
@@ -115,7 +113,6 @@ use source_input_mod, only: read_source_header
   fSnap = GV%EndSnapNum
     
   pfiles = GV%ParFilesPerSnap
-  sfiles = GV%SourceFilesPerSnap
 
   allocate( saved_gheads(iSnap:fSnap, 0:pfiles-1) )
 
@@ -177,24 +174,6 @@ use source_input_mod, only: read_source_header
            PLAN%snap(i)%TimeAt = Time_GYR * Gyr2sec                              ! in seconds
            PLAN%snap(i)%TimeAt = PLAN%snap(i)%TimeAt * GV%LittleH / GV%cgs_time  ! in code units
         end if
-        
-     end do
-  end do
-
-
-
-  ! read all source headers and write to log file
-  !===================================================
-  write(loglun,*) 
-  write(loglun,'(A)') "reading all Gadget source header(s) ... "
-  do i = iSnap,fSnap
-     do j = 1,sfiles
-        call form_snapshot_file_name(GV%SourcePath,GV%SourceFileBase,i,j,snapfile)
-        write(loglun,'(I3,"  ",A)') i,trim(snapfile)
-        call read_source_header(snapfile,shead,lun,closefile=.true.)
-        
-        PLAN%snap(i)%RaysFromSrcHeader = shead%TotalRays
-        GV%Lunit = shead%Lunit
         
      end do
   end do

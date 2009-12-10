@@ -51,6 +51,7 @@ integer, parameter :: raystatbuffsize = 5000
   public :: make_source_ray
   public :: make_probe_ray
   public :: make_recomb_ray
+  public :: make_skewer_ray
 
 
   integer :: curface  !< used to track rays emitted from box faces
@@ -336,6 +337,86 @@ contains
     ray%pini = 0.0
 
   end subroutine make_probe_ray
+
+
+!> creates a source ray (as opposed to recombination)
+!-----------------------------------------------------------------------  
+  subroutine make_skewer_ray(box,ray)
+  use particle_system_mod, only: source_type, box_type
+
+    type(box_type), intent(in) :: box       !< simulation box
+    type(ray_type), intent(out) :: ray      !< output ray
+  
+    real(r8b) :: xx,yy,zz,r
+    real(r8b) :: rn, rn1, rn2
+    integer :: i
+
+
+    curface = curface + 1
+    if (curface > 6) curface = 1
+
+    rn1 = genrand_real1()
+    rn2 = genrand_real1()
+
+    ray%dir = 0.0
+
+    select case (curface)
+       
+    case(1)
+       ray%dir(1) = 1.0            
+       ray%start(1) = box%bot(1)
+       ray%start(2) = box%bot(2) + rn1 * (box%top(2)-box%bot(2))
+       ray%start(3) = box%bot(3) + rn2 * (box%top(3)-box%bot(3))
+    case(2)
+       ray%dir(2) = 1.0             
+       ray%start(2) = box%bot(2)
+       ray%start(3) = box%bot(3) + rn1 * (box%top(3)-box%bot(3))
+       ray%start(1) = box%bot(1) + rn2 * (box%top(1)-box%bot(1))
+    case(3)
+       ray%dir(3) = 1.0             
+       ray%start(3) = box%bot(3)
+       ray%start(1) = box%bot(1) + rn1 * (box%top(1)-box%bot(1))
+       ray%start(2) = box%bot(2) + rn2 * (box%top(2)-box%bot(2))     
+    case(4)
+       ray%dir(1) = -1.0             
+       ray%start(1) = box%top(1)
+       ray%start(2) = box%bot(2) + rn1 * (box%top(2)-box%bot(2))
+       ray%start(3) = box%bot(3) + rn2 * (box%top(3)-box%bot(3))
+    case(5)
+       ray%dir(2) = -1.0
+       ray%start(2) = box%top(2)
+       ray%start(3) = box%bot(3) + rn1 * (box%top(3)-box%bot(3))
+       ray%start(1) = box%bot(1) + rn2 * (box%top(1)-box%bot(1))
+    case(6)
+       ray%dir(3) = -1.0
+       ray%start(3) = box%top(3)
+       ray%start(1) = box%bot(1) + rn1 * (box%top(1)-box%bot(1))
+       ray%start(2) = box%bot(2) + rn2 * (box%top(2)-box%bot(2))
+    case default 
+       stop "curface out of bounds"
+    end select
+
+    ray%length=sqrt(sum(ray%dir**2))
+
+  
+!   set the class of the ray (what octant is it going into)
+    ray%class=0
+    do i=1,3
+       if(ray%dir(i).GE.0) ray%class=ray%class+2**(i-1)
+    enddo
+
+!   set rest to zero 
+    ray%freq = 0.0
+    ray%enrg = 0.0
+    ray%pini = 0.0
+    ray%pcnt = 0.0
+
+
+  end subroutine make_skewer_ray
+
+
+
+
 
 !> properly sets the starting point, direction, class, and length of a ray
 !--------------------------------------------------------------------------

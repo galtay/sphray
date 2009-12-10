@@ -50,14 +50,14 @@ endif
 # both the OpenGL and non-OpenGL versions compile with the Intel compiler. 
 
 
-SYSTEM= generic_ifort_opt
+#SYSTEM= generic_ifort_opt
 #SYSTEM= generic_ifort_fast
 #SYSTEM= generic_g95_opt
 #SYSTEM= generic_gfortran_opt
 
 #SYSTEM= cdm
 #SYSTEM= profile_ifort
-#SYSTEM= debug_ifort
+SYSTEM= debug_ifort
 
 
 
@@ -176,7 +176,7 @@ SRC= 	myf90.o \
 OPTHDF= 
 
 ifeq (hdf5,$(findstring hdf5, $(OPT)))
-   DIRHDF= $(HOME)/opt/hdf5-1.8.4/hdf5
+   DIRHDF= /opt/hdf5-1.8.3/hdf5
    INCHDF= $(ISINC)$(DIRHDF)/include $(ISINC)$(DIRHDF)/lib
    RLIBHDF= $(ISRLIB)$(DIRHDF)/lib
    LIBHDF= $(ISLIB)$(DIRHDF)/lib 
@@ -270,7 +270,7 @@ CNAME= -o    # C flag to name output file
 all:$(APPS)
 
 
-# Main SPHRAY application
+# Just Dummy Reporting
 #=============================================================================
 screen: Makefile
 	@echo
@@ -282,6 +282,12 @@ screen: Makefile
 # Main SPHRAY application
 #=============================================================================
 sphray: $(SRC) sphray.o
+	$(FC) $(FFLAGS) $^ $(OPT) $(FNAME) $@
+
+#
+# Skewers application
+#=============================================================================
+skewers: $(SRC) skewers.o
 	$(FC) $(FFLAGS) $^ $(OPT) $(FNAME) $@
 
 

@@ -7,7 +7,7 @@ module source_input_mod
 use myf90_mod
 use particle_system_mod, only: particle_system_type
 use particle_system_mod, only: source_type
-use global_mod, only: psys, GV
+use global_mod, only: psys, GV, PLAN
 implicit none
 
 !> source header type 
@@ -51,6 +51,54 @@ subroutine read_source_header(snapfile, shead, lun, closefile)
   if (closef) close(lun)
   
 end subroutine read_source_header
+
+
+subroutine get_planning_data_sources()
+  integer(i8b) :: loglun
+  type(source_header_type) :: shead
+  character(clen) :: snapfile ! snapshot file name
+  character(clen) :: logfile
+
+  integer(i8b) :: iSnap, fSnap    ! initial and final snapshot numbers
+  integer(i8b) :: sfiles          ! files/snap for sources   
+  integer(i8b) :: i,j,lun
+
+
+  ! these global variables are read from the config file
+  !======================================================
+  iSnap = GV%StartSnapNum
+  fSnap = GV%EndSnapNum
+    
+  sfiles = GV%SourceFilesPerSnap
+
+
+  ! open up the planning data log file
+  !======================================================
+  logfile = trim(GV%OutputDir) // "/" // "headers.log"
+  call open_formatted_file_w(logfile,loglun)
+
+  ! read all source headers and write to log file
+  !===================================================
+  write(loglun,*) 
+  write(loglun,'(A)') "reading all Gadget source header(s) ... "
+  do i = iSnap,fSnap
+     do j = 1,sfiles
+        call form_snapshot_file_name(GV%SourcePath,GV%SourceFileBase,i,j,snapfile)
+        write(loglun,'(I3,"  ",A)') i,trim(snapfile)
+        call read_source_header(snapfile,shead,lun,closefile=.true.)
+        
+        PLAN%snap(i)%RaysFromSrcHeader = shead%TotalRays
+        GV%Lunit = shead%Lunit
+        
+     end do
+  end do
+
+  ! close headers log file
+  !========================
+  close(loglun)
+
+  
+end subroutine get_planning_data_sources
 
 
 !> reads a source snapshot into arc array (src is allocated in this routine)
