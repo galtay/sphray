@@ -1,0 +1,6 @@
+each file in this directory is an hdf5 file describing the ionization
+fraction of a single species (given in the filename) as a function of
+density, temperature and redshift.
+
+The 'header' group in each of these files contains information on the
+exact form of the ionizing background used
