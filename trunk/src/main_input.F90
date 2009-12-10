@@ -22,19 +22,29 @@ contains
 
 !> Read in planning data from the header of all snapshots 
 !========================================================
-subroutine get_planning_data()
-
+subroutine get_planning_data(skewers)
+  logical, optional, intent(in) :: skewers
+  
   character(clen), parameter :: myname="get_planning_data"
   logical, parameter :: crash=.true.
   integer, parameter :: verb=1
+
+  logical :: skew
+
+
+  if (present(skewers)) then
+     skew = skewers
+  else
+     skew = .false.
+  endif
 
   call mywrite("getting planning data:", verb)
   call mywrite("",verb) 
 
 
   GV%Nsnaps = GV%EndSnapNum - GV%StartSnapNum + 1
+  if (allocated(PLAN%snap)) deallocate(PLAN%snap)
   allocate( PLAN%snap(GV%StartSnapNum : GV%EndSnapNum) )
-
 
   if (GV%InputType == 1 .or. GV%InputType == 2) then
      call get_planning_data_gadget()
@@ -42,22 +52,30 @@ subroutine get_planning_data()
      call get_planning_data_gadget_hdf5()
   end if
 
+
+  if (.not. skew) then
+     call get_planning_data_sources()
+  endif
+
 end subroutine get_planning_data
 
 
 !> read in particle, box, and source data 
 !============================================
-subroutine readin_snapshot()
+subroutine readin_snapshot(skewers)
 use particle_system_mod, only: enforce_x_and_T_minmax
 use particle_system_mod, only: particle_info_to_screen
 use physical_constants_mod, only: M_H, erg2eV, CMBtempNow, cm2kpc3, cm2kpc
 use atomic_rates_mod, only: set_cmb_atomic_rates
   
+  logical, optional, intent(in) :: skewers
+
   character(clen), parameter :: myname="readin_snapshot"
   logical, parameter :: crash=.true.
   integer, parameter :: verb=2
   character(clen) :: str,fmt
   
+  logical :: skew
   logical :: first
   real(r8b) :: MB
   integer(i8b) :: i
@@ -67,6 +85,12 @@ use atomic_rates_mod, only: set_cmb_atomic_rates
   character(clen) :: snpbase
   character(clen) :: srcbase
 
+  if (present(skewers)) then
+     skew = skewers
+  else
+     skew = .false.
+  endif
+  
   call mywrite("reading in particle and source snapshots:", verb-1)
   call mywrite("",verb-1) 
 
@@ -149,9 +173,11 @@ use atomic_rates_mod, only: set_cmb_atomic_rates
 
   ! read in the source data
   !============================================
-  call read_src_snapshot()
-  call order_sources_lum(psys%src)
-  psys%src%lastemit = GV%rayn
+  if (.not. skew) then
+     call read_src_snapshot()
+     call order_sources_lum(psys%src)
+     psys%src%lastemit = GV%rayn
+  endif
 
 
   ! set par and src file bases for output to logfiles
@@ -169,11 +195,12 @@ use atomic_rates_mod, only: set_cmb_atomic_rates
   write(GV%pardatalun,*)
   write(GV%pardatalun,*)
 
-  write(str,fmt) "Fresh read from ", trim(srcbase)
-  call source_info_to_screen(psys,str,GV%srcdatalun)
-  write(GV%srcdatalun,*)
-  write(GV%srcdatalun,*)
-
+  if (.not. skew) then
+     write(str,fmt) "Fresh read from ", trim(srcbase)
+     call source_info_to_screen(psys,str,GV%srcdatalun)
+     write(GV%srcdatalun,*)
+     write(GV%srcdatalun,*)
+  endif
 
   ! take care of all the box variables
   !===============================================================
@@ -216,21 +243,22 @@ use atomic_rates_mod, only: set_cmb_atomic_rates
 
   ! convert number density to flux for planar sources
   !==========================================================
-  do i = 1,size(psys%src)
-
-     if (psys%src(i)%EmisPrf == -3) then 
-        ! if this is true the input luminosity is a number density [photons/cm^3]
-        ! we want the flux from all 6 walls that would produce this number 
-        ! density in an optically thin volume
-
-        Flux = psys%src(i)%L * c * GV%BoxLensPhys_cm(1)**2 / 6
-        Flux = Flux / GV%Lunit
-        psys%src(i)%L = Flux
-
-     end if
-
-  end do
-
+  if (.not. skew) then
+     do i = 1,size(psys%src)
+        
+        if (psys%src(i)%EmisPrf == -3) then 
+           ! if this is true the input luminosity is a number density [photons/cm^3]
+           ! we want the flux from all 6 walls that would produce this number 
+           ! density in an optically thin volume
+           
+           Flux = psys%src(i)%L * c * GV%BoxLensPhys_cm(1)**2 / 6
+           Flux = Flux / GV%Lunit
+           psys%src(i)%L = Flux
+           
+        end if
+        
+     end do
+  endif
 
   ! set ionization conditions for Helium test if we need to
   !==========================================================
@@ -309,11 +337,12 @@ endif
   write(GV%pardatalun,*)
   write(GV%pardatalun,*)
  
-  write(str,fmt) "After test conditionals from ", trim(srcbase)
-  call source_info_to_screen(psys,str,GV%srcdatalun)
-  write(GV%srcdatalun,*)
-  write(GV%srcdatalun,*)
-
+  if (.not. skew) then
+     write(str,fmt) "After test conditionals from ", trim(srcbase)
+     call source_info_to_screen(psys,str,GV%srcdatalun)
+     write(GV%srcdatalun,*)
+     write(GV%srcdatalun,*)
+  endif
 
   ! scale the data if we need to
   !=====================================================================
@@ -329,11 +358,12 @@ endif
   write(GV%pardatalun,*)
   write(GV%pardatalun,*)
 
-  write(str,fmt) "After rescaling (a=",a,",h=",h,") from ", trim(srcbase)
-  call source_info_to_screen(psys,str,GV%srcdatalun)
-  write(GV%srcdatalun,*)
-  write(GV%srcdatalun,*)
-
+  if (.not. skew) then
+     write(str,fmt) "After rescaling (a=",a,",h=",h,") from ", trim(srcbase)
+     call source_info_to_screen(psys,str,GV%srcdatalun)
+     write(GV%srcdatalun,*)
+     write(GV%srcdatalun,*)
+  endif
 
 
    
@@ -342,8 +372,10 @@ endif
 
   ! and the rest of the stuff
   !===============================================================
-  GV%dtray_code = PLAN%snap(GV%CurSnapNum)%RunTime / PLAN%snap(GV%CurSnapNum)%SrcRays
-  GV%dtray_s    = GV%dtray_code * GV%cgs_time / h
+  if (.not. skew) then 
+     GV%dtray_code = PLAN%snap(GV%CurSnapNum)%RunTime / PLAN%snap(GV%CurSnapNum)%SrcRays
+     GV%dtray_s    = GV%dtray_code * GV%cgs_time / h
+  endif
 
   GV%Tcmb_cur = CMBtempNow / a
   call set_cmb_atomic_rates(GV%Tcmb_cur)  
@@ -364,21 +396,23 @@ endif
   
   ! write some final data to the source log file
   !=====================================================================
-  fmt = "(A,A)"
-  100 format(72("-"))
-
-  write(GV%srcdatalun,100)
-  write(GV%srcdatalun,fmt) "Ray / Luminosity info from ", trim(srcbase)
-  write(GV%srcdatalun,*) 
-  write(GV%srcdatalun,'(A,ES12.5)') "dt/ray [code] = ", GV%dtray_code
-  write(GV%srcdatalun,'(A,ES12.5)') "dt/ray [s]    = ", GV%dtray_s
-  write(GV%srcdatalun,'(A,ES12.5)') "dt/ray [Myr]  = ", GV%dtray_s * s2Myr
-  write(GV%srcdatalun,*)
-  write(GV%srcdatalun,'(A,ES12.5)') "total photons = ", GV%total_photons
-  write(GV%srcdatalun,'(A,ES12.5)') "total atoms   = ", GV%total_atoms
-  write(GV%srcdatalun,'(A,ES12.5)') "photons / atoms = ", GV%total_photons / GV%total_atoms
-  write(GV%srcdatalun,*)
-  write(GV%srcdatalun,100)
+  if (.not. skew) then
+     fmt = "(A,A)"
+     100  format(72("-"))
+     
+     write(GV%srcdatalun,100)
+     write(GV%srcdatalun,fmt) "Ray / Luminosity info from ", trim(srcbase)
+     write(GV%srcdatalun,*) 
+     write(GV%srcdatalun,'(A,ES12.5)') "dt/ray [code] = ", GV%dtray_code
+     write(GV%srcdatalun,'(A,ES12.5)') "dt/ray [s]    = ", GV%dtray_s
+     write(GV%srcdatalun,'(A,ES12.5)') "dt/ray [Myr]  = ", GV%dtray_s * s2Myr
+     write(GV%srcdatalun,*)
+     write(GV%srcdatalun,'(A,ES12.5)') "total photons = ", GV%total_photons
+     write(GV%srcdatalun,'(A,ES12.5)') "total atoms   = ", GV%total_atoms
+     write(GV%srcdatalun,'(A,ES12.5)') "photons / atoms = ", GV%total_photons / GV%total_atoms
+     write(GV%srcdatalun,*)
+     write(GV%srcdatalun,100)
+  endif
 
   call mywrite("",verb)
  
