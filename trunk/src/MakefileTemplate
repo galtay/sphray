@@ -28,7 +28,7 @@
 #OPT += -DstartIonized # starts all particles with xHII = 1.0 - 1.0e-6
 
 
-#OPT += -Dhdf5     # if you are using the hdf
+OPT += -Dhdf5     # if you are using the hdf
 
 #OPT += -DOWLS     # selects input as an OWLS snapshot
 
@@ -144,6 +144,7 @@ SRC= 	myf90.o \
 	cen_atomic_rates.o \
 	hummer_atomic_rates.o  \
 	atomic_rates.o \
+	ionization_tables.o \
 	pluecker.o \
 	cosmology.o \
 	particle_system.o \
@@ -176,7 +177,8 @@ SRC= 	myf90.o \
 OPTHDF= 
 
 ifeq (hdf5,$(findstring hdf5, $(OPT)))
-   DIRHDF= /opt/hdf5-1.8.3/hdf5
+#   DIRHDF= /opt/hdf5-1.8.3/hdf5
+   DIRHDF= /home/galtay/localhome/opt/hdf5-1.8.4/hdf5
    INCHDF= $(ISINC)$(DIRHDF)/include $(ISINC)$(DIRHDF)/lib
    RLIBHDF= $(ISRLIB)$(DIRHDF)/lib
    LIBHDF= $(ISLIB)$(DIRHDF)/lib 
@@ -347,7 +349,7 @@ clean :
 cleanall :
 	rm -f *.o *.mod *__genmod.f90 \
 	$(LCLGLDIR)/libpt.a $(LCLGLDIR)/*.o $(LCLGLDIR)/*.mod \
-	density_test glsphray $(APPS) 
+	density_test glsphray skewers $(APPS) 
 
 tidy :
 	rm -f *~ 
