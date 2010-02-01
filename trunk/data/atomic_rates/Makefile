@@ -7,9 +7,9 @@ APPS= write_rates_Cen write_rates_Hui write_rates_Hum write_rates_Vor write_rate
 
 SRCDIR=../../src
 
-FILES= $(SRCDIR)/myf90.o $(SRCDIR)/HuiGnedinAtomicRates.o \
-       $(SRCDIR)/CenAtomicRates.o $(SRCDIR)/HummerAtomicRates.o \
-       $(SRCDIR)/VoronovAtomicRates.o 
+FILES= $(SRCDIR)/myf90.o $(SRCDIR)/hui_gnedin_atomic_rates.o \
+       $(SRCDIR)/cen_atomic_rates.o $(SRCDIR)/hummer_atomic_rates.o \
+       $(SRCDIR)/voronov_atomic_rates.o 
 
 INCLUDE = -I$(SRCDIR)
 OPT=
