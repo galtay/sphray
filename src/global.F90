@@ -7,6 +7,7 @@ use myf90_mod
 use particle_system_mod, only: particle_system_type
 use oct_tree_mod, only: oct_tree_type
 use raylist_mod, only: raylist_type
+use atomic_rates_mod, only: atomic_rates_table_type, atomic_rates_type
 use physical_constants_mod, only: kpc2cm, L_solar, M_solar, Myr2sec
 implicit none
 
@@ -37,6 +38,12 @@ end type run_planning_type
 type(particle_system_type) :: psys
 type(raylist_type) :: globalraylist             !< ray/particle intersections
 type(oct_tree_type) :: tree
+
+type(atomic_rates_table_type) :: rtable   !< rates read in from file
+type(atomic_rates_type) :: isoT_k         !< static rates for iso-temperature run
+type(atomic_rates_type) :: cmbT_k         !< static rates for cmb-temperature
+type(atomic_rates_type) :: xHII_k         !< static rates for xHII-temperature 
+
 
 type(run_planning_type) :: PLAN !< run plan
 
