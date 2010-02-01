@@ -12,12 +12,11 @@ use config_mod, only: read_config_file
 use mt19937_mod, only: init_mersenne_twister
 use b2cd_mod, only: read_b2cd_file
 use spectra_mod, only: read_spectra_file
-use atomic_rates_mod, only: read_atomic_rates_file
-use atomic_rates_mod, only: set_xHII_atomic_rates
-use atomic_rates_mod, only: set_iso_atomic_rates
+use atomic_rates_mod, only: read_atomic_rates_file, get_atomic_rates 
+use atomic_rates_mod, only: write_atomic_rates_to_log_file
 use iliev_comparison_project_mod, only: initialize_iliev_tests
 use main_input_mod, only: get_planning_data
-use global_mod, only: GV, PLAN
+use global_mod, only: GV, PLAN, rtable, xHII_k, cmbT_k, isoT_k
 use ray_mod, only: curface
 implicit none
 
@@ -38,10 +37,13 @@ subroutine initialize(config_file)
   call read_b2cd_file(GV%b2cdFile)
   call read_spectra_file(GV%SpectraFile)
 
-  call read_atomic_rates_file(GV%AtomicRatesFile, GV%OutputDir)
-  call set_xHII_atomic_rates(1.0d4)
+  call read_atomic_rates_file(rtable, GV%AtomicRatesFile)
+  call write_atomic_rates_to_log_file(rtable, GV%OutputDir)
+
+  call get_atomic_rates(1.0d4, rtable, xHII_k)
+  call get_atomic_rates(GV%Tcmb_cur, rtable, cmbT_k)
   if (GV%IsoTemp /= 0.0) then
-     call set_iso_atomic_rates(GV%IsoTemp)
+     call get_atomic_rates(GV%IsoTemp, rtable, isoT_k)
   end if
 
   call initialize_iliev_tests()
@@ -100,11 +102,15 @@ subroutine initialize_skewers(config_file)
  
   call init_mersenne_twister(GV%IntSeed)
   call read_b2cd_file(GV%b2cdFile)
-  call read_atomic_rates_file(GV%AtomicRatesFile, GV%OutputDir)
-  call set_xHII_atomic_rates(1.0d4)
+  call read_atomic_rates_file(rtable, GV%AtomicRatesFile)
+  call write_atomic_rates_to_log_file(rtable, GV%OutputDir)
+
+  call get_atomic_rates(1.0d4, rtable, xHII_k)
+  call get_atomic_rates(GV%Tcmb_cur, rtable, cmbT_k)
   if (GV%IsoTemp /= 0.0) then
-     call set_iso_atomic_rates(GV%IsoTemp)
+     call get_atomic_rates(GV%IsoTemp, rtable, isoT_k)
   end if
+
   call initialize_iliev_tests()
 
 

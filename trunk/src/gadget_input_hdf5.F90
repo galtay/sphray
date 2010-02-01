@@ -29,6 +29,10 @@ contains
 ! these are dummy subroutines so that the calls outside this file
 ! dont have to be wrapped with pre processor macros.
 
+subroutine read_gadget_header_hdf5()
+  call myerr("this routine shuold not have been called","hdf5dummy",crash=.true.)
+end subroutine read_gadget_header_hdf5
+
 subroutine get_planning_data_gadget_hdf5()
   call myerr("this routine shuold not have been called","hdf5dummy",crash=.true.)
 end subroutine get_planning_data_gadget_hdf5

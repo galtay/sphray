@@ -14,7 +14,7 @@ use particle_system_mod, only: box_type
 use particle_system_mod, only: scale_comoving_to_physical
 use particle_system_mod, only: scale_physical_to_comoving
 use particle_system_mod, only: set_ye
-use global_mod, only: psys, PLAN, GV
+use global_mod, only: psys, PLAN, GV, rtable, cmbT_k
 implicit none
 
 contains
@@ -66,7 +66,7 @@ subroutine readin_snapshot(skewers)
 use particle_system_mod, only: enforce_x_and_T_minmax
 use particle_system_mod, only: particle_info_to_screen
 use physical_constants_mod, only: M_H, erg2eV, CMBtempNow, cm2kpc3, cm2kpc
-use atomic_rates_mod, only: set_cmb_atomic_rates
+use atomic_rates_mod, only: get_atomic_rates
   
   logical, optional, intent(in) :: skewers
 
@@ -378,7 +378,7 @@ endif
   endif
 
   GV%Tcmb_cur = CMBtempNow / a
-  call set_cmb_atomic_rates(GV%Tcmb_cur)  
+  call get_atomic_rates(GV%Tcmb_cur, rtable, cmbT_k)
 
   GV%total_mass = 0.0d0
   do i = 1,size(psys%par)

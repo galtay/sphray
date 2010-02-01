@@ -1,6 +1,6 @@
 !> \file atomic_rates.f90
 
-!> \brief the module that handles atomic rates
+!> \brief the module that handles atomic rates interpolation tables
 
 module atomic_rates_mod
 use myf90_mod
@@ -9,29 +9,23 @@ use cen_atomic_rates_mod
 implicit none
 
   character(14), parameter :: ratenames(25) = &
-       (/ "temperature   ",                                     &
-          "HIci          ", "HeIci         ", "HeIIci        ", &
-          "HIIrcA        ", "HeIIrcA       ", "HeIIIrcA      ", &
-          "HIIrcB        ", "HeIIrcB       ", "HeIIIrcB      ", &
-          "HeDrc         ",                                     &
-          "HIIrccA       ", "HeIIrccA      ", "HeIIIrccA     ", &
-          "HIIrccB       ", "HeIIrccB      ", "HeIIIrccB     ", &
-          "HeDrcc        ",                                     &
-          "HIcic         ", "HeIcic        ", "HeIIcic       ", &
-          "He23cic       ",                                     &
-          "HIcec         ", "HeIcec        ", "HeIIcec       "  /) !< rate names
+       (/ "Log T         ",                                                        &
+          "HIci          ", "HeIci         ", "HeIIci        ",                    &
+          "HIIrcA        ", "HeIIrcA       ", "HeIIIrcA      ",                    &
+          "HIIrcB        ", "HeIIrcB       ", "HeIIIrcB      ", "HeDrc         ",  &
+          "HIIrccA       ", "HeIIrccA      ", "HeIIIrccA     ",                    &
+          "HIIrccB       ", "HeIIrccB      ", "HeIIIrccB     ", "HeDrcc        ",  &
+          "HIcic         ", "HeIcic        ", "HeIIcic       ", "He23cic       ",  &
+          "HIcec         ", "HeIcec        ", "HeIIcec       "                     /) !< rate names
+
 
   integer(i8b), private, parameter :: RateHeaderLines = 0 !< lines in header
-  real(r8b) :: logTfloor   !< log10 of the min temperature in the rates table
-  real(r8b) :: logTceiling !< log10 of the max temperature in the rates table
-  real(r8b) :: RateLogTempSpacing !< entry spacing in table in log10 T units
-  integer(i8b) :: RateFileEntries !< number of entries in the rate file
 
 
-!--------------
-!> atomic rates
+!> atomic rates for all processes at a single temperature
+!----------------------------------------------------------
 type atomic_rates_type
-   real(r4b) :: logT      !< log10 temperature
+   real(r4b) :: logT   !< log10 temperature
 
    real(r4b) :: HIci      !< HI   collisional ionization rate 
    real(r4b) :: HeIci     !< HeI  collisional ionization rate 
@@ -63,45 +57,127 @@ type atomic_rates_type
    real(r4b) :: HIcec     !< HI   collisional excitation cooling rate
    real(r4b) :: HeIcec    !< HeI  collisional excitation cooling rate
    real(r4b) :: HeIIcec   !< HeII collisional excitation cooling rate
-      
 end type atomic_rates_type
 
 
+!> atomic rates for a single process
+!------------------------------------
+type atomic_rate_type
+   character(14) :: source
+   real(r4b), allocatable :: rate(:)   !< allocate to number of temperature bins
+end type atomic_rate_type
 
 
-  type(atomic_rates_type), allocatable :: rtable(:)  !< atomic rates
-  type(atomic_rates_type) :: iso_k  !< static rates for iso-temperature run
-  type(atomic_rates_type) :: cmb_k  !< static rates for cmb-temperature
-  type(atomic_rates_type) :: xHII_k !< static rates for xHII-temperature 
+!> atomic rates table
+!---------------------------
+type atomic_rates_table_type
+
+   real(r4b) :: logT1
+   real(r4b) :: logT2
+   integer   :: Tbins
+   real(r4b) :: dlogT
+
+   real(r4b), allocatable :: logT(:)   !< log10 temperature
+
+   type(atomic_rate_type) :: HIci      !< HI   collisional ionization rate 
+   type(atomic_rate_type) :: HeIci     !< HeI  collisional ionization rate 
+   type(atomic_rate_type) :: HeIIci    !< HeII collisional ionization rate 
+
+   type(atomic_rate_type) :: HIIrcA    !< HII   recombination rate (case A)
+   type(atomic_rate_type) :: HeIIrcA   !< HeII  recombination rate (case A)
+   type(atomic_rate_type) :: HeIIIrcA  !< HeIII recombination rate (case A)
+
+   type(atomic_rate_type) :: HIIrcB    !< HII   recombination rate (case B)
+   type(atomic_rate_type) :: HeIIrcB   !< HeII  recombination rate (case B)
+   type(atomic_rate_type) :: HeIIIrcB  !< HeIII recombination rate (case B)
+   type(atomic_rate_type) :: HeDrc     !< dielectronic He recombination rate   
+
+   type(atomic_rate_type) :: HIIrccA   !< HII   recombination cooling rate (case A)
+   type(atomic_rate_type) :: HeIIrccA  !< HeII  recombination cooling rate (case A)
+   type(atomic_rate_type) :: HeIIIrccA !< HeIII recombination cooling rate (case A)
+
+   type(atomic_rate_type) :: HIIrccB   !< HII   recombination cooling rate (case B)
+   type(atomic_rate_type) :: HeIIrccB  !< HeII  recombination cooling rate (case B)
+   type(atomic_rate_type) :: HeIIIrccB !< HeIII recombination cooling rate (case B)
+   type(atomic_rate_type) :: HeDrcc    !< dielectronic He recombination cooling rate
+   
+   type(atomic_rate_type) :: HIcic     !< HI   collisional ionization cooling rate
+   type(atomic_rate_type) :: HeIcic    !< HeI  collisional ionization cooling rate
+   type(atomic_rate_type) :: HeIIcic   !< HeII collisional ionization cooling rate
+   type(atomic_rate_type) :: He23cic   !< He23 collisional ionization cooling rate
+   
+   type(atomic_rate_type) :: HIcec     !< HI   collisional excitation cooling rate
+   type(atomic_rate_type) :: HeIcec    !< HeI  collisional excitation cooling rate
+   type(atomic_rate_type) :: HeIIcec   !< HeII collisional excitation cooling rate
+      
+end type atomic_rates_table_type
+
+
+
+
   
 contains
 
 
+
+  !> allocates space for a table
   !---------------------------------------------
-  !> open and read in the atomic rate file
-  subroutine read_atomic_rates_file(AtomicRatesFile, OutputDir)
-    character(clen) :: AtomicRatesFile
-    character(clen) :: OutputDir
+  subroutine allocate_atomic_rates_table( table, n_bins )
+    type(atomic_rates_table_type) :: table
+    integer :: n_bins
 
-    character(clen) :: logfile
-    integer(i8b) :: lun,err,i,loglun
-    real(r8b) :: Tdum
-    logical :: fthere
+    allocate( table%logT(n_bins) )
+
+    allocate( table%HIci%rate(n_bins) )
+    allocate( table%HeIci%rate(n_bins) )
+    allocate( table%HeIIci%rate(n_bins) )
     
-    real(r8b) :: GGHI,RRHII
-    real(r8b) :: GGHeI, RRHeII
-    real(r8b) :: GGHeII, RRHeIII
-    real(r8b) :: xHI,xHII,xHeI,xHeII,xHeIII,den
+    allocate( table%HIIrcA%rate(n_bins) )
+    allocate( table%HeIIrcA%rate(n_bins) )
+    allocate( table%HeIIIrcA%rate(n_bins) )
+    
+    allocate( table%HIIrcB%rate(n_bins) )
+    allocate( table%HeIIrcB%rate(n_bins) )
+    allocate( table%HeIIIrcB%rate(n_bins) )
+    allocate( table%HeDrc%rate(n_bins) )
+    
+    allocate( table%HIIrccA%rate(n_bins) )
+    allocate( table%HeIIrccA%rate(n_bins) )
+    allocate( table%HeIIIrccA%rate(n_bins) )
+    
+    allocate( table%HIIrccB%rate(n_bins) )
+    allocate( table%HeIIrccB%rate(n_bins) )
+    allocate( table%HeIIIrccB%rate(n_bins) )
+    allocate( table%HeDrcc%rate(n_bins) )
+    
+    allocate( table%HIcic%rate(n_bins) )
+    allocate( table%HeIcic%rate(n_bins) )
+    allocate( table%HeIIcic%rate(n_bins) )
+    allocate( table%He23cic%rate(n_bins) )
+    
+    allocate( table%HIcec%rate(n_bins) )
+    allocate( table%HeIcec%rate(n_bins) )
+    allocate( table%HeIIcec%rate(n_bins) )
+    
+  end subroutine allocate_atomic_rates_table
 
-    character(clen) :: str
-    integer, parameter :: verb=1
+
+  !> open and read in the atomic rate file
+  !---------------------------------------------
+  subroutine read_atomic_rates_file(table, AtomicRatesFile)
+    type(atomic_rates_table_type) :: table
+    character(clen) :: AtomicRatesFile
+
     character(clen), parameter :: myname = "read_atomic_rates_file"
+    integer, parameter :: verb=1
     logical, parameter :: crash = .true.
 
-    type(atomic_rates_type) :: k
+    integer(i8b) :: lun,err,i
+    logical :: fthere
+    
+    character(clen) :: str
 
-    logfile = trim(OutputDir) // '/' // 'atomic_rates.log'
-    call open_formatted_file_w(logfile,loglun)
+
 
     write(str,'(A,T27,A)') 'using rates file: ', trim(AtomicRatesFile)
     call mywrite(str, verb) 
@@ -115,25 +191,456 @@ contains
        read(lun,*)
     end do
 
-    write(loglun,'(A)') 'reading in the atomic rates header'
-    read(lun,*) logTfloor, logTceiling, RateFileEntries, RateLogTempSpacing
+    read(lun,*) table%logT1, table%logT2, table%Tbins, table%dlogT
     read(lun,*) ! column names
 
-    write(loglun,'(A,ES10.4)') "log10 of temperature floor   = ", logTfloor
-    write(loglun,'(A,ES10.4)') "log10 of temperature ceiling = ", logTceiling
-    write(loglun,'(A,I5)')     "rate file entries            = ", RateFileEntries
-    write(loglun,'(A,ES10.4)') "log10 spacing of temperature = ", RateLogTempSpacing
+    read(lun,"(A)") &
+
+       table%HIci%source, &       
+       table%HeIci%source, &      
+       table%HeIIci%source, &     
+       
+       table%HIIrcA%source, &     
+       table%HeIIrcA%source, &    
+       table%HeIIIrcA%source, &   
+       
+       table%HIIrcB%source, &     
+       table%HeIIrcB%source, &    
+       table%HeIIIrcB%source, &     
+       table%HeDrc%source, &      
+       
+       table%HIIrccA%source, &    
+       table%HeIIrccA%source, &    
+       table%HeIIIrccA%source, &  
+       
+       table%HIIrccB%source, &    
+       table%HeIIrccB%source, &   
+       table%HeIIIrccB%source, &      
+       table%HeDrcc%source, & 
+       
+       table%HIcic%source, &      
+       table%HeIcic%source, &     
+       table%HeIIcic%source, &    
+       table%He23cic%source, &    
+       
+       table%HIcec%source, &      
+       table%HeIcec%source, &     
+       table%HeIIcec%source   
+
+
+    call allocate_atomic_rates_table( table, table%Tbins )
+
+    do i = 1, table%Tbins
+     read(lun,*) &
+
+          table%logT(i), & 
+          
+          table%HIci%rate(i), &       
+          table%HeIci%rate(i), &      
+          table%HeIIci%rate(i), &     
+          
+          table%HIIrcA%rate(i), &     
+          table%HeIIrcA%rate(i), &    
+          table%HeIIIrcA%rate(i), &   
+          
+          table%HIIrcB%rate(i), &     
+          table%HeIIrcB%rate(i), &    
+          table%HeIIIrcB%rate(i), &     
+          table%HeDrc%rate(i), &      
+          
+          table%HIIrccA%rate(i), &    
+          table%HeIIrccA%rate(i), &    
+          table%HeIIIrccA%rate(i), &  
+          
+          table%HIIrccB%rate(i), &    
+          table%HeIIrccB%rate(i), &   
+          table%HeIIIrccB%rate(i), &      
+          table%HeDrcc%rate(i), & 
+          
+          table%HIcic%rate(i), &      
+          table%HeIcic%rate(i), &     
+          table%HeIIcic%rate(i), &    
+          table%He23cic%rate(i), &    
+          
+          table%HIcec%rate(i), &      
+          table%HeIcec%rate(i), &     
+          table%HeIIcec%rate(i)   
+     
+  end do
+
+ 
+
+     
+  end subroutine read_atomic_rates_file
+
+
+
+
+
+
+
+
+
+
+
+  !-------------------------------------------------------------------------------
+  !> Calculates collisional ionization equilibrium for all species 
+  !! at given temperature using the rates table
+  subroutine calc_colion_eq_table(table, Tin, caseA, xvec)
+    type(atomic_rates_table_type), intent(in) :: table
+    real(r8b), intent(in) :: Tin
+    logical, intent(in) :: caseA(2)
+    real(r4b), intent(out) :: xvec(5)
+    
+    type(atomic_rates_type) :: k
+    real(r8b) :: GGHI, GGHeI, GGHeII
+    real(r8b) :: RRHII, RRHeII, RRHeIII
+    real(r8b) :: den
+    
+    call get_atomic_rates(Tin, table,  k)
+    
+    GGHI   = k%HIci 
+    GGHeI  = k%HeIci
+    GGHeII = k%HeIIci
+    
+    if (caseA(1)) then
+       RRHII   = k%HIIrcA 
+    else
+       RRHII   = k%HIIrcB 
+    end if
+    
+    if (caseA(2)) then
+       RRHeII  = k%HeIIrcA 
+       RRHeIII = k%HeIIIrcA 
+    else
+       RRHeII  = k%HeIIrcB 
+       RRHeIII = k%HeIIIrcB 
+    end if
+    
+    den = (RRHII + GGHI)
+    xvec(1) = RRHII / den
+    xvec(2) = GGHI / den
+    
+    den = (RRHeII * RRHeIII + RRHeIII * GGHeI + GGHeI * GGHeII)
+    xvec(3) = RRHeII * RRHeIII / den
+    xvec(4) = RRHeIII * GGHeI  / den 
+    xvec(5) = GGHeI * GGHeII   / den
+    
+  end subroutine calc_colion_eq_table
+  
+
+
+  !> Calculates collisional ionization equilibrium for all species 
+  !! at given temperature using the fits directly
+  !-------------------------------------------------------------------------------
+  subroutine calc_colion_eq_fits(Tin, caseA, xvec)
+    real(r8b), intent(in) :: Tin
+    logical, intent(in) :: caseA(2)
+    real(r8b), intent(out) :: xvec(5)
+    
+    real(r8b) :: T
+    real(r8b) :: GGHI, GGHeI, GGHeII
+    real(r8b) :: RRHII, RRHeII, RRHeIII
+    real(r8b) :: den
+    
+
+    T = Tin
+        
+    GGHI   = Hui_HI_col_ion(T)
+    GGHeI  = Hui_HeI_col_ion(T)
+    GGHeII = Hui_HeII_col_ion(T)
+    
+    if (caseA(1)) then
+       RRHII   = Hui_HII_recombA(T)
+    else
+       RRHII   = Hui_HII_recombB(T)
+    end if
+    
+    if (caseA(2)) then
+       RRHeII  = Hui_HeII_recombA(T)
+       RRHeIII = Hui_HeIII_recombA(T)
+    else
+       RRHeII  = Hui_HeII_recombB(T)
+       RRHeIII = Hui_HeIII_recombB(T)
+    end if
+    
+    den = (RRHII + GGHI)
+    xvec(1) = RRHII / den
+    xvec(2) = GGHI / den
+    
+    den = (RRHeII * RRHeIII + RRHeIII * GGHeI + GGHeI * GGHeII)
+    xvec(3) = RRHeII * RRHeIII / den
+    xvec(4) = RRHeIII * GGHeI  / den 
+    xvec(5) = GGHeI * GGHeII   / den
+    
+  end subroutine calc_colion_eq_fits
+
+
+
+  !--------------------------------------------------------------------
+  !> takes a temperature and calculates the atomic rate table index and
+  !! how far the true temperature is past the table temperature
+  subroutine get_Tindx_and_Tremain(table, T, Tindx, Tremain)
+    type(atomic_rates_table_type), intent(in) :: table  
+    real(r8b), intent(in) :: T         !< input temperature
+    integer(i8b), intent(out) :: Tindx !< atomic rate table index
+    real(r8b), intent(out) :: Tremain  !< rates%(T) + Tremain = T
+    real(r8b) :: Tnum
+    
+    if (T < 0.0) stop "T < 0.0 in get_Tindx_and_Tremain"
+    
+    Tnum = ( log10(T) - table%logT1 ) / table%dlogT
+    Tindx = ceiling(Tnum)
+    
+    if (Tindx == 0) then
+       Tindx = 1
+       Tremain = 0.0d0
+    end if
+    Tremain = Tnum - (Tindx-1)
+    
+    if(Tindx < 1)             stop "Tindx < 1 "
+    if(Tindx > table%Tbins-1) stop "Tindx > Tbins - 1 "
+    
+  end subroutine get_Tindx_and_Tremain
+
+
+
+
+  
+
+  !=================================
+  !> get atomic rates from table 
+  subroutine get_atomic_rates(T, table, k)
+
+    real(r8b), intent(in) :: T                             !< input temperature
+    type(atomic_rates_table_type), intent(in) :: table     !< interpolation table
+    type(atomic_rates_type), intent(out) :: k              !< returns rates
+  
+    integer(i8b) :: Tindx
+    real(r8b) :: Tremain, rdif
+
+    call get_Tindx_and_Tremain(table, T, Tindx, Tremain)
+
+
+    ! Collisional Ionization
+
+    rdif = ( table%HIci%rate(Tindx+1) - table%HIci%rate(Tindx) ) * Tremain
+    k%HIci = table%HIci%rate(Tindx) + rdif 
+    
+    rdif = ( table%HeIci%rate(Tindx+1) - table%HeIci%rate(Tindx) ) * Tremain
+    k%HeIci = table%HeIci%rate(Tindx) + rdif 
+
+    rdif = ( table%HeIIci%rate(Tindx+1) - table%HeIIci%rate(Tindx) ) * Tremain
+    k%HeIIci = table%HeIIci%rate(Tindx) + rdif 
+
+        
+    ! Recombination
+    
+    rdif = ( table%HIIrcA%rate(Tindx+1) - table%HIIrcA%rate(Tindx) ) * Tremain
+    k%HIIrcA = table%HIIrcA%rate(Tindx) + rdif 
+
+    rdif = ( table%HIIrcB%rate(Tindx+1) - table%HIIrcB%rate(Tindx) ) * Tremain
+    k%HIIrcB = table%HIIrcB%rate(Tindx) + rdif 
+
+    rdif = ( table%HeIIrcA%rate(Tindx+1) - table%HeIIrcA%rate(Tindx) ) * Tremain
+    k%HeIIrcA = table%HeIIrcA%rate(Tindx) + rdif 
+
+    rdif = ( table%HeIIrcB%rate(Tindx+1) - table%HeIIrcB%rate(Tindx) ) * Tremain
+    k%HeIIrcB = table%HeIIrcB%rate(Tindx) + rdif 
+
+    rdif = ( table%HeIIIrcA%rate(Tindx+1) - table%HeIIIrcA%rate(Tindx) ) * Tremain
+    k%HeIIIrcA = table%HeIIIrcA%rate(Tindx) + rdif 
+
+    rdif = ( table%HeIIIrcB%rate(Tindx+1) - table%HeIIIrcB%rate(Tindx) ) * Tremain
+    k%HeIIIrcB = table%HeIIIrcB%rate(Tindx) + rdif 
+
+    rdif = (table%HeDrc%rate(Tindx+1) - table%HeDrc%rate(Tindx)) * Tremain
+    k%HeDrc = table%HeDrc%rate(Tindx) + rdif 
+
+
+    
+    ! Recombination Cooling
+    
+    rdif = ( table%HIIrccA%rate(Tindx+1) - table%HIIrccA%rate(Tindx) ) * Tremain
+    k%HIIrccA = table%HIIrccA%rate(Tindx) + rdif 
+
+    rdif = ( table%HIIrccB%rate(Tindx+1) - table%HIIrccB%rate(Tindx) ) * Tremain
+    k%HIIrccB = table%HIIrccB%rate(Tindx) + rdif 
+
+    rdif = ( table%HeIIrccA%rate(Tindx+1) - table%HeIIrccA%rate(Tindx) ) * Tremain
+    k%HeIIrccA = table%HeIIrccA%rate(Tindx) + rdif 
+
+    rdif = ( table%HeIIrccB%rate(Tindx+1) - table%HeIIrccB%rate(Tindx) ) * Tremain
+    k%HeIIrccB = table%HeIIrccB%rate(Tindx) + rdif 
+
+    rdif = ( table%HeIIIrccA%rate(Tindx+1) - table%HeIIIrccA%rate(Tindx) ) * Tremain
+    k%HeIIIrccA = table%HeIIIrccA%rate(Tindx) + rdif 
+
+    rdif = ( table%HeIIIrccB%rate(Tindx+1) - table%HeIIIrccB%rate(Tindx) ) * Tremain
+    k%HeIIIrccB = table%HeIIIrccB%rate(Tindx) + rdif 
+
+    rdif = ( table%HeDrcc%rate(Tindx+1) - table%HeDrcc%rate(Tindx) ) * Tremain
+    k%HeDrcc = table%HeDrcc%rate(Tindx) + rdif 
+
+    
+    ! Collisional Ionization Cooling
+
+    rdif = ( table%HIcic%rate(Tindx+1) - table%HIcic%rate(Tindx) ) * Tremain
+    k%HIcic = table%HIcic%rate(Tindx) + rdif 
+    
+    rdif = ( table%HeIcic%rate(Tindx+1) - table%HeIcic%rate(Tindx) ) * Tremain
+    k%HeIcic = table%HeIcic%rate(Tindx) + rdif 
+
+    rdif = ( table%HeIIcic%rate(Tindx+1) - table%HeIIcic%rate(Tindx) ) * Tremain
+    k%HeIIcic = table%HeIIcic%rate(Tindx) + rdif 
+    
+    rdif = ( table%He23cic%rate(Tindx+1) - table%He23cic%rate(Tindx) ) * Tremain
+    k%He23cic = table%He23cic%rate(Tindx) + rdif 
+    
+    ! Collisional Excitation Cooling
+    
+    rdif = ( table%HIcec%rate(Tindx+1) - table%HIcec%rate(Tindx) ) * Tremain
+    k%HIcec = table%HIcec%rate(Tindx) + rdif 
+    
+    rdif = ( table%HeIcec%rate(Tindx+1) - table%HeIcec%rate(Tindx) ) * Tremain
+    k%HeIcec = table%HeIcec%rate(Tindx) + rdif 
+
+    rdif = ( table%HeIIcec%rate(Tindx+1) - table%HeIIcec%rate(Tindx) ) * Tremain
+    k%HeIIcec = table%HeIIcec%rate(Tindx) + rdif 
+    
+  end subroutine get_atomic_rates
+
+
+  !> writes an atomic rates table to file
+  !---------------------------------------------
+  subroutine write_atomic_rates_table_to_file( table, file )
+    type(atomic_rates_table_type) :: table
+    character(*) :: file
+
+    character(clen) :: fmt
+    integer :: j
+
+  
+    open(unit=10,file=file)
+
+    fmt = "(2ES12.5,I8,ES12.5)"
+    write(10,fmt) table%logT1, table%logT2, table%Tbins, table%dlogT
+    
+    fmt = "(1X,25(A))"
+    write(10,fmt) ratenames
+    
+    write(10,fmt) &
+         "              ", & 
+         
+         table%HIci%source, &       
+         table%HeIci%source, &      
+         table%HeIIci%source, &     
+         
+         table%HIIrcA%source, &     
+         table%HeIIrcA%source, &    
+         table%HeIIIrcA%source, &   
+         
+         table%HIIrcB%source, &     
+         table%HeIIrcB%source, &    
+         table%HeIIIrcB%source, &     
+         table%HeDrc%source, &      
+         
+         table%HIIrccA%source, &    
+         table%HeIIrccA%source, &    
+         table%HeIIIrccA%source, &  
+         
+         table%HIIrccB%source, &    
+         table%HeIIrccB%source, &   
+         table%HeIIIrccB%source, &      
+         table%HeDrcc%source, & 
+         
+         table%HIcic%source, &      
+         table%HeIcic%source, &     
+         table%HeIIcic%source, &    
+         table%He23cic%source, &    
+         
+         table%HIcec%source, &      
+         table%HeIcec%source, &     
+         table%HeIIcec%source   
+    
+    
+    fmt = "(25(ES12.5,2X))"
+    
+    do j = 1, table%Tbins
+       write(10,fmt) &
+            
+            table%logT(j), & 
+            
+            table%HIci%rate(j), &       
+            table%HeIci%rate(j), &      
+            table%HeIIci%rate(j), &     
+            
+            table%HIIrcA%rate(j), &     
+            table%HeIIrcA%rate(j), &    
+            table%HeIIIrcA%rate(j), &   
+            
+            table%HIIrcB%rate(j), &     
+            table%HeIIrcB%rate(j), &    
+            table%HeIIIrcB%rate(j), &     
+            table%HeDrc%rate(j), &      
+            
+            table%HIIrccA%rate(j), &    
+            table%HeIIrccA%rate(j), &    
+            table%HeIIIrccA%rate(j), &  
+            
+            table%HIIrccB%rate(j), &    
+            table%HeIIrccB%rate(j), &   
+            table%HeIIIrccB%rate(j), &      
+            table%HeDrcc%rate(j), & 
+            
+            table%HIcic%rate(j), &      
+            table%HeIcic%rate(j), &     
+            table%HeIIcic%rate(j), &    
+            table%He23cic%rate(j), &    
+            
+            table%HIcec%rate(j), &      
+            table%HeIcec%rate(j), &     
+            table%HeIIcec%rate(j)   
+       
+    end do
+    
+  end subroutine write_atomic_rates_table_to_file
+
+
+
+  !> writes some table values to log file
+  !---------------------------------------------
+  subroutine write_atomic_rates_to_log_file( table, OutputDir )
+    type(atomic_rates_table_type) :: table
+    character(*) :: OutputDir
+    character(clen), parameter :: myname = "write_atomic_rates_to_log"
+    integer, parameter :: verb=1
+    logical, parameter :: crash = .true.
+
+    character(clen) :: logfile
+    integer(i8b) :: loglun
+    type(atomic_rates_type) :: k
+
+    real(r8b) :: Tdum
+    real(r8b) :: GGHI, RRHII
+    real(r8b) :: GGHeI, RRHeII
+    real(r8b) :: GGHeII, RRHeIII
+    real(r8b) :: xHI,xHII,xHeI,xHeII,xHeIII,den
+
+    logfile = trim(OutputDir) // '/' // 'atomic_rates.log'
+    call open_formatted_file_w(logfile,loglun)
+
+    write(loglun,'(A)') 'atomic rates header'
+    write(loglun,'(A,ES10.4)') "log10 of temperature floor   = ", table%logT1
+    write(loglun,'(A,ES10.4)') "log10 of temperature ceiling = ", table%logT2
+    write(loglun,'(A,I5)')     "rate file entries            = ", table%Tbins
+    write(loglun,'(A,ES10.4)') "log10 spacing of temperature = ", table%dlogT
     write(loglun,*)    
 
-    allocate(rtable(RateFileEntries), stat=err)
-    if(err .ne. 0) call myerr("cant allocate rates table",myname,crash)
-    do i = 1,RateFileEntries
-       read(lun,*) rtable(i)
-    end do
 
     ! write out characteristic rates @ T = 10,000 K
     Tdum = 1.0E4
-    call get_atomic_rates(Tdum,k)
+    call get_atomic_rates(Tdum, table, k)
 
     100 format(A,ES12.5,A)
     101 format(A,":",T32,ES12.5,A)
@@ -235,261 +742,10 @@ contains
     write(loglun,102) "xHeIIeq  = ", xHeII
     write(loglun,102) "xHeIIIeq = ", xHeIII
     write(loglun,*) 
-    
-  
-  end subroutine read_atomic_rates_file
-
-
-  !-------------------------------------------------------------------------------
-  !> Calculates collisional ionization equilibrium for all species 
-  !! at given temperature using the rates table
-  subroutine calc_colion_eq_table(Tin,caseA,xvec)
-    real(r8b), intent(in) :: Tin
-    logical, intent(in) :: caseA(2)
-    real(r4b), intent(out) :: xvec(5)
-    
-    type(atomic_rates_type) :: k
-    real(r8b) :: GGHI, GGHeI, GGHeII
-    real(r8b) :: RRHII, RRHeII, RRHeIII
-    real(r8b) :: den
-    
-    call get_atomic_rates(Tin,k)
-    
-    GGHI   = k%HIci 
-    GGHeI  = k%HeIci
-    GGHeII = k%HeIIci
-    
-    if (caseA(1)) then
-       RRHII   = k%HIIrcA 
-    else
-       RRHII   = k%HIIrcB 
-    end if
-    
-    if (caseA(2)) then
-       RRHeII  = k%HeIIrcA 
-       RRHeIII = k%HeIIIrcA 
-    else
-       RRHeII  = k%HeIIrcB 
-       RRHeIII = k%HeIIIrcB 
-    end if
-    
-    den = (RRHII + GGHI)
-    xvec(1) = RRHII / den
-    xvec(2) = GGHI / den
-    
-    den = (RRHeII * RRHeIII + RRHeIII * GGHeI + GGHeI * GGHeII)
-    xvec(3) = RRHeII * RRHeIII / den
-    xvec(4) = RRHeIII * GGHeI  / den 
-    xvec(5) = GGHeI * GGHeII   / den
-    
-  end subroutine calc_colion_eq_table
-  
-
-  !-------------------------------------------------------------------------------
-  !> Calculates collisional ionization equilibrium for all species 
-  !! at given temperature using the fits directly
-  subroutine calc_colion_eq_fits(Tin,caseA,xvec)
-    real(r8b), intent(in) :: Tin
-    logical, intent(in) :: caseA(2)
-    real(r8b), intent(out) :: xvec(5)
-    
-    real(r8b) :: Tfloor, Tceil, T
-    real(r8b) :: GGHI, GGHeI, GGHeII
-    real(r8b) :: RRHII, RRHeII, RRHeIII
-    real(r8b) :: den
-    
-    Tfloor = 10**(logTfloor)
-    Tceil = 10**(logTceiling)
-    T = Tin
-    
-    if (T > Tceil ) T = Tceil
-    if (T < Tfloor) T = Tfloor
-    
-    GGHI   = Hui_HI_col_ion(T)
-    GGHeI  = Hui_HeI_col_ion(T)
-    GGHeII = Hui_HeII_col_ion(T)
-    
-    if (caseA(1)) then
-       RRHII   = Hui_HII_recombA(T)
-    else
-       RRHII   = Hui_HII_recombB(T)
-    end if
-    
-    if (caseA(2)) then
-       RRHeII  = Hui_HeII_recombA(T)
-       RRHeIII = Hui_HeIII_recombA(T)
-    else
-       RRHeII  = Hui_HeII_recombB(T)
-       RRHeIII = Hui_HeIII_recombB(T)
-    end if
-    
-    den = (RRHII + GGHI)
-    xvec(1) = RRHII / den
-    xvec(2) = GGHI / den
-    
-    den = (RRHeII * RRHeIII + RRHeIII * GGHeI + GGHeI * GGHeII)
-    xvec(3) = RRHeII * RRHeIII / den
-    xvec(4) = RRHeIII * GGHeI  / den 
-    xvec(5) = GGHeI * GGHeII   / den
-    
-  end subroutine calc_colion_eq_fits
 
 
 
-  !--------------------------------------------------------------------
-  !> takes a temperature and calculates the atomic rate table index and
-  !! how far the true temperature is past the table temperature
-  subroutine get_Tindx_and_Tremain(T,Tindx,Tremain)
-  
-    real(r8b), intent(in) :: T         !< input temperature
-    integer(i8b), intent(out) :: Tindx !< atomic rate table index
-    real(r8b), intent(out) :: Tremain  !< rates%(T) + Tremain = T
-    real(r8b) :: Tnum
-    
-    if (T < 0.0) stop "T < 0.0 in get_Tindx_and_Tremain"
-    
-    Tnum = ( log10(T) - logTfloor ) / RateLogTempSpacing
-    Tindx = ceiling(Tnum)
-    
-    if (Tindx == 0) then
-       Tindx = 1
-       Tremain = 0.0d0
-    end if
-    Tremain = Tnum - (Tindx-1)
-    
-    if(Tindx < 1)                 stop "Tindx < 1 "
-    if(Tindx > RateFileEntries-1) stop "Tindx > RateFileEntries - 1 "
-    
-  end subroutine get_Tindx_and_Tremain
-
-
-
-  !> sets static rates for isotemperature run
-  !================================================================
-  subroutine set_iso_atomic_rates(Tiso)
-    real(r8b), intent(in) :: Tiso !< iso temperature 
-
-    call get_atomic_rates(Tiso, iso_k)
-
-  end subroutine set_iso_atomic_rates
-  
-  
-  !> sets cmb temperature atomic rates 
-  !================================================================
-  subroutine set_cmb_atomic_rates(Tcmb)
-    real(r8b), intent(in) :: Tcmb !< cmb temperature 
-
-    call get_atomic_rates(Tcmb, cmb_k)
-
-  end subroutine set_cmb_atomic_rates
-
-  !> sets ionized region atomic rates
-  !================================================================
-  subroutine set_xHII_atomic_rates(TxHII)
-    real(r8b), intent(in) :: TxHII !< xHII temperature 
-
-    call get_atomic_rates(TxHII, xHII_k)
-
-  end subroutine set_xHII_atomic_rates
-
-
-  !=================================
-  !> get atomic rates from table 
-  subroutine get_atomic_rates(T,k)
-
-    real(r8b), intent(in) :: T                          !< input temperature
-    type(atomic_rates_type), intent(out) :: k  !< returns necessary rates
-  
-    integer(i8b) :: Tindx
-    real(r8b) :: Tremain, rdif
-
-    call get_Tindx_and_Tremain(T,Tindx,Tremain)
-
-
-    ! Collisional Ionization
-
-    rdif = (rtable(Tindx+1)%HIci - rtable(Tindx)%HIci) * Tremain
-    k%HIci = (rtable(Tindx)%HIci + rdif) 
-    
-    rdif = (rtable(Tindx+1)%HeIci - rtable(Tindx)%HeIci) * Tremain
-    k%HeIci = (rtable(Tindx)%HeIci + rdif) 
-    
-    rdif = (rtable(Tindx+1)%HeIIci - rtable(Tindx)%HeIIci) * Tremain
-    k%HeIIci = (rtable(Tindx)%HeIIci + rdif) 
-    
-    ! Recombination
-    
-    rdif = (rtable(Tindx+1)%HIIrcA - rtable(Tindx)%HIIrcA) * Tremain
-    k%HIIrcA = (rtable(Tindx)%HIIrcA + rdif) 
-    
-    rdif = (rtable(Tindx+1)%HIIrcB - rtable(Tindx)%HIIrcB) * Tremain
-    k%HIIrcB = (rtable(Tindx)%HIIrcB + rdif) 
-    
-    rdif = (rtable(Tindx+1)%HeIIrcA - rtable(Tindx)%HeIIrcA) * Tremain
-    k%HeIIrcA = (rtable(Tindx)%HeIIrcA + rdif) 
-    
-    rdif = (rtable(Tindx+1)%HeIIrcB - rtable(Tindx)%HeIIrcB) * Tremain
-    k%HeIIrcB = (rtable(Tindx)%HeIIrcB + rdif) 
-    
-    rdif = (rtable(Tindx+1)%HeIIIrcA - rtable(Tindx)%HeIIIrcA) * Tremain
-    k%HeIIIrcA = (rtable(Tindx)%HeIIIrcA + rdif) 
-    
-    rdif = (rtable(Tindx+1)%HeIIIrcB - rtable(Tindx)%HeIIIrcB) * Tremain
-    k%HeIIIrcB = (rtable(Tindx)%HeIIIrcB + rdif) 
-    
-    rdif = (rtable(Tindx+1)%HeDrc - rtable(Tindx)%HeDrc) * Tremain
-    k%HeDrc = (rtable(Tindx)%HeDrc + rdif) 
-    
-    ! Recombination Cooling
-    
-    rdif = (rtable(Tindx+1)%HIIrccA - rtable(Tindx)%HIIrccA) * Tremain
-    k%HIIrccA = (rtable(Tindx)%HIIrccA + rdif) 
-    
-    rdif = (rtable(Tindx+1)%HIIrccB - rtable(Tindx)%HIIrccB) * Tremain
-    k%HIIrccB = (rtable(Tindx)%HIIrccB + rdif) 
-    
-    rdif = (rtable(Tindx+1)%HeIIrccA - rtable(Tindx)%HeIIrccA) * Tremain
-    k%HeIIrccA = (rtable(Tindx)%HeIIrccA + rdif) 
-    
-    rdif = (rtable(Tindx+1)%HeIIrccB - rtable(Tindx)%HeIIrccB) * Tremain
-    k%HeIIrccB = (rtable(Tindx)%HeIIrccB + rdif) 
-    
-    rdif = (rtable(Tindx+1)%HeIIIrccA - rtable(Tindx)%HeIIIrccA) * Tremain
-    k%HeIIIrccA = (rtable(Tindx)%HeIIIrccA + rdif) 
-    
-    rdif = (rtable(Tindx+1)%HeIIIrccB - rtable(Tindx)%HeIIIrccB) * Tremain
-    k%HeIIIrccB = (rtable(Tindx)%HeIIIrccB + rdif) 
-    
-    rdif = (rtable(Tindx+1)%HeDrcc - rtable(Tindx)%HeDrcc) * Tremain
-    k%HeDrcc = (rtable(Tindx)%HeDrcc + rdif) 
-    
-    ! Collisional Ionization Cooling
-    
-    rdif = (rtable(Tindx+1)%HIcic - rtable(Tindx)%HIcic) * Tremain
-    k%HIcic = (rtable(Tindx)%HIcic + rdif) 
-    
-    rdif = (rtable(Tindx+1)%HeIcic - rtable(Tindx)%HeIcic) * Tremain
-    k%HeIcic = (rtable(Tindx)%HeIcic + rdif) 
-    
-    rdif = (rtable(Tindx+1)%HeIIcic - rtable(Tindx)%HeIIcic) * Tremain
-    k%HeIIcic = (rtable(Tindx)%HeIIcic + rdif) 
-    
-    rdif = (rtable(Tindx+1)%He23cic - rtable(Tindx)%He23cic) * Tremain
-    k%He23cic = (rtable(Tindx)%He23cic + rdif) 
-    
-    ! Collisional Excitation Cooling
-    
-    rdif = (rtable(Tindx+1)%HIcec - rtable(Tindx)%HIcec) * Tremain
-    k%HIcec = (rtable(Tindx)%HIcec + rdif) 
-    
-    rdif = (rtable(Tindx+1)%HeIcec - rtable(Tindx)%HeIcec) * Tremain
-    k%HeIcec = (rtable(Tindx)%HeIcec + rdif) 
-    
-    rdif = (rtable(Tindx+1)%HeIIcec - rtable(Tindx)%HeIIcec) * Tremain
-    k%HeIIcec = (rtable(Tindx)%HeIIcec + rdif) 
-    
-    
-  end subroutine get_atomic_rates
+  end subroutine write_atomic_rates_to_log_file
 
 
 

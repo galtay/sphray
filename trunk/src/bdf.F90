@@ -12,6 +12,7 @@ use ionpar_mod
 use cen_atomic_rates_mod
 use atomic_rates_mod
 use physical_constants_mod
+use global_mod, only: rtable, isoT_k
 implicit none
 
   integer(i8b), parameter :: MaxSteps = 500000  !< maximum number of steps
@@ -60,11 +61,11 @@ subroutine bdfint(ip,scalls,photo,caseA,He,isoT,fixT)
   !---------------------------------------------------------
   ! if constant temperature run, set constant atomic rates
   if (isoT) then
-     k = iso_k
+     k = isoT_k
   end if
 
   if (fixT) then
-     call get_atomic_rates(ip%T,k)
+     call get_atomic_rates(ip%T,rtable,k)
   end if
 
   !-------------------------------------------------------------------
@@ -101,7 +102,7 @@ subroutine bdfint(ip,scalls,photo,caseA,He,isoT,fixT)
 
      if (.not. isoT .and. .not. fixT) then
         ip%u = 1.5 * (ip%nH + ip%nHe + ip%ne) * k_erg_K * ip%T 
-        call get_atomic_rates(ip%T,k)
+        call get_atomic_rates(ip%T,rtable,k)
         call set_cooling_func(ip,k,photo,caseA,He)
         if (photo) then
            ip%dudt = ip%COOLp

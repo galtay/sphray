@@ -9,6 +9,9 @@ use ionpar_mod
 use cen_atomic_rates_mod
 use atomic_rates_mod
 use physical_constants_mod
+use global_mod, only: isoT_k, rtable
+use physical_constants_mod
+
 implicit none
 
   integer(i8b), parameter :: MaxSteps = 500000 !< maximum number of steps
@@ -60,11 +63,11 @@ subroutine eulerint(ip,scalls,photo,caseA,He,isoT,fixT)
   !---------------------------------------------------------
   ! if constant temperature run, set constant atomic rates
   if (isoT) then
-     k = iso_k
+     k = isoT_k
   end if
 
   if (fixT) then
-     call get_atomic_rates(ip%T,k)
+     call get_atomic_rates(ip%T,rtable,k)
   end if
 
   !-------------------------------------------------------------------
@@ -100,7 +103,7 @@ subroutine eulerint(ip,scalls,photo,caseA,He,isoT,fixT)
      ! calculate the cooling function
      if (.not. isoT .and. .not. fixT) then
         ip%u = 1.5 * (ip%nH + ip%nHe + ip%ne) * k_erg_K * ip%T 
-        call get_atomic_rates(ip%T,k)
+        call get_atomic_rates(ip%T,rtable,k)
         call set_cooling_func(ip,k,photo,caseA,He)
         if (photo) then
            ip%dudt = ip%COOLp
@@ -245,13 +248,7 @@ end subroutine eulerint
 !! ip%xHII, ip%xHeII, ip%xHeIII, ip%T, ip%pdeps
 !========================================================================
 subroutine recombeulerint(ip,scalls)
-use cen_atomic_rates_mod, only: Haiman_Bremss_cool
-use cen_atomic_rates_mod, only: Haiman_Comp_Heol
-use atomic_rates_mod, only: get_atomic_rates
-use atomic_rates_mod, only: iso_k
-use ionpar_mod, only: ionpar2screen
-use ionpar_mod, only: set_gammas, set_cooling_func, set_dnedt
-use physical_constants_mod
+
 
   real(r8b), parameter :: TAU_TOL = 1.0e-4
 

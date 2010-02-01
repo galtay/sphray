@@ -28,7 +28,7 @@
 #OPT += -DstartIonized # starts all particles with xHII = 1.0 - 1.0e-6
 
 
-OPT += -Dhdf5     # if you are using the hdf
+#OPT += -Dhdf5     # if you are using the hdf
 
 #OPT += -DOWLS     # selects input as an OWLS snapshot
 
@@ -43,21 +43,21 @@ endif
 # System Definitions
 #=============================================================================
 #
-# The following system definitions can be usefull in setting 
-# the variables FC (Fortran Compiler) and FFLAGS (Compiler Flags).
-# I have used some features from the Fortran 2003 standard which gfortran 
-# hasn't implemented (yet).  The non OpenGL version compiles with g95 while
-# both the OpenGL and non-OpenGL versions compile with the Intel compiler. 
+# In order for the Makefile to work you have to design an include file
+# for your system that sets certain variables.  Please look in the 
+# makes directory for examples. 
+
+#include makes/make.icc-graphics.serial.debug
+#include makes/make.icc-graphics.serial.opt
+
+#include makes/make.xgpc.serial.debug
+#include makes/make.xgpc.serial.opt
 
 
-#SYSTEM= generic_ifort_opt
-#SYSTEM= generic_ifort_fast
-#SYSTEM= generic_g95_opt
-#SYSTEM= generic_gfortran_opt
+#include makes/make.cosma.openmp
+#include makes/make.cosma.mpi
 
-#SYSTEM= cdm
-#SYSTEM= profile_ifort
-SYSTEM= debug_ifort
+include makes/make.santabuntu.serial.opt
 
 
 
@@ -67,68 +67,6 @@ SYSTEM= debug_ifort
 CC= gcc
 CFLAGS= -O3
 
-
-#IFORTFLAGS= -ftz -fpe0 -g -traceback -heap-arrays -warn all -fpp 
-IFORTFLAGS= -ftz -fpe0 -g -traceback -heap-arrays -fpp 
-
-
-ifeq ($(SYSTEM),generic_ifort_opt)
-   FC= ifort
-   FFLAGS= $(IFORTFLAGS) -xHost -O3 -ipo
-endif
-
-ifeq ($(SYSTEM),generic_ifort_fast)
-   FC= ifort
-   FFLAGS= $(IFORTFLAGS) -fast
-endif
-
-ifeq ($(SYSTEM),cdm)
-   FC=f95
-   FFLAGS= 
-endif
-
-ifeq ($(SYSTEM),debug_ifort)
-   FC= ifort
-   FFLAGS= $(IFORTFLAGS) -C
-endif
-
-ifeq ($(SYSTEM),profile_ifort)
-   FC= ifort
-   FFLAGS= $(IFORTFLAGS) -p
-endif
-
-ifeq ($(SYSTEM),generic_g95_opt)
-   FC= g95
-   FFLAGS= -O3 -ffast-math -cpp
-endif
-
-ifeq ($(SYSTEM),generic_gfortran_opt)
-   FC= gfortran
-   FFLAGS= -O3 -Wall -frecord-marker=4 -g -frange-check
-endif
-
-# Set Library/Include/Module/RunTime flags for compiler.
-#=============================================================================
-ifeq ($(FC),ifort)
-   ISLIB= -L
-   ISINC= -I
-   ISMOD= -I
-   ISRLIB= -Wl,-rpath=
-endif
-
-ifeq ($(FC),f95)
-   ISLIB= -L
-   ISINC= -I
-   ISMOD= -M
-   ISRLIB= -R
-endif
-
-ifeq ($(FC),g95)
-   ISLIB= -L
-   ISINC= -I
-   ISMOD= -M
-   ISRLIB= -R
-endif
 
 
 
@@ -144,7 +82,7 @@ SRC= 	myf90.o \
 	cen_atomic_rates.o \
 	hummer_atomic_rates.o  \
 	atomic_rates.o \
-	ionization_tables.o \
+	ion_table_class.o \
 	pluecker.o \
 	cosmology.o \
 	particle_system.o \
@@ -177,12 +115,11 @@ SRC= 	myf90.o \
 OPTHDF= 
 
 ifeq (hdf5,$(findstring hdf5, $(OPT)))
-#   DIRHDF= /opt/hdf5-1.8.3/hdf5
-   DIRHDF= /home/galtay/localhome/opt/hdf5-1.8.4/hdf5
    INCHDF= $(ISINC)$(DIRHDF)/include $(ISINC)$(DIRHDF)/lib
+   MODHDF= $(ISMOD)$(DIRHDF)/lib
    RLIBHDF= $(ISRLIB)$(DIRHDF)/lib
    LIBHDF= $(ISLIB)$(DIRHDF)/lib 
-   OPTHDF= $(RLIBHDF) $(LIBHDF) $(INCHDF) -lhdf5 -lhdfwrapper
+   OPTHDF= $(INCHDF) $(MODHDF) $(RLIBHDF) $(LIBHDF)  -lhdf5 -lhdfwrapper
 endif
 
 OPT += $(OPTHDF)
