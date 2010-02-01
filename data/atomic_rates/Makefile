@@ -9,7 +9,7 @@ SRCDIR=../../src
 
 FILES= $(SRCDIR)/myf90.o $(SRCDIR)/hui_gnedin_atomic_rates.o \
        $(SRCDIR)/cen_atomic_rates.o $(SRCDIR)/hummer_atomic_rates.o \
-       $(SRCDIR)/voronov_atomic_rates.o 
+       $(SRCDIR)/voronov_atomic_rates.o $(SRCDIR)/atomic_rates.o
 
 INCLUDE = -I$(SRCDIR)
 OPT=

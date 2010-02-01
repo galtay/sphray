@@ -1,8 +1,9 @@
 program write_rates_Vor
 use myf90_mod
-use HuiGnedinAtomicRates
-use CenAtomicRates
-use VoronovAtomicRates
+use hui_gnedin_atomic_rates_mod
+use cen_atomic_rates_mod
+use voronov_atomic_rates_mod
+use atomic_rates_mod
 implicit none
 
 real(r8b), parameter :: T1 = 1.0d0
@@ -10,127 +11,104 @@ real(r8b), parameter :: T2 = 1.0d9
 real(r8b), parameter :: logT1 = log10(T1)
 real(r8b), parameter :: logT2 = log10(T2)
 integer(i8b), parameter :: Tbins = 2251
-real(r8b), parameter :: dTlog = (logT2 - logT1) / real(Tbins-1)
-integer(i8b) :: i
+real(r8b), parameter :: dlogT = (logT2 - logT1) / real(Tbins-1)
+integer(i8b) :: i, j
 real(r8b) :: T
 real(r8b) :: logT
 
-real :: rate
-
 character(200) :: ratesfile
 
-character(14), parameter :: names(25) = (/ "temperature" , &
-                                          "HIci",    "HeIci",    "HeIIci", &
-                                          "HIIrcA",  "HeIIrcA",  "HeIIIrcA", &
-                                          "HIIrcB",  "HeIIrcB",  "HeIIIrcB", &
-                                          "HeDrc", &
-                                          "HIIrccA", "HeIIrccA", "HeIIIrccA", &
-                                          "HIIrccB", "HeIIrccB", "HeIIIrccB", &
-                                          "HeDrcc", &
-                                          "HIcic",   "HeIcic",   "HeIIcic", &
-                                          "He23cic", &
-                                          "HIcec",   "HeIcec",   "HeIIcec"  /)
 
+type(atomic_rates_table_type) :: table
 
-!--------------
-!> atomic rates
-type atomic_rates_type
-   real(r4b) :: logT      !< log10 temperature
-
-   real(r4b) :: HIci      !< HI   collisional ionization rate 
-   real(r4b) :: HeIci     !< HeI  collisional ionization rate 
-   real(r4b) :: HeIIci    !< HeII collisional ionization rate 
-
-   real(r4b) :: HIIrcA    !< HII   recombination rate (case A)
-   real(r4b) :: HeIIrcA   !< HeII  recombination rate (case A)
-   real(r4b) :: HeIIIrcA  !< HeIII recombination rate (case A)
-
-   real(r4b) :: HIIrcB    !< HII   recombination rate (case B)
-   real(r4b) :: HeIIrcB   !< HeII  recombination rate (case B)
-   real(r4b) :: HeIIIrcB  !< HeIII recombination rate (case B)
-   real(r4b) :: HeDrc     !< dielectronic He recombination rate   
-
-   real(r4b) :: HIIrccA   !< HII   recombination cooling rate (case A)
-   real(r4b) :: HeIIrccA  !< HeII  recombination cooling rate (case A)
-   real(r4b) :: HeIIIrccA !< HeIII recombination cooling rate (case A)
-
-   real(r4b) :: HIIrccB   !< HII   recombination cooling rate (case B)
-   real(r4b) :: HeIIrccB  !< HeII  recombination cooling rate (case B)
-   real(r4b) :: HeIIIrccB !< HeIII recombination cooling rate (case B)
-   real(r4b) :: HeDrcc    !< dielectronic He recombination cooling rate
-   
-   real(r4b) :: HIcic     !< HI   collisional ionization cooling rate
-   real(r4b) :: HeIcic    !< HeI  collisional ionization cooling rate
-   real(r4b) :: HeIIcic   !< HeII collisional ionization cooling rate
-   real(r4b) :: He23cic   !< He23 collisional ionization cooling rate
-   
-   real(r4b) :: HIcec     !< HI   collisional excitation cooling rate
-   real(r4b) :: HeIcec    !< HeI  collisional excitation cooling rate
-   real(r4b) :: HeIIcec   !< HeII collisional excitation cooling rate
-      
-end type atomic_rates_type
-
-
-
-type(atomic_rates_type) :: k
-
-write(*,*) "dTlog = ", dTlog
+write(*,*) "dlogT = ", dlogT
 write(*,*) "logT2 - logT2 = ", logT2 - logT1
 
+table%logT1 = logT1
+table%logT2 = logT2
+table%Tbins = Tbins
+table%dlogT = dlogT
 
-ratesfile = "atomic_rates_Vor.txt"
-open(unit=10,file=ratesfile)
+call allocate_atomic_rates_table( table, table%Tbins )
 
-150 format(2ES12.5,I8,ES12.5)
-write(10,150) logT1, logT2, Tbins, dTlog
-200 format(1X,25(A))
-write(10,200) names
+
+table%HIci%source      = "vor97" 
+table%HeIci%source     = "vor97" 
+table%HeIIci%source    = "vor97" 
+
+table%HIIrcA%source    = "cen92" 
+table%HeIIrcA%source   = "cen92" 
+table%HeIIIrcA%source  = "cen92" 
+
+table%HIIrcB%source    = "hui97"
+table%HeIIrcB%source   = "hui97"
+table%HeIIIrcB%source  = "hui97" 
+table%HeDrc%source     = "cen92" 
+
+table%HIIrccA%source   = "cen92" 
+table%HeIIrccA%source  = "cen92" 
+table%HeIIIrccA%source = "cen92" 
+
+table%HIIrccB%source   = "hui97"
+table%HeIIrccB%source  = "hui97"
+table%HeIIIrccB%source = "hui97"   
+table%HeDrcc%source    = "cen92" 
+
+table%HIcic%source     = "cen92" 
+table%HeIcic%source    = "cen92" 
+table%HeIIcic%source   = "cen92" 
+table%He23cic%source   = "cen92" 
+
+table%HIcec%source     = "cen92" 
+table%HeIcec%source    = "cen92" 
+table%HeIIcec%source   = "cen92" 
+
 
 
 do i = 0,Tbins-1
 
-   logT = logT1 + i*dTlog
+   logT = logT1 + i*dlogT
    T = 10**logT
 
-   k%logT = logT
+   j = i+1
+   table%logT(j) = logT
 
-   k%HIci   = Vor_HI_col_ion(T)   
-   k%HeIci  = Vor_HeI_col_ion(T)  
-   k%HeIIci = Vor_HeII_col_ion(T) 
+   table%HIci%rate(j)      = Vor_HI_col_ion(T)
+   table%HeIci%rate(j)     = Vor_HeI_col_ion(T)  
+   table%HeIIci%rate(j)    = Vor_HeII_col_ion(T) 
 
-   k%HIIrcA   = Cen_HII_recombA(T)
-   k%HeIIrcA  = Cen_HeII_recombA(T) 
-   k%HeIIIrcA = Cen_HeIII_recombA(T) 
+   table%HIIrcA%rate(j)    = Cen_HII_recombA(T)
+   table%HeIIrcA%rate(j)   = Cen_HeII_recombA(T) 
+   table%HeIIIrcA%rate(j)  = Cen_HeIII_recombA(T) 
 
-   k%HIIrcB   = Hui_HII_recombB(T)
-   k%HeIIrcB  = Hui_HeII_recombB(T) 
-   k%HeIIIrcB = Hui_HeIII_recombB(T)      
-   k%HeDrc    = Cen_He_dielec_recomb(T)
+   table%HIIrcB%rate(j)    = Hui_HII_recombB(T)
+   table%HeIIrcB%rate(j)   = Hui_HeII_recombB(T) 
+   table%HeIIIrcB%rate(j)  = Hui_HeIII_recombB(T)      
+   table%HeDrc%rate(j)     = Cen_He_dielec_recomb(T)
 
-   k%HIIrccA   = Cen_HII_recomb_coolA(T)
-   k%HeIIrccA  = Cen_HeII_recomb_coolA(T) 
-   k%HeIIIrccA = Cen_HeIII_recomb_coolA(T) 
+   table%HIIrccA%rate(j)   = Cen_HII_recomb_coolA(T)
+   table%HeIIrccA%rate(j)  = Cen_HeII_recomb_coolA(T) 
+   table%HeIIIrccA%rate(j) = Cen_HeIII_recomb_coolA(T) 
 
-   k%HIIrccB   = Hui_HII_rec_coolB(T)
-   k%HeIIrccB  = Hui_HeII_rec_coolB(T) 
-   k%HeIIIrccB = Hui_HeIII_rec_coolB(T)      
-   k%HeDrcc    = Cen_He_dielec_recomb_cool(T)
+   table%HIIrccB%rate(j)   = Hui_HII_rec_coolB(T)
+   table%HeIIrccB%rate(j)  = Hui_HeII_rec_coolB(T) 
+   table%HeIIIrccB%rate(j) = Hui_HeIII_rec_coolB(T)      
+   table%HeDrcc%rate(j)    = Cen_He_dielec_recomb_cool(T)
 
-   k%HIcic     = Cen_HI_col_ion_cool(T)
-   k%HeIcic    = Cen_HeI_col_ion_cool(T)
-   k%HeIIcic   = Cen_HeII_col_ion_cool(T)
-   k%He23cic   = Cen_He23s_col_ion_cool(T)
+   table%HIcic%rate(j)     = Cen_HI_col_ion_cool(T)
+   table%HeIcic%rate(j)    = Cen_HeI_col_ion_cool(T)
+   table%HeIIcic%rate(j)   = Cen_HeII_col_ion_cool(T)
+   table%He23cic%rate(j)   = Cen_He23s_col_ion_cool(T)
 
-   k%HIcec     =  Cen_HI_col_ext_cool(T)
-   k%HeIcec    =  Cen_HeI_col_ext_cool(T)
-   k%HeIIcec   =  Cen_HeII_col_ext_cool(T)
-
-100 format(25(ES12.5,2X))
-    write(10,100) k
+   table%HIcec%rate(j)     = Cen_HI_col_ext_cool(T)
+   table%HeIcec%rate(j)    = Cen_HeI_col_ext_cool(T)
+   table%HeIIcec%rate(j)   = Cen_HeII_col_ext_cool(T)
 
 end do
 
-close(10)
+call write_atomic_rates_table_to_file( table, "atomic_rates_Vor.txt" )
+
+
 
 
 
