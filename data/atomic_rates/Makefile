@@ -1,7 +1,8 @@
 FC=ifort
 FFLAGS= -O2 -ip -heap-arrays -traceback -fpe0 -C
 
-APPS= write_rates_Cen write_rates_Hui write_rates_Hum write_rates_Vor write_rates
+APPS= write_rates_Cen write_rates_Hui write_rates_Hum \
+      write_rates test_rates_vs_iontables
 
 #--------------------
 
@@ -9,7 +10,7 @@ SRCDIR=../../src
 
 FILES= $(SRCDIR)/myf90.o $(SRCDIR)/hui_gnedin_atomic_rates.o \
        $(SRCDIR)/cen_atomic_rates.o $(SRCDIR)/hummer_atomic_rates.o \
-       $(SRCDIR)/voronov_atomic_rates.o $(SRCDIR)/atomic_rates.o
+       $(SRCDIR)/atomic_rates.o
 
 INCLUDE = -I$(SRCDIR)
 OPT=
@@ -32,6 +33,9 @@ write_rates_Hui: $(FILES) write_rates_Hui.o
 	$(FC) $(FFLAGS) -o $@ $^ $(LIBS) $(INCLUDE)
 
 write_rates_Hum: $(FILES) write_rates_Hum.o
+	$(FC) $(FFLAGS) -o $@ $^ $(LIBS) $(INCLUDE)
+
+test_rates_vs_iontables: $(FILES) test_rates_vs_iontables.o
 	$(FC) $(FFLAGS) -o $@ $^ $(LIBS) $(INCLUDE)
 
 
