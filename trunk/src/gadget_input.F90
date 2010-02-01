@@ -111,7 +111,7 @@ subroutine get_planning_data_gadget()
 
   ! open up the planning data log file
   !======================================================
-  logfile = trim(GV%OutputDir) // "/" // "headers.log"
+  logfile = trim(GV%OutputDir) // "/" // "particle_headers.log"
   call open_formatted_file_w(logfile,loglun)
 
 
@@ -1044,6 +1044,7 @@ subroutine gadget_header_to_file(ghead,lun)
        ", metals=",ghead%flag_metals, &
        ", entr_ics=", ghead%flag_entr_ics
   write(lun,*) 
+
 
 end subroutine gadget_header_to_file
 
