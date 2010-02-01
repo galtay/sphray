@@ -9,7 +9,7 @@ use cen_atomic_rates_mod
 implicit none
 
   character(14), parameter :: ratenames(25) = &
-       (/ "Log T         ",                                                        &
+       (/ "LogT          ",                                                        &
           "HIci          ", "HeIci         ", "HeIIci        ",                    &
           "HIIrcA        ", "HeIIrcA       ", "HeIIIrcA      ",                    &
           "HIIrcB        ", "HeIIrcB       ", "HeIIIrcB      ", "HeDrc         ",  &
@@ -174,7 +174,8 @@ contains
 
     integer(i8b) :: lun,err,i
     logical :: fthere
-    
+    character(14) :: tags(25)
+    character(14) :: srcs(24)
     character(clen) :: str
 
 
@@ -192,41 +193,40 @@ contains
     end do
 
     read(lun,*) table%logT1, table%logT2, table%Tbins, table%dlogT
-    read(lun,*) ! column names
+    read(lun,*) tags
+    read(lun,*) srcs
 
-    read(lun,"(A)") &
-
-       table%HIci%source, &       
-       table%HeIci%source, &      
-       table%HeIIci%source, &     
-       
-       table%HIIrcA%source, &     
-       table%HeIIrcA%source, &    
-       table%HeIIIrcA%source, &   
-       
-       table%HIIrcB%source, &     
-       table%HeIIrcB%source, &    
-       table%HeIIIrcB%source, &     
-       table%HeDrc%source, &      
-       
-       table%HIIrccA%source, &    
-       table%HeIIrccA%source, &    
-       table%HeIIIrccA%source, &  
-       
-       table%HIIrccB%source, &    
-       table%HeIIrccB%source, &   
-       table%HeIIIrccB%source, &      
-       table%HeDrcc%source, & 
-       
-       table%HIcic%source, &      
-       table%HeIcic%source, &     
-       table%HeIIcic%source, &    
-       table%He23cic%source, &    
-       
-       table%HIcec%source, &      
-       table%HeIcec%source, &     
-       table%HeIIcec%source   
-
+    table%HIci%source = srcs(1)       
+    table%HeIci%source = srcs(2)      
+    table%HeIIci%source = srcs(3)     
+    
+    table%HIIrcA%source = srcs(4)     
+    table%HeIIrcA%source = srcs(5)    
+    table%HeIIIrcA%source = srcs(6)   
+    
+    table%HIIrcB%source = srcs(7)     
+    table%HeIIrcB%source = srcs(8)    
+    table%HeIIIrcB%source = srcs(9)     
+    table%HeDrc%source = srcs(10)      
+    
+    table%HIIrccA%source = srcs(11)    
+    table%HeIIrccA%source = srcs(12)    
+    table%HeIIIrccA%source = srcs(13)  
+    
+    table%HIIrccB%source = srcs(14)    
+    table%HeIIrccB%source = srcs(15)   
+    table%HeIIIrccB%source = srcs(16)      
+    table%HeDrcc%source = srcs(17) 
+    
+    table%HIcic%source = srcs(18)      
+    table%HeIcic%source = srcs(19)     
+    table%HeIIcic%source = srcs(20)    
+    table%He23cic%source = srcs(21)    
+    
+    table%HIcec%source = srcs(22)      
+    table%HeIcec%source = srcs(23)     
+    table%HeIIcec%source = srcs(24)   
+    
 
     call allocate_atomic_rates_table( table, table%Tbins )
 
@@ -265,7 +265,7 @@ contains
           table%HIcec%rate(i), &      
           table%HeIcec%rate(i), &     
           table%HeIIcec%rate(i)   
-     
+
   end do
 
  
