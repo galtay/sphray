@@ -6,12 +6,21 @@
 module gadget_input_hdf5_mod
 use global_mod, only: GV
 use gadget_input_mod
+use ion_table_class
+use physical_constants_mod
+use source_input_mod, only: read_source_header, source_header_type
 #ifdef hdf5
 use hdf5_wrapper
 #endif
 implicit none
 
+private
 
+public :: read_gadget_header_hdf5
+public :: get_planning_data_gadget_hdf5
+public :: read_Ghdf5_particles
+public :: update_hdf5_particles
+public :: gadget_output_hdf5
 
 contains
 
@@ -90,9 +99,11 @@ use source_input_mod, only: read_source_header
   integer(i8b) :: iSnap   !< first snap number
   integer(i8b) :: fSnap   !< last snap number
   integer(i8b) :: pfiles  !< nfiles for particle snapshots
+  integer(i8b) :: sfiles  !< nfiles for source snapshosts
   integer(i8b) :: i,j     !< counters
 
   type(gadget_header_type) :: ghead
+  type(source_header_type) :: shead
 
   character(clen) :: snapfile
 
@@ -103,7 +114,7 @@ use source_input_mod, only: read_source_header
  
   ! open up the planning data log file
   !======================================================
-  logfile = trim(GV%OutputDir) // "/" // "headers.log"
+  logfile = trim(GV%OutputDir) // "/" // "particle_headers.log"
   call open_formatted_file_w(logfile,loglun)
 
   
@@ -113,6 +124,7 @@ use source_input_mod, only: read_source_header
   fSnap = GV%EndSnapNum
     
   pfiles = GV%ParFilesPerSnap
+  sfiles = GV%SourceFilesPerSnap
 
   allocate( saved_gheads(iSnap:fSnap, 0:pfiles-1) )
 
@@ -179,9 +191,13 @@ use source_input_mod, only: read_source_header
   end do
 
 
-    ! close headers log file
+
+  ! close headers log file
   !========================
   close(loglun)
+
+
+
 
 
   ! write units to log file
@@ -247,6 +263,9 @@ subroutine read_Ghdf5_particles()
   real(r8b) :: Tdum
   real(r8b) :: MB
   real(r8b) :: Hmf
+
+  type(ion_table_type) :: itab
+  real :: redshift
 
   ! set default values
   !===============================
@@ -378,7 +397,7 @@ subroutine read_Ghdf5_particles()
      VarName = 'Temperature'
      call hdf5_read_data(fh,trim(GroupName)//trim(VarName),rblck)
 
-#ifdef OWLS
+#if defined (OWLS) || defined (GIMIC)
      allocate(eosblck(ngas1), stat=err)
      if(err/=0) call myerr("allocating eosblck for EOS",myname,crash)
 
@@ -388,7 +407,7 @@ subroutine read_Ghdf5_particles()
 
      do i = 1,ngas1
         psys%par(ngasread+i)%T = rblck(i) 
-#ifdef OWLS
+#if defined (OWLS) || defined (GIMIC)
         if ( eosblck(i) == 1.0 ) psys%par(ngasread+i)%T = 1.0e4
 #endif
      end do
@@ -461,34 +480,37 @@ subroutine read_Ghdf5_particles()
 #endif
 
 
-     ! read xHI (really HI mass and convert)
-     !-----------------------------------------------------------!
-     allocate(rblck(ngas1), stat=err)
-     if(err/=0) call myerr("allocating rblck for xHI",myname,crash)
-
-     VarName = 'IonMass/h1'
-     call hdf5_read_data(fh,trim(GroupName)//trim(VarName),rblck)
-
-     do i = 1, ngas1
-#ifdef incHmf
-        Hmf = psys%par(ngasread+i)%Hmf
-#else
-        Hmf = GV%H_mf
-#endif
-        psys%par(ngasread+i)%xHI = rblck(i) / ( psys%par(ngasread+i)%mass * Hmf )
-     end do
-     deallocate(rblck)
-
-
-
-
      ngasread = ngasread + ngas1
      call hdf5_close_file(fh)
 
 
   end do files
 
- 
+
+
+  ! calculate xHI from iontables
+  !-----------------------------------------------------------!  
+  call read_ion_table_file( "/home/galtay/usr/idl-hands/ion_tables/h1.hdf5", itab )
+  
+  allocate(rblck(ngas), stat=err)
+  if(err/=0) call myerr("allocating rblck for nH",myname,crash)
+  
+  rblck = psys%par(:)%rho * GV%cgs_rho * ghead%h**2 / ghead%a**3 * &
+          psys%par(:)%Hmf / M_p
+
+  write(*,*) " min/max nH = ", minval( rblck ), maxval( rblck )
+
+  redshift = ghead%z
+  do i = 1,ngas
+     psys%par(i)%xHI = &
+          interpolate_ion_table( itab, redshift, log10(psys%par(i)%T), log10(rblck(i)) )
+  end do
+  deallocate( rblck )
+
+  write(*,*) " min/max xHI = ", minval( psys%par%xHI ), maxval( psys%par%xHI )
+
+  
+
   ! set xHII from xHI 
   !-----------------------------------------------------------!  
   psys%par%xHII = 1.0d0 - psys%par%xHI
