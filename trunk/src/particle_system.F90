@@ -31,41 +31,45 @@ public :: adjustbox
 !=========================
 type particle_type
 
-   real(r4b)    :: pos(3)    !< x,y,z coordinates
+   real(r4b)    :: pos(3)     !< x,y,z coordinates
 
 #ifdef incVel
-   real(r4b)    :: vel(3)    !< x,y,z velocities
+   real(r4b)    :: vel(3)     !< x,y,z velocities
 #endif
 
-   integer(i4b) :: id        !< particle id
-   real(r4b)    :: mass      !< particle mass
-   real(r4b)    :: T         !< temperature in K       
-   real(r4b)    :: rho       !< density 
-   real(r4b)    :: ye        !< electron fraction
-   real(r4b)    :: xHI       !< nHI/nH 
-   real(r4b)    :: xHII      !< * nHII/nH
-   real(r4b)    :: hsml      !< smoothing length
+   integer(i4b) :: id         !< particle id
+   real(r4b)    :: mass       !< particle mass
+   real(r4b)    :: T          !< temperature in K       
+   real(r4b)    :: rho        !< density 
+   real(r4b)    :: ye         !< electron fraction
+   real(r4b)    :: xHI        !< nHI/nH 
+   real(r4b)    :: xHII       !< * nHII/nH
+   real(r4b)    :: hsml       !< smoothing length
+
+#ifdef cloudy
+   real(r4b)    :: xHI_cloudy !< cloudy eq solutions
+#endif
 
 #ifdef incHmf   
-   real(r4b)    :: Hmf       !< Hydrogen mass fraction
+   real(r4b)    :: Hmf        !< Hydrogen mass fraction
 #endif
 
 #ifdef incHe
-   real(r4b)    :: xHeI      !< * nHeI/nHe 
-   real(r4b)    :: xHeII     !< * nHeII/nHe
-   real(r4b)    :: xHeIII    !< * nHeIII/nHe
+   real(r4b)    :: xHeI       !< * nHeI/nHe 
+   real(r4b)    :: xHeII      !< * nHeII/nHe
+   real(r4b)    :: xHeIII     !< * nHeIII/nHe
 #endif
 
 #ifdef incHemf
-   real(r4b)    :: Hemf      !< Helium mass fraction
+   real(r4b)    :: Hemf       !< Helium mass fraction
 #endif
 
 #ifdef outGamma
-   real(r4b)    :: gammaHI   !< * time averaged HI photoionization rate
-   real(r4b)    :: time      !< * elapsed time in seconds - reset at outputs
+   real(r4b)    :: gammaHI    !< * time averaged HI photoionization rate
+   real(r4b)    :: time       !< * elapsed time in seconds - reset at outputs
 #endif
 
-   integer(i8b) :: lasthit   !< * indx of last ray to cross this particle
+   integer(i8b) :: lasthit    !< * indx of last ray to cross this particle
   
 end type particle_type
 
@@ -580,6 +584,11 @@ subroutine particle_info_to_screen(psys,str,lun)
   
   write(outlun,100) "xHI",    minval(psys%par%xHI), maxval(psys%par%xHI), &
        meanval_real(psys%par%xHI)
+
+#ifdef cloudy
+  write(outlun,100) "xHI_cld",    minval(psys%par%xHI_cloudy), maxval(psys%par%xHI_cloudy), &
+       meanval_real(psys%par%xHI_cloudy)
+#endif
   
   write(outlun,100) "xHII",   minval(psys%par%xHII), maxval(psys%par%xHII), &
        meanval_real(psys%par%xHII)

@@ -257,6 +257,15 @@ contains
 #endif
 
 
+#ifdef cloudy
+           write(lun) pars(Nread+1:Nread+Nfile)%xHI_cloudy
+#endif
+
+
+#ifdef incHmf
+           write(lun) pars(Nread+1:Nread+Nfile)%Hmf
+#endif
+
            write(lun) pars(Nread+1:Nread+Nfile)%lasthit
 
 
