@@ -10,23 +10,54 @@ use particle_system_mod, only: transformation_type
 
 !---------------------------------
 !> local particle type. 
-  type, extends(particle_type) :: sphpar_type
+  type sphpar_type
+
+     real(r4b)    :: pos(3)     !< x,y,z coordinates
 
 #ifndef incVel
-     real(r4b) :: vel
+     real(r4b)    :: vel
+#endif
+
+     integer(i4b) :: id         !< particle id
+     real(r4b)    :: mass       !< particle mass
+     real(r4b)    :: T          !< temperature in K       
+     real(r4b)    :: rho        !< density 
+     real(r4b)    :: ye         !< electron fraction
+     real(r4b)    :: xHI        !< nHI/nH 
+     real(r4b)    :: xHII       !< * nHII/nH
+     real(r4b)    :: hsml       !< smoothing length
+     
+#ifdef cloudy
+     real(r4b)    :: xHI_cloudy !< cloudy eq solutions
+#endif
+     
+#ifdef incHmf   
+     real(r4b)    :: Hmf        !< Hydrogen mass fraction
 #endif
 
 #ifndef incHe
-     real(r4b) :: xHeI
-     real(r4b) :: xHeII
-     real(r4b) :: xHeIII
+     real(r4b)    :: xHeI
+     real(r4b)    :: xHeII
+     real(r4b)    :: xHeIII
 #endif
-
+     
+#ifdef incHemf
+     real(r4b)    :: Hemf       !< Helium mass fraction
+#endif
+     
+#ifdef outGamma
+     real(r4b)    :: gammaHI    !< * time averaged HI photoionization rate
+     real(r4b)    :: time       !< * elapsed time in seconds - reset at outputs
+#endif
+     
+     integer(i8b) :: lasthit    !< * indx of last ray to cross this particle
+     
      integer(i4b) :: nnb     !< number of SPH neighbors
-     real(r4b) :: gradrho(3) !< vector gradient of the density
-     real(r4b) :: drhodh     !< derivative of rho wrt to h
-     real(r4b) :: fi         !< used for finding smoothing length
-     real(r4b) :: dfi        !< used for finding smoothing length
+     real(r4b)    :: gradrho(3) !< vector gradient of the density
+     real(r4b)    :: drhodh     !< derivative of rho wrt to h
+     real(r4b)    :: fi         !< used for finding smoothing length
+     real(r4b)    :: dfi        !< used for finding smoothing length
+
  end type sphpar_type
 
 contains
@@ -47,13 +78,21 @@ contains
 #endif
 
     sphpar%id = par%id
-    sphpar%hsml = par%hsml
-    sphpar%rho = par%rho
     sphpar%mass = par%mass
     sphpar%T = par%T 
-    
+    sphpar%rho = par%rho
+    sphpar%ye = par%ye
     sphpar%xHI = par%xHI
     sphpar%xHII = par%xHII
+    sphpar%hsml = par%hsml
+
+#ifdef cloudy
+    sphpar%xHI_cloudy = par%xHI_cloudy
+#endif
+
+#ifdef incHmf
+    sphpar%Hmf = par%Hmf
+#endif
 
 #ifdef incHe
     sphpar%xHeI = par%xHeI
@@ -63,6 +102,11 @@ contains
     sphpar%xHeI = 0.0
     sphpar%xHeII = 0.0
     sphpar%xHeIII = 0.0
+#endif
+
+#ifdef outGamma
+    sphpar%gammaHI = par%gammaHI
+    sphpar%time = par%time
 #endif
 
     sphpar%lasthit = par%lasthit
