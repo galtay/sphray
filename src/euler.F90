@@ -14,9 +14,9 @@ use physical_constants_mod
 
 implicit none
 
-  integer(i8b), parameter :: MaxSteps = 500000 !< maximum number of steps
-  real(r8b), parameter :: ION_FAC  = 1.0d-2    !< ionization time factor
-  real(r8b), parameter :: COOL_FAC = 1.0d-3    !< cooling time factor
+  integer(i8b), parameter :: MaxSteps = 50000000 !< maximum number of steps
+  real(r8b), parameter :: ION_FAC  = 1.0d-2      !< ionization time factor
+  real(r8b), parameter :: COOL_FAC = 1.0d-3      !< cooling time factor
   real(r8b), parameter :: TIME_TOL = 1.0d-4
 
   real(r8b), parameter :: zero = 0.0d0

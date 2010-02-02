@@ -511,6 +511,11 @@ subroutine read_Ghdf5_particles()
   end do
   deallocate( rblck )
 
+#ifdef cloudy
+  psys%par(:)%xHI_cloudy = psys%par(:)%xHI
+  write(*,*) " min/max xHI_cloudy = ", minval( psys%par%xHI_cloudy ), maxval( psys%par%xHI_cloudy )
+#endif
+
   write(*,*) " min/max xHI = ", minval( psys%par%xHI ), maxval( psys%par%xHI )
 
   

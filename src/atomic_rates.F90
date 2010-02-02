@@ -231,6 +231,7 @@ contains
     call allocate_atomic_rates_table( table, table%Tbins )
 
     do i = 1, table%Tbins
+
      read(lun,*) &
 
           table%logT(i), & 
@@ -388,7 +389,9 @@ contains
     real(r8b) :: Tnum
     
     if (T < 0.0) stop "T < 0.0 in get_Tindx_and_Tremain"
-    
+
+    if (log10(T) < table%logT1) stop "log(T) < table%logT1"
+
     Tnum = ( log10(T) - table%logT1 ) / table%dlogT
     Tindx = ceiling(Tnum)
     
@@ -420,7 +423,6 @@ contains
     real(r8b) :: Tremain, rdif
 
     call get_Tindx_and_Tremain(table, T, Tindx, Tremain)
-
 
     ! Collisional Ionization
 

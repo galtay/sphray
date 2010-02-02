@@ -41,7 +41,6 @@ subroutine initialize(config_file)
   call write_atomic_rates_to_log_file(rtable, GV%OutputDir)
 
   call get_atomic_rates(1.0d4, rtable, xHII_k)
-  call get_atomic_rates(GV%Tcmb_cur, rtable, cmbT_k)
   if (GV%IsoTemp /= 0.0) then
      call get_atomic_rates(GV%IsoTemp, rtable, isoT_k)
   end if

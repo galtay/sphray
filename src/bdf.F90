@@ -15,10 +15,10 @@ use physical_constants_mod
 use global_mod, only: rtable, isoT_k
 implicit none
 
-  integer(i8b), parameter :: MaxSteps = 500000  !< maximum number of steps
-  real(r8b), parameter :: ION_FAC = 0.01        !< ionization time factor
-  real(r8b), parameter :: COOL_FAC = 0.01       !< cooling time factor
-  real(r8b), parameter :: TIME_TOL = 0.001      !< fraction of time step to leave undone
+  integer(i8b), parameter :: MaxSteps = 50000000  !< maximum number of steps
+  real(r8b), parameter :: ION_FAC = 0.01          !< ionization time factor
+  real(r8b), parameter :: COOL_FAC = 0.01         !< cooling time factor
+  real(r8b), parameter :: TIME_TOL = 0.001        !< fraction of time step to leave undone
  
   real(r8b), parameter :: zero = 0.0d0
   real(r8b), parameter :: one = 1.0d0
