@@ -16,7 +16,7 @@
 # these flags to be commented out. 
 
 #OPT += -DincHe      # if you want to include Helium
-#OPT += -DoutGammaHI # if you want to output HI photoionization rate
+#OPT += -DoutGamma   # if you want to output HI photoionization rate
 
 #OPT += -DincHmf     # if you want individual Hydrogen mass fractions
 #OPT += -DincHemf    # if you want individual Helium mass fractions
@@ -30,13 +30,15 @@
 
 #OPT += -Dhdf5     # if you are using the hdf
 
-#OPT += -DOWLS     # selects input as an OWLS snapshot
+OPT += -DOWLS     # selects input as an OWLS snapshot
 
 
 ifeq (OWLS,$(findstring OWLS, $(OPT)))	
    OPT += -DincHmf
    OPT += -Dhdf5     
-   OPT += -DoutGammaHI 
+   OPT += -DoutGamma
+   OPT += -Dcloudy
+   OPT += -DstartNeutral	
 #   OPT += -DincHemf
 endif
 
@@ -51,13 +53,13 @@ endif
 #include makes/make.icc-graphics.serial.opt
 
 #include makes/make.xgpc.serial.debug
-#include makes/make.xgpc.serial.opt
+include makes/make.xgpc.serial.opt
 
 
 #include makes/make.cosma.openmp
 #include makes/make.cosma.mpi
 
-include makes/make.santabuntu.serial.opt
+#include makes/make.santabuntu.serial.opt
 
 
 
