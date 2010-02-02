@@ -30,7 +30,7 @@
 
 #OPT += -Dhdf5     # if you are using the hdf
 
-OPT += -DOWLS     # selects input as an OWLS snapshot
+#OPT += -DOWLS     # selects input as an OWLS snapshot
 
 
 ifeq (OWLS,$(findstring OWLS, $(OPT)))	
@@ -53,13 +53,14 @@ endif
 #include makes/make.icc-graphics.serial.opt
 
 #include makes/make.xgpc.serial.debug
-include makes/make.xgpc.serial.opt
+#include makes/make.xgpc.serial.opt
 
 
 #include makes/make.cosma.openmp
 #include makes/make.cosma.mpi
 
 #include makes/make.santabuntu.serial.opt
+include makes/make.santabuntu.serial.debug
 
 
 
