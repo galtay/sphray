@@ -260,10 +260,15 @@ use atomic_rates_mod, only: get_atomic_rates
      end do
   endif
 
-  ! set ionization conditions for Helium test if we need to
+  ! check test conditionals 
   !==========================================================
-  if (GV%DoTestScenario) then 
-     if ( trim(GV%TestScenario) == "iliev_test1He" ) then
+  if (GV%DoTestScenario) then
+
+     if ( trim(GV%TestScenario) == "iliev_test1") then
+        psys%par(:)%xHI = 1.3d-3
+        psys%par(:)%xHII = 1.0d0 - psys%par(:)%xHI
+        
+     else if ( trim(GV%TestScenario) == "iliev_test1He" ) then
         psys%par(:)%xHI = 1.0d0
         psys%par(:)%xHII = 0.0d0
 #ifdef incHe
@@ -271,6 +276,7 @@ use atomic_rates_mod, only: get_atomic_rates
         psys%par(:)%xHeII = 0.0d0
         psys%par(:)%xHeIII = 0.0d0
 #endif
+
      end if
   end if
 
