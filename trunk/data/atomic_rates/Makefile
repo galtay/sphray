@@ -1,6 +1,7 @@
 OPT += -Dhdf5
 
-include ../../src/makes/make.santabuntu.serial.debug
+#include ../../src/makes/make.santabuntu.serial.debug
+include ../../src/makes/make.xgpc.serial.opt
 
 
 
