@@ -334,7 +334,8 @@ contains
   !> Calculates collisional ionization equilibrium for all species 
   !! at given temperature using the fits directly
   !-------------------------------------------------------------------------------
-  subroutine calc_colion_eq_fits(Tin, caseA, xvec)
+  subroutine calc_colion_eq_fits(fit, Tin, caseA, xvec)
+    character(*), intent(in) :: fit
     real(r8b), intent(in) :: Tin
     logical, intent(in) :: caseA(2)
     real(r8b), intent(out) :: xvec(5)
@@ -343,28 +344,61 @@ contains
     real(r8b) :: GGHI, GGHeI, GGHeII
     real(r8b) :: RRHII, RRHeII, RRHeIII
     real(r8b) :: den
-    
+
 
     T = Tin
-        
-    GGHI   = Hui_HI_col_ion(T)
-    GGHeI  = Hui_HeI_col_ion(T)
-    GGHeII = Hui_HeII_col_ion(T)
     
-    if (caseA(1)) then
-       RRHII   = Hui_HII_recombA(T)
-    else
-       RRHII   = Hui_HII_recombB(T)
-    end if
+
+    select case(trim(fit))
+
+       case("cen")
+          GGHI   = Cen_HI_col_ion(T)
+          GGHeI  = Cen_HeI_col_ion(T)
+          GGHeII = Cen_HeII_col_ion(T)
+
+          if (caseA(1)) then
+             RRHII   = Cen_HII_recombA(T)
+          else
+             write(*,*) "no case B rates from Cen"
+             stop
+          end if
+
+          if (caseA(2)) then
+             RRHeII  = Cen_HeII_recombA(T)
+             RRHeIII = Cen_HeIII_recombA(T)
+          else
+             write(*,*) "no case B rates from Cen"
+             stop
+          end if
+
+
+       case("hui")        
+          GGHI   = Hui_HI_col_ion(T)
+          GGHeI  = Hui_HeI_col_ion(T)
+          GGHeII = Hui_HeII_col_ion(T)
     
-    if (caseA(2)) then
-       RRHeII  = Hui_HeII_recombA(T)
-       RRHeIII = Hui_HeIII_recombA(T)
-    else
-       RRHeII  = Hui_HeII_recombB(T)
-       RRHeIII = Hui_HeIII_recombB(T)
-    end if
+          if (caseA(1)) then
+             RRHII   = Hui_HII_recombA(T)
+          else
+             RRHII   = Hui_HII_recombB(T)
+          end if
     
+          if (caseA(2)) then
+             RRHeII  = Hui_HeII_recombA(T)
+             RRHeIII = Hui_HeIII_recombA(T)
+          else
+             RRHeII  = Hui_HeII_recombB(T)
+             RRHeIII = Hui_HeIII_recombB(T)
+          end if
+    
+       case default
+
+          write(*,*) "fit type ", trim(fit), " not recognized"
+          stop
+    
+    end select
+
+
     den = (RRHII + GGHI)
     xvec(1) = RRHII / den
     xvec(2) = GGHI / den

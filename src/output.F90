@@ -5,12 +5,14 @@
 
 module output_mod
 use myf90_mod
-use gadget_input_mod, only: gadget_header_type, saved_gheads
+use gadget_header_class, only: gadget_header_type 
 use gadget_input_hdf5_mod
-use particle_system_mod, only: particle_system_type, particle_type
+use particle_system_mod, only: particle_system_type
+use particle_system_mod, only: particle_type
 use oct_tree_mod, only: oct_tree_type
 use physical_constants_mod
 use global_mod, only: PLAN, GV
+use global_mod, only: saved_gheads
 implicit none
 
 contains
@@ -72,17 +74,38 @@ contains
     ghead%OmegaB = GV%OmegaB
     ghead%rays_traced = GV%src_rayn
 
+
+
+#ifdef incHmf
+    ghead%flag_Hmf = 1
+#else
+    ghead%flag_Hmf = 0
+#endif
+!-------------------------
+#ifdef incHemf
+    ghead%flag_Hemf = 1
+#else
+    ghead%flag_Hemf = 0
+#endif
+!-------------------------
 #ifdef incHe
     ghead%flag_helium = 1
 #else
     ghead%flag_helium = 0
 #endif
-
-#ifdef outGamma
-    ghead%flag_gamma = 1
+!-------------------------
+#ifdef outGammaHI
+    ghead%flag_gammaHI = 1
 #else
-    ghead%flag_gamma = 0
+    ghead%flag_gammaHI = 0
 #endif
+!-------------------------
+#ifdef cloudy
+    ghead%flag_cloudy = 1
+#else
+    ghead%flag_cloudy = 0
+#endif
+!-------------------------
 
     ghead%unused = 0
 
@@ -236,13 +259,23 @@ contains
            write(lun) pars(Nread+1:Nread+Nfile)%T
 
 
+#ifdef incHmf
+           write(lun) pars(Nread+1:Nread+Nfile)%Hmf
+#endif
+
+
+#ifdef incHemf
+           write(lun) pars(Nread+1:Nread+Nfile)%Hemf
+#endif
+
+
 #ifdef incHe
            write(lun) pars(Nread+1:Nread+Nfile)%xHeI
            write(lun) pars(Nread+1:Nread+Nfile)%xHeII
 #endif
 
 
-#ifdef outGamma
+#ifdef outGammaHI
            do ipar = Nread+1, Nread+Nfile
               if (pars(ipar)%time > 0.0) then
                  pars(ipar)%gammaHI = pars(ipar)%gammaHI / pars(ipar)%time
@@ -256,14 +289,9 @@ contains
            pars(Nread+1:Nread+Nfile)%time = 0.0
 #endif
 
-
+ 
 #ifdef cloudy
            write(lun) pars(Nread+1:Nread+Nfile)%xHI_cloudy
-#endif
-
-
-#ifdef incHmf
-           write(lun) pars(Nread+1:Nread+Nfile)%Hmf
 #endif
 
            write(lun) pars(Nread+1:Nread+Nfile)%lasthit
@@ -382,6 +410,7 @@ contains
 
      160 format(T1,A,T20,ES12.5,T34,ES12.5)
      161 format(T1,A,T20,ES12.5)
+     162 format(T1,A,T20,I12,T34,I12)
      write(*,160) "Min/Max xHI     = ", minval(psys%par(:)%xHI), &
                                         maxval(psys%par(:)%xHI)
 
@@ -401,6 +430,8 @@ contains
                                         maxval(psys%par(:)%T)
 
 
+     write(*,162) "Min/Max LastHit = ", minval(psys%par(:)%lasthit), &
+                                        maxval(psys%par(:)%lasthit)
 
 
 ! do test specific outputs

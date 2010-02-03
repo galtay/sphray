@@ -5,90 +5,23 @@
 
 module gadget_input_mod
 use myf90_mod
+use gadget_header_class
 use particle_system_mod, only: particle_system_type
-use particle_system_mod, only: set_x_eq, set_ye
+use particle_system_mod, only: set_collisional_ionization_equilibrium, set_ye
 use global_mod, only: psys, PLAN, GV
-use physical_constants_mod
+use global_mod, only: saved_gheads, gconst
 implicit none
+private
 
-!> gadget particle types
-character(5), parameter :: ptype_names(6) = (/"gas  ","halo ","disk ",&
-                                              "bulge","stars","bndry"/)
-
-!> default gadget units  
-real(r8b), parameter :: GLEN = 3.085678d21  !< in cm/h (1 kpc/h)
-real(r8b), parameter :: GMASS = 1.989d43    !< in g/h  (10^10 Msolar/h)
-real(r8b), parameter :: GVEL = 1.0d5        !< in cm/s (1 km/s) 
-
-real(r8b), parameter :: GTIME = GLEN / GVEL                !< gadget time unit in s/h
-real(r8b), parameter :: GRHO = GMASS / GLEN**3             !< gadget density unit in g/cm^3 h^2
-real(r8b), parameter :: GPRS = GMASS / GLEN / GTIME**2     !< gadget pressure unit in dyne/cm^2 h^2
-real(r8b), parameter :: GENRG = GMASS * GLEN**2 / GTIME**2 !< gadget energy unit in ergs/h
-real(r8b), parameter :: GLUM = GENRG / GTIME               !< gadget luminosity unit ergs/s
-
-real(r8b), parameter :: GMASS_solar = GMASS / M_solar
-
-real(r8b), parameter, private :: BOLTZMANN = 1.3806d-16   !< boltzmann's constant
-real(r8b), parameter, private :: PROTONMASS = 1.6726d-24  !< proton mass (cgs)
-real(r8b), parameter, private :: GAMMA = 5.0d0/3.0d0      !< adiabatic ideal gas index
-
-
-!> gadget header type
-type gadget_header_type
-   integer(i4b) :: npar_file(6)    !< number of particles in snapshot file
-   real(r8b) :: mass(6)            !< mass of each particle type if constant
-   real(r8b) :: a                  !< scale factor or time
-   real(r8b) :: z                  !< redshift
-   integer(i4b) :: flag_sfr        !< flag for star formation
-   integer(i4b) :: flag_feedback   !< flag for feedback
-   integer(i4b) :: npar_all(6)     !< number of particles in whole snapshot
-   integer(i4b) :: flag_cooling    !< flag for radiative cooling
-   integer(i4b) :: nfiles          !< number of files in a this snapshot
-   real(r8b) :: boxlen             !< box length
-   real(r8b) :: OmegaM             !< omega matter
-   real(r8b) :: OmegaL             !< omega lambda
-   real(r8b) :: h                  !< little hubble
-   integer(i4b) :: flag_age        !< flag for stellar age
-   integer(i4b) :: flag_metals     !< flag for metallicity
-   integer(i4b) :: npar_hw(6)      !< 64 bit part of npar 
-   integer(i4b) :: flag_entr_ics   !< flag for entropic initial conditions
-   
-   real(r4b)    :: OmegaB          !< omega baryon
-   integer(i8b) :: rays_traced     !< number of rays traced so far
-   integer(i4b) :: flag_helium     !< is helium present
-   integer(i4b) :: flag_gamma      !< is gammaHI present
-   integer(i4b) :: unused(9)       !< spacer
-end type gadget_header_type
-
-
-type(gadget_header_type), allocatable :: saved_gheads(:,:)
+public :: get_planning_data_gadget
+public :: read_Gpub_particles
+public :: read_Gcool_particles
+public :: update_particles
+public :: set_temp_from_u
 
 
 
 contains
-
-!>   reads in a particle header
-!==================================
-subroutine read_gadget_header(snapfile,ghead,lun,closefile)
-
-  character(*), intent(in) :: snapfile            !< snapshot file name
-  type(gadget_header_type), intent(out) :: ghead  !< particle header
-  integer(i8b), intent(out) :: lun                !< logical unit number used
-  logical, intent(in), optional :: closefile      !< close file when done
-
-  logical :: closef
-
-  if (.not. present(closefile) ) then
-     closef = .true.
-  else
-     closef = closefile
-  end if
-
-  call open_unformatted_file_r(snapfile,lun)
-  read(lun) ghead
-  if (closef) close(lun)  
-
-end subroutine read_gadget_header
 
 
 !>   gets run planning data from Gadget Headers
@@ -96,9 +29,8 @@ end subroutine read_gadget_header
 subroutine get_planning_data_gadget()
   use cosmology_mod, only: tsinceBB
 
-  logical :: closefile
-  integer(i8b) :: lun
   type(gadget_header_type) :: ghead
+  type(gadget_units_type) :: gunits
 
   integer(i8b) :: iSnap, fSnap    ! initial and final snapshot numbers
   integer(i8b) :: pfiles          ! files/snap for particles    
@@ -107,7 +39,8 @@ subroutine get_planning_data_gadget()
 
   integer(i8b) :: loglun
   character(clen) :: logfile
-
+  real(r8b) :: kpc2cm
+  real(r8b) :: km2cm
 
   ! open up the planning data log file
   !======================================================
@@ -117,18 +50,15 @@ subroutine get_planning_data_gadget()
 
   ! these global variables are read from the config file
   !======================================================
-  iSnap = GV%StartSnapNum
-  fSnap = GV%EndSnapNum
-
+  iSnap  = GV%StartSnapNum
+  fSnap  = GV%EndSnapNum
   pfiles = GV%ParFilesPerSnap
-
 
   if ( allocated(saved_gheads) ) deallocate(saved_gheads)
   allocate( saved_gheads(iSnap:fSnap, 0:pfiles-1) )
-
-  ! read in and report to screen
-  !==============================
-  closefile = .true.
+ 
+  call read_gadget_constants( "", gconst, "default" ) 
+  call read_gadget_units( "", gunits, "default" )  
 
   ! read all particle headers and write to log file
   !===================================================
@@ -136,14 +66,16 @@ subroutine get_planning_data_gadget()
   do i = iSnap,fSnap
      do j = 0,pfiles-1
 
-        call form_Gsnapshot_file_name(GV%SnapPath,GV%ParFileBase,i,j,snapfile)
-        write(loglun,'(I3,"  ",A)') i,trim(snapfile)
-        call read_gadget_header(snapfile,ghead,lun,closefile)
-        call gadget_header_to_file(ghead,loglun)
 
+        call form_gadget_snapshot_file_name(GV%SnapPath, GV%ParFileBase, i, j, snapfile)
+        write(loglun,'(I3,"  ",A)') i, trim(snapfile)
+
+        call read_gadget_header_file(snapfile,ghead)
+        call gadget_header_to_file(ghead,loglun)
         saved_gheads(i,j) = ghead
 
         ! make sure there is gas in this snapshot
+        !-------------------------------------------
         if (.not. ghead%npar_all(1) > 0) then
            write(*,*) "Gadget snapshot does not contain any gas particles"
            write(*,*) "Sphray cannot read dark matter particles directly, "
@@ -159,18 +91,21 @@ subroutine get_planning_data_gadget()
 
         GV%OmegaM = ghead%OmegaM
         GV%OmegaL = ghead%OmegaL
-        GV%OmegaB = 0.04
+
+        GV%OmegaB = 0.04  ! this should be moved to the config file
+                          ! but its not used in the code now
+
         GV%LittleH = ghead%h
 
-        GV%cgs_len  = GLEN
-        GV%cgs_mass = GMASS
-        GV%cgs_vel  = GVEL
+        GV%cgs_len  = gunits%len
+        GV%cgs_mass = gunits%mass
+        GV%cgs_vel  = gunits%vel
 
-        GV%cgs_time = GTIME
-        GV%cgs_rho  = GRHO
-        GV%cgs_prs  = GPRS
-        GV%cgs_enrg = GENRG
-        GV%cgs_lum  = GLUM
+        GV%cgs_time = gunits%time
+        GV%cgs_rho  = gunits%rho
+        GV%cgs_prs  = gunits%prs
+        GV%cgs_enrg = gunits%energy
+
 
         if (GV%Comoving) then
            PLAN%snap(i)%ScalefacAt = ghead%a
@@ -196,18 +131,20 @@ subroutine get_planning_data_gadget()
   logfile = trim(GV%OutputDir) // "/" // "code_units.log"
   call open_formatted_file_w(logfile,loglun)
 
-106 format(A,ES12.5,A)
+  kpc2cm = gconst%cm_per_mpc * 1.0d-3
+  km2cm = 1.0d5
+
+  106    format(A,ES12.5,A)
   write(loglun,*) 
   write(loglun,'(A)') "setting code units ..."
   write(loglun,106) "  Hubble:     ", GV%LittleH, " = H0[km/s/Mpc] / 100 "
   write(loglun,106) "  length:     ", GV%cgs_len / kpc2cm, " [kpc/h]"
-  write(loglun,106) "  mass:       ", GV%cgs_mass / M_solar, " [Msun/h]"
+  write(loglun,106) "  mass:       ", GV%cgs_mass / gconst%solar_mass, " [Msun/h]"
   write(loglun,106) "  velocity    ", GV%cgs_vel / km2cm, " [km/s]"
-  write(loglun,106) "  time:       ", GV%cgs_time / Myr2sec, " [Myr/h]"
-  write(loglun,106) "  density:    ", GV%cgs_rho / (M_solar / kpc2cm**3), " [Msun/kpc^3 h^2]"
+  write(loglun,106) "  time:       ", GV%cgs_time / gconst%sec_per_megayear, " [Myr/h]"
+  write(loglun,106) "  density:    ", GV%cgs_rho / (gconst%solar_mass / kpc2cm**3), " [Msun/kpc^3 h^2]"
   write(loglun,106) "  pressure:   ", GV%cgs_prs, " [dyne/cm^2 h^2]"
   write(loglun,106) "  energy:     ", GV%cgs_enrg, " [ergs/h]"
-  write(loglun,106) "  luminosity: ", GV%cgs_lum / L_solar, " [Lsun]"
   write(loglun,*) 
 
   close(loglun)
@@ -238,7 +175,6 @@ subroutine read_Gpub_particles()
 
   integer(i8b) :: npar, ngas, nmass
   integer(i8b) :: npar1, ngas1, nmass1
-  logical :: closefile
   logical :: varmass(6)
   integer(i8b) :: fn
 
@@ -247,15 +183,10 @@ subroutine read_Gpub_particles()
   real(r8b) :: MB 
 
 
-  ! read header from first file
-  !============================
-  fn=0
-  call form_Gsnapshot_file_name(GV%SnapPath,GV%ParFileBase,GV%CurSnapNum,fn,snapfile)
-  closefile=.true.
-  call read_gadget_header(snapfile,ghead,lun,closefile)
 
   ! set local particle numbers
   !============================
+  ghead = saved_gheads( GV%CurSnapNum, 0 )
   varmass = (ghead%npar_all > 0 .and. ghead%mass == 0)
   npar = sum(ghead%npar_all)
   ngas = ghead%npar_all(1)
@@ -263,7 +194,7 @@ subroutine read_Gpub_particles()
 
   ! do Gadget dummy checks
   !============================
-  if (ngas .EQ. 0) call myerr("snapshot has no gas particles",myname,crash)
+  if (ngas == 0) call myerr("snapshot has no gas particles",myname,crash)
 
   ! calculate bytes per particle and allocate particle array
   !===========================================================
@@ -281,19 +212,24 @@ subroutine read_Gpub_particles()
   !==============================          
 
   ngasread = 0
-  closefile=.false.
   files: do fn = 0, ghead%nfiles-1
 
-     call form_Gsnapshot_file_name(GV%SnapPath,GV%ParFileBase,GV%CurSnapNum,fn,snapfile)
-     call mywrite("   reading public gadget particle snapshot file "//trim(snapfile), verb,fmt="(A)")
-     call read_gadget_header(snapfile,ghead,lun,closefile)
-
+     ! recall the header info
+     !-----------------------------------------------------------!  
+     ghead   = saved_gheads( GV%CurSnapNum, fn )
      varmass = (ghead%npar_file > 0 .and. ghead%mass == 0)
-     npar1 = sum(ghead%npar_file)
-     ngas1 = ghead%npar_file(1)
-     nmass1 = sum(ghead%npar_file, mask=varmass)
-
+     npar1   = sum(ghead%npar_file)
+     ngas1   = ghead%npar_file(1)
+     nmass1  = sum(ghead%npar_file, mask=varmass)
      if (ngas1 == 0) cycle
+
+
+     ! begin read
+     !-----------------------------------------------------------!  
+     call form_gadget_snapshot_file_name(GV%SnapPath,GV%ParFileBase,GV%CurSnapNum,fn,snapfile)
+     call mywrite("   reading public gadget particle snapshot file "//trim(snapfile), verb,fmt="(A)")
+     call open_unformatted_file_r( snapfile, lun )
+     read(lun) ghead
 
 
      ! read positions
@@ -302,13 +238,9 @@ subroutine read_Gpub_particles()
      if(err/=0) call myerr("allocating rblck3 for pos",myname,crash)
      read(lun, iostat=err) rblck3
      if (err/=0) call myerr("reading rblk3 for pos",myname,crash) 
-
-     do i = 1,ngas1
-        psys%par(ngasread+i)%pos(1) = rblck3(1,i)
-        psys%par(ngasread+i)%pos(2) = rblck3(2,i)
-        psys%par(ngasread+i)%pos(3) = rblck3(3,i)
-     end do
-
+     forall(i=1:ngas1) psys%par(ngasread+i)%pos(1) = rblck3(1,i)
+     forall(i=1:ngas1) psys%par(ngasread+i)%pos(2) = rblck3(2,i)
+     forall(i=1:ngas1) psys%par(ngasread+i)%pos(3) = rblck3(3,i)
      deallocate(rblck3)
 
      ! read velocities 
@@ -318,13 +250,9 @@ subroutine read_Gpub_particles()
      if(err/=0) call myerr("allocating rblck3 for vel",myname,crash)
      read(lun, iostat=err) rblck3
      if (err/=0) call myerr("reading rblk3 for vel",myname,crash) 
-
-     do i = 1,ngas1
-        psys%par(ngasread+i)%vel(1) = rblck3(1,i)
-        psys%par(ngasread+i)%vel(2) = rblck3(2,i)
-        psys%par(ngasread+i)%vel(3) = rblck3(3,i)
-     end do
-
+     forall(i=1:ngas1) psys%par(ngasread+i)%vel(1) = rblck3(1,i)
+     forall(i=1:ngas1) psys%par(ngasread+i)%vel(2) = rblck3(2,i)
+     forall(i=1:ngas1) psys%par(ngasread+i)%vel(3) = rblck3(3,i)
      deallocate(rblck3)
 #else
      read(lun, iostat=err)
@@ -337,51 +265,42 @@ subroutine read_Gpub_particles()
      if(err/=0) call myerr("allocating iblck for ID",myname,crash)
      read(lun, iostat=err) iblck  
      if (err/=0) call myerr("reading iblk for ID",myname,crash) 
-
-     do i = 1,ngas1
-        psys%par(ngasread+i)%id = iblck(i)
-     end do
-
+     forall(i=1:ngas1) psys%par(ngasread+i)%id = iblck(i)
      deallocate(iblck)
 
      ! read masses 
      !-----------------------------------------------------------!  
-     if (nmass1 > 0) then  ! if there are massive particles
 
-        if (varmass(1)) then  ! if there are gas particles
+     ! if there are variable mass particles of any type
+     if (nmass1 > 0) then  
+
+        ! if there are variable mass gas particles
+        if (varmass(1)) then  
            allocate(rblck(ngas1), stat=err)
            if(err/=0) call myerr("allocating rblck for mass",myname,crash)
            read(lun, iostat=err) rblck 
            if (err/=0) call myerr("reading rblk for mass",myname,crash) 
-
-           do i = 1,ngas1
-              psys%par(ngasread+i)%mass = rblck(i)
-           end do
-
+           forall(i=1:ngas1) psys%par(ngasread+i)%mass = rblck(i)
            deallocate(rblck)
 
+        ! just dummy read non gas particles
         else 
-           ! just dummy read non gas particles
-           read(lun)
-           psys%par(ngasread+i)%mass = ghead%mass(1)
+           read(lun)  
+           psys%par(ngasread+1:ngasread+ngas1)%mass = ghead%mass(1)
         end if
 
-     else
+     ! if none of the particles are variable mass
+     else  
         psys%par(ngasread+1:ngasread+ngas1)%mass = ghead%mass(1)
-
      end if
 
-     ! read temperature (internal energy until we change it)
+     ! read temperature (internal energy / unit mass for now)
      !-----------------------------------------------------------!  
      allocate(rblck(ngas1), stat=err)
      if(err/=0) call myerr("allocating rblck for u",myname,crash)
      read(lun, iostat=err) rblck
      if (err/=0) call myerr("reading rblk for u",myname,crash) 
-
-     do i = 1,ngas1
-        psys%par(ngasread+i)%T = rblck(i) 
-     end do
-
+     forall(i=1:ngas1) psys%par(ngasread+i)%T = rblck(i) 
      deallocate(rblck)
 
 
@@ -391,11 +310,7 @@ subroutine read_Gpub_particles()
      if(err/=0) call myerr("allocating rblck for rho",myname,crash)
      read(lun, iostat=err) rblck
      if (err/=0) call myerr("reading rblk for rho",myname,crash) 
-
-     do i = 1, ngas1
-        psys%par(ngasread+i)%rho = rblck(i)
-     end do
-
+     forall(i=1:ngas1) psys%par(ngasread+i)%rho = rblck(i)
      deallocate(rblck)
 
      ! read smoothing lengths 
@@ -404,13 +319,8 @@ subroutine read_Gpub_particles()
      if(err/=0) call myerr("allocating rblck for hsml",myname,crash)
      read(lun, iostat=err) rblck
      if (err/=0) call myerr("reading rblk for hsml",myname,crash) 
-
-     do i = 1, ngas1
-        psys%par(ngasread+i)%hsml = rblck(i)
-     end do
-
+     forall(i=1:ngas1) psys%par(ngasread+i)%hsml = rblck(i)
      deallocate(rblck)
-
 
 
      ngasread = ngasread + ngas1
@@ -419,18 +329,18 @@ subroutine read_Gpub_particles()
   end do files
 
 
+  ! There is no cooling in the public version of Gadget-2 so we
+  ! will make some simple assumptions to calculate temperature 
+  ! from the internal energy / unit mass
+
+
   ! assume the particles are neutral to compute the temperature
   !---------------------------------------------------------------
   psys%par(:)%xHI = 1.0d0 - 1.0d-5
   psys%par(:)%xHII = 1.0d-5
   psys%par(:)%ye = psys%par(:)%xHII
 
-
-  if (GV%IsoTemp == 0.0) then
-     call set_temp_from_u(psys, GV%H_mf, GV%cgs_enrg, GV%cgs_mass)
-  else
-     psys%par(:)%T = GV%IsoTemp
-  endif
+  call set_temp_from_u(psys, GV%H_mf, GV%cgs_enrg, GV%cgs_mass)
 
 
   ! set caseA true or false for collisional equilibrium
@@ -439,8 +349,8 @@ subroutine read_Gpub_particles()
   if (.not. GV%OnTheSpotH  .or. GV%HydrogenCaseA) caseA(1) = .true.
   if (.not. GV%OnTheSpotHe .or. GV%HeliumCaseA)   caseA(2) = .true.
 
-  call set_x_eq(psys, caseA, GV%IsoTemp)
-  call set_ye(psys, GV%H_mf, GV%He_mf)
+  call set_collisional_ionization_equilibrium(psys, caseA, GV%IsoTemp, DoHydrogen=.true., fit="hui")
+  call set_ye(psys, GV%H_mf, GV%He_mf, GV%NeBackGround)
 
 
 
@@ -449,11 +359,11 @@ end subroutine read_Gpub_particles
 
 
 
-!> reads a Gadget-3 (Tiziana version) snapshot into a particle array  
-!========================================================================
-subroutine read_Gtiz_particles()
+!> reads a Gadget snapshot that includes ye and xHI (i.e. cooling) into a particle array  
+!=========================================================================================
+subroutine read_Gcool_particles()
 
-  character(clen), parameter :: myname="read_Gtiz_particles"
+  character(clen), parameter :: myname="read_Gcool_particles"
   logical, parameter :: crash=.true.
   integer, parameter :: verb=2
   character(clen) :: str,fmt 
@@ -470,8 +380,6 @@ subroutine read_Gtiz_particles()
 
   integer(i8b) :: npar, ngas, nmass
   integer(i8b) :: npar1, ngas1, nmass1
-  logical :: closefile
-  logical :: header_verbose
   logical :: varmass(6)
   integer(i8b) :: fn
 
@@ -482,21 +390,9 @@ subroutine read_Gtiz_particles()
   real(r8b) :: MB 
 
 
-  ! set default values
-  !===============================
-  caseA=.false.
-  xvec=0.0d0
-
-  ! read header from first file
-  !============================
-  fn=0
-  call form_Gsnapshot_file_name(GV%SnapPath,GV%ParFileBase,GV%CurSnapNum,fn,snapfile)
-  closefile=.true.
-  header_verbose=.false.
-  call read_gadget_header(snapfile,ghead,lun,closefile)
-
   ! set local particle numbers
   !============================
+  ghead = saved_gheads( GV%CurSnapNum, 0 )
   varmass = (ghead%npar_all > 0 .and. ghead%mass == 0)
   npar = sum(ghead%npar_all)
   ngas = ghead%npar_all(1)
@@ -522,22 +418,25 @@ subroutine read_Gtiz_particles()
 
   ! now read all snapshot files
   !==============================          
-
   ngasread = 0
-  closefile=.false.
-  header_verbose=.false.
   files: do fn = 0, ghead%nfiles-1
 
-     call form_Gsnapshot_file_name(GV%SnapPath,GV%ParFileBase,GV%CurSnapNum,fn,snapfile)
-     call mywrite("reading tiziana gadget snapshot file "//trim(snapfile), verb)
-     call read_gadget_header(snapfile,ghead,lun,closefile)
-
+     ! recall the header info
+     !-----------------------------------------------------------!  
+     ghead   = saved_gheads( GV%CurSnapNum, fn )
      varmass = (ghead%npar_file > 0 .and. ghead%mass == 0)
-     npar1 = sum(ghead%npar_file)
-     ngas1 = ghead%npar_file(1)
-     nmass1 = sum(ghead%npar_file, mask=varmass)
-
+     npar1   = sum(ghead%npar_file)
+     ngas1   = ghead%npar_file(1)
+     nmass1  = sum(ghead%npar_file, mask=varmass)
      if (ngas1 == 0) cycle
+
+     ! begin read
+     !-----------------------------------------------------------!  
+     call form_gadget_snapshot_file_name(GV%SnapPath,GV%ParFileBase,GV%CurSnapNum,fn,snapfile)
+     call mywrite("reading tiziana gadget snapshot file "//trim(snapfile), verb)
+     call open_unformatted_file_r( snapfile, lun )
+     read(lun) ghead
+
 
      ! read positions 
      !-----------------------------------------------------------!  
@@ -545,13 +444,9 @@ subroutine read_Gtiz_particles()
      if(err/=0) call myerr("allocating rblck3 for pos",myname,crash)
      read(lun, iostat=err) rblck3
      if (err/=0) call myerr("reading rblk3 for pos",myname,crash) 
-
-     do i = 1,ngas1
-        psys%par(ngasread+i)%pos(1) = rblck3(1,i)
-        psys%par(ngasread+i)%pos(2) = rblck3(2,i)
-        psys%par(ngasread+i)%pos(3) = rblck3(3,i)
-     end do
-
+     forall(i=1:ngas1) psys%par(ngasread+i)%pos(1) = rblck3(1,i)
+     forall(i=1:ngas1) psys%par(ngasread+i)%pos(2) = rblck3(2,i)
+     forall(i=1:ngas1) psys%par(ngasread+i)%pos(3) = rblck3(3,i)
      deallocate(rblck3)
 
      ! read velocities 
@@ -561,13 +456,9 @@ subroutine read_Gtiz_particles()
      if(err/=0) call myerr("allocating rblck3 for vel",myname,crash)
      read(lun, iostat=err) rblck3
      if (err/=0) call myerr("reading rblk3 for vel",myname,crash) 
-
-     do i = 1,ngas1
-        psys%par(ngasread+i)%vel(1) = rblck3(1,i)
-        psys%par(ngasread+i)%vel(2) = rblck3(2,i)
-        psys%par(ngasread+i)%vel(3) = rblck3(3,i)
-     end do
-
+     forall(i=1:ngas1) psys%par(ngasread+i)%vel(1) = rblck3(1,i)
+     forall(i=1:ngas1) psys%par(ngasread+i)%vel(2) = rblck3(2,i)
+     forall(i=1:ngas1) psys%par(ngasread+i)%vel(3) = rblck3(3,i)
      deallocate(rblck3)
 #else
      read(lun, iostat=err)
@@ -581,53 +472,45 @@ subroutine read_Gtiz_particles()
      if(err/=0) call myerr("allocating iblck for ID",myname,crash)
      read(lun, iostat=err) iblck  
      if (err/=0) call myerr("reading iblk for ID",myname,crash) 
-
-     do i = 1,ngas1
-        psys%par(ngasread+i)%id = iblck(i)
-     end do
-
+     forall(i=1:ngas1) psys%par(ngasread+i)%id = iblck(i)
      deallocate(iblck)
-
 
      ! read masses 
      !-----------------------------------------------------------!  
-     if (nmass1 > 0) then  ! if there are massive particles
 
-        if (varmass(1)) then  ! if there are gas particles
+     ! if there are variable mass particles of any type
+     if (nmass1 > 0) then  
+
+        ! if there are variable mass gas particles
+        if (varmass(1)) then  
            allocate(rblck(ngas1), stat=err)
            if(err/=0) call myerr("allocating rblck for mass",myname,crash)
            read(lun, iostat=err) rblck 
            if (err/=0) call myerr("reading rblk for mass",myname,crash) 
-
-           do i = 1,ngas1
-              psys%par(ngasread+i)%mass = rblck(i)
-           end do
-
+           forall(i=1:ngas1) psys%par(ngasread+i)%mass = rblck(i)
            deallocate(rblck)
 
+        ! just dummy read non gas particles
         else 
-           ! just dummy read non gas particles
-           read(lun)
-           psys%par(ngasread+i)%mass = ghead%mass(1)
+           read(lun)  
+           psys%par(ngasread+1:ngasread+ngas1)%mass = ghead%mass(1)
         end if
 
-     else
+     ! if none of the particles are variable mass
+     else  
         psys%par(ngasread+1:ngasread+ngas1)%mass = ghead%mass(1)
-
      end if
 
-     ! read internal energy (will be changed to temperature)
+
+     ! read temperature (internal energy / unit mass for now)
      !-----------------------------------------------------------!  
      allocate(rblck(ngas1), stat=err)
      if(err/=0) call myerr("allocating rblck for u",myname,crash)
      read(lun, iostat=err) rblck
      if (err/=0) call myerr("reading rblk for u",myname,crash) 
-
-     do i = 1,ngas1
-        psys%par(ngasread+i)%T = rblck(i) 
-     end do
-
+     forall(i=1:ngas1) psys%par(ngasread+i)%T = rblck(i) 
      deallocate(rblck)
+
 
      ! read density 
      !-----------------------------------------------------------!  
@@ -635,25 +518,16 @@ subroutine read_Gtiz_particles()
      if(err/=0) call myerr("allocating rblck for rho",myname,crash)
      read(lun, iostat=err) rblck
      if (err/=0) call myerr("reading rblk for rho",myname,crash) 
-
-     do i = 1, ngas1
-        psys%par(ngasread+i)%rho = rblck(i)
-     end do
-
+     forall(i=1:ngas1) psys%par(ngasread+i)%rho = rblck(i)
      deallocate(rblck)
 
-
-     ! read electron fraction 
+     ! read electron fraction ye = ne/nH
      !-----------------------------------------------------------!  
      allocate(rblck(ngas1), stat=err)
      if(err/=0) call myerr("allocating rblck for ye",myname,crash)
      read(lun, iostat=err) rblck
      if (err/=0) call myerr("reading rblck for ye",myname,crash) 
-
-     do i = 1, ngas1
-        psys%par(ngasread+i)%ye = rblck(i)
-     end do
-
+     forall(i=1:ngas1) psys%par(ngasread+i)%ye = rblck(i)
      deallocate(rblck)
 
      ! read neutral hydrogen fraction (xHI)
@@ -662,13 +536,8 @@ subroutine read_Gtiz_particles()
      if(err/=0) call myerr("allocating rblck for xHI",myname,crash)
      read(lun, iostat=err) rblck
      if (err/=0) call myerr("reading rblk for xHI",myname,crash) 
-
-     do i = 1, ngas1
-        psys%par(ngasread+i)%xHI = rblck(i)
-     end do
-
+     forall(i=1:ngas1) psys%par(ngasread+i)%xHI = rblck(i)
      deallocate(rblck)
-
 
      ! read smoothing lengths 
      !-----------------------------------------------------------!  
@@ -676,15 +545,11 @@ subroutine read_Gtiz_particles()
      if(err/=0) call myerr("allocating rblck for hsml",myname,crash)
      read(lun, iostat=err) rblck
      if (err/=0) call myerr("reading rblk for hsml",myname,crash) 
-
-     do i = 1, ngas1
-        psys%par(ngasread+i)%hsml = rblck(i)
-     end do
-
+     forall(i=1:ngas1) psys%par(ngasread+i)%hsml = rblck(i)
      deallocate(rblck)
 
 
-     ! the following data blocks are also in the snapshot file
+     ! the following data blocks may be in the snapshot file
      ! but we make no use of them for the time being
 
      ! star formation rate (ngas)
@@ -699,9 +564,13 @@ subroutine read_Gtiz_particles()
   end do files
 
 
+  ! convert the internal energy to temperature using ye from snap
+  !----------------------------------------------------------------!  
+  call set_temp_from_u(psys, GV%H_mf, GV%cgs_enrg, GV%cgs_mass)
+
 
   ! set xHII from xHI 
-  !-----------------------------------------------------------!  
+  !----------------------------------------------------------------!  
   psys%par%xHII = 1.0d0 - psys%par%xHI
 
 
@@ -714,18 +583,18 @@ subroutine read_Gtiz_particles()
 
   ! if Helium, initialize ionization fractions to collisional equilibrium
   !------------------------------------------------------------------------
-  call set_x_eq(psys, caseA, GV%IsoTemp, JustHe=.true.)
+#ifdef incHe
+  call set_collisional_ionization_equilibrium(psys, caseA, GV%IsoTemp, DoHydrogen=.false., fit="hui")
+#endif
 
 
   ! set the electron fractions from the ionization fractions
   !----------------------------------------------------------
-  call set_ye(psys, GV%H_mf, GV%He_mf)
+  !  call set_ye(psys, GV%H_mf, GV%He_mf)
 
 
 
-
-
-end subroutine read_Gtiz_particles
+end subroutine read_Gcool_particles
 
 
 
@@ -815,7 +684,7 @@ subroutine update_particles()
   if (GV%InputType == 2) then
      call read_Gpub_particles()
   else if (GV%InputType == 3) then
-     call read_Gtiz_particles()
+     call read_Gcool_particles()
   end if
   minIDnew = minval(psys%par%id)
   maxIDnew = maxval(psys%par%id)
@@ -878,7 +747,7 @@ subroutine update_particles()
 end subroutine update_particles
 
 
-!> converts internal energies / unit mass to temperature K
+!> converts internal energies / unit mass to temperature K using Hmf and ye = ne/nH
 !=======================================================================================
 subroutine set_temp_from_u(psys, dfltH_mf, cgs_enrg, cgs_mass)
 
@@ -900,7 +769,7 @@ subroutine set_temp_from_u(psys, dfltH_mf, cgs_enrg, cgs_mass)
 #endif
 
      mu = 4.0d0 / (3.0d0 * Hmf + 1.0d0 + 4.0d0 * Hmf * psys%par(i)%ye)
-     Tdum = mu * PROTONMASS / BOLTZMANN * (GAMMA - 1.0d0) * psys%par(i)%T
+     Tdum = mu * gconst%PROTONMASS / gconst%BOLTZMANN * (gconst%GAMMA - 1.0d0) * psys%par(i)%T
      psys%par(i)%T = Tdum * cgs_enrg / cgs_mass
 
   end do
@@ -911,141 +780,13 @@ end subroutine set_temp_from_u
 
 
 
-!> forms a snapshot name from a path, a file base, a snapshot number
-!> and a file number.
-!===================================================================
-subroutine form_Gsnapshot_file_name(path,base,SnapNum,FileNum,SnapFile)
-  character(clen), intent(in) :: path        !< path to snapshot dir
-  character(clen), intent(in) :: base        !< base snapshot name
-  integer(i8b), intent(in) :: SnapNum       !< snapshot number
-  integer(i8b), intent(in) :: FileNum       !< file number of snapshot
-  character(clen), intent(out) :: SnapFile   !< snapshot filename
-
-  character(10) :: FileNumChar
-  logical :: Fthere
-
-  write(FileNumChar,"(I6)") FileNum
-100 format(A,"/",A,"_",I3.3)
-
-  ! first write a file with no extension
-  !--------------------------------------
-  write(SnapFile,100) trim(path), trim(base), SnapNum
-  inquire( file=SnapFile, exist=Fthere )
-
-  ! if the file number is 0 and a file with no extension exists then return
-  !-------------------------------------------------------------------------
-  if (FileNum == 0 .and. Fthere) then
-     return
-  else
-     SnapFile = trim(SnapFile) // "." // trim(adjustl(FileNumChar))
-  end if
-
-end subroutine form_Gsnapshot_file_name
 
 
-!> forms a snapshot name from a path, a file base, a snapshot number
-!! and a file number.
-!===================================================================
-subroutine form_snapshot_file_name(Path,FileBase,SnapNum,FileNum,SnapFile)
-  character(clen), intent(in) :: Path       !< path to snapshot dir
-  character(clen), intent(in) :: FileBase   !< file base names
-  integer(i8b), intent(in) :: SnapNum      !< snapshot number
-  integer(i8b), intent(in) :: FileNum      !< file number in snapshot
-  character(clen), intent(out) :: SnapFile  !< file name to return
-
-  character(10) :: FileNumChar
-
-  write(FileNumChar,"(I6)") FileNum
-
-100 format(A,"/",A,"_",I3.3,".",A)
-  write(SnapFile,100) trim(Path), trim(FileBase), SnapNum, &
-       trim(adjustl(FileNumChar))
-
-end subroutine form_snapshot_file_name
 
 
-!> writes gadget header data to the screen
-!-----------------------------------------
-subroutine gadget_header_to_screen(ghead)
-  type(gadget_header_type), intent(in) :: ghead !< particle header to print
-  integer(i8b) :: i
-
-98 format (A,T12,I12,T36,I12)
-99 format (T17,A,T30,A,T40,A)
-100 format (A,I1,A,A,A,I12,ES12.3,I12)
-101 format (A,F8.5,A,F10.5,A,F8.4)  
-102 format (A,F8.5,A,F8.5,A,F13.4)  
-104 format (A,I3)
-103 format (A,6(A,I1))
-
-  write(*,*)
-  write(*,99) "n_all","mass","n_file"
-  do i = 1,6
-     write(*,100) "type",i,"(",ptype_names(i),")",&
-          ghead%npar_all(i),ghead%mass(i),ghead%npar_file(i)
-  end do
-  write(*,98) "total:", sum(ghead%npar_all), sum(ghead%npar_file)
-
-  write(*,101) "a   = ", ghead%a, &
-       ", z    = ", ghead%z, &
-       ", h       = ", ghead%h
-  write(*,102) "OmegaM = ", ghead%OmegaM, &
-       ", OmegaL = ", ghead%OmegaL, & 
-       ", boxsize = ", ghead%boxlen 
-  write(*,104) "nfiles  = ", ghead%nfiles
-  write(*,103) "/flags/ ",&
-       "  sfr=",ghead%flag_sfr, &
-       ", feedback=",ghead%flag_feedback, &
-       ", cooling=",ghead%flag_cooling, &
-       ", age=",ghead%flag_age, &
-       ", metals=",ghead%flag_metals, &
-       ", entr_ics=", ghead%flag_entr_ics
-  write(*,*) 
-
-end subroutine gadget_header_to_screen
 
 
-!> writes gadget header data to the screen
-!-----------------------------------------
-subroutine gadget_header_to_file(ghead,lun)
-  type(gadget_header_type), intent(in) :: ghead !< particle header to print
-  integer(i8b), intent(in) :: lun
-
-  integer(i8b) :: i
-
-98 format (A,T12,I12,T36,I12)
-99 format (T17,A,T30,A,T40,A)
-100 format (A,I1,A,A,A,I12,ES12.3,I12)
-101 format (A,F8.5,A,F10.5,A,F8.4)  
-102 format (A,F8.5,A,F8.5,A,F13.4)  
-104 format (A,I3)
-103 format (A,6(A,I1))
-
-  write(lun,*)
-  write(lun,99) "n_all","mass","n_file"
-  do i = 1,6
-     write(lun,100) "type",i,"(",ptype_names(i),")",&
-          ghead%npar_all(i),ghead%mass(i),ghead%npar_file(i)
-  end do
-  write(lun,98) "total:", sum(ghead%npar_all), sum(ghead%npar_file)
-
-  write(lun,101) "a   = ", ghead%a, &
-       ", z    = ", ghead%z, &
-       ", h       = ", ghead%h
-  write(lun,102) "OmegaM = ", ghead%OmegaM, &
-       ", OmegaL = ", ghead%OmegaL, & 
-       ", boxsize = ", ghead%boxlen 
-  write(lun,104) "nfiles  = ", ghead%nfiles
-  write(lun,103) "/flags/ ",&
-       "  sfr=",ghead%flag_sfr, &
-       ", feedback=",ghead%flag_feedback, &
-       ", cooling=",ghead%flag_cooling, &
-       ", age=",ghead%flag_age, &
-       ", metals=",ghead%flag_metals, &
-       ", entr_ics=", ghead%flag_entr_ics
-  write(lun,*) 
 
 
-end subroutine gadget_header_to_file
 
 end module gadget_input_mod
