@@ -23,6 +23,7 @@ public :: calc_bytes_per_particle_and_source
 public :: scale_comoving_to_physical
 public :: scale_physical_to_comoving
 public :: set_ye
+public :: set_ye_pars
 public :: set_collisional_ionization_equilibrium
 public :: enforce_x_and_T_minmax
 public :: particle_info_to_screen
@@ -378,13 +379,60 @@ subroutine set_ye(psys, dfltH_mf, dfltHe_mf, ne_bckgnd)
 !--------------------------     
 
      nHe_over_nH = 0.25d0 * Hemf / Hmf
-     psys%par(:)%ye = psys%par(:)%ye + ( psys%par(:)%xHeII + 2.0d0 * psys%par(:)%xHeIII ) * nHe_over_nH
+     psys%par(:)%ye = psys%par(:)%ye + $
+                     ( psys%par(:)%xHeII + 2.0d0 * psys%par(:)%xHeIII ) * nHe_over_nH
      
   end do
 
 #endif
 
 end subroutine set_ye
+
+
+subroutine set_ye_pars(pars, dfltH_mf, dfltHe_mf, ne_bckgnd)
+
+  type(particle_type) :: pars(:)
+  real(r8b), intent(in) :: dfltH_mf
+  real(r8b), intent(in) :: dfltHe_mf
+  real(r8b), intent(in) :: ne_bckgnd
+  integer(i8b) :: i
+  real(r8b) :: Hmf
+  real(r8b) :: Hemf
+  real(r8b) :: nHe_over_nH
+
+
+  pars(:)%ye = pars(:)%xHII + ne_bckgnd
+
+
+#ifdef incHe
+
+  do i = 1,size(pars)
+     
+!--------------------------
+#ifdef incHmf
+     Hmf = pars(i)%Hmf
+#else
+     Hmf = dfltH_mf
+#endif
+!--------------------------
+#ifdef incHemf
+     Hemf = pars(i)%Hemf
+#else
+     Hemf = dfltHe_mf
+#endif
+!--------------------------     
+
+     nHe_over_nH = 0.25d0 * Hemf / Hmf
+     pars(:)%ye = pars(:)%ye + $
+                     ( pars(:)%xHeII + 2.0d0 * pars(:)%xHeIII ) * nHe_over_nH
+     
+  end do
+
+#endif
+
+end subroutine set_ye_pars
+
+
 
 
 !> sets ionization fractions to their collisional equilibrium values

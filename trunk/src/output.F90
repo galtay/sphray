@@ -9,6 +9,7 @@ use gadget_header_class, only: gadget_header_type
 use gadget_input_hdf5_mod
 use particle_system_mod, only: particle_system_type
 use particle_system_mod, only: particle_type
+use particle_system_mod, only: set_ye_pars
 use oct_tree_mod, only: oct_tree_type
 use physical_constants_mod
 use global_mod, only: PLAN, GV
@@ -50,7 +51,7 @@ contains
        ghead%a = PLAN%snap(GV%CurSnapNum)%ScalefacAt
        ghead%z = 1.0d0 / ghead%a - 1.0d0
     else
-       ghead%a = GV%time_elapsed_s * gconst%sec_per_megayear
+       ghead%a = GV%time_elapsed_s / gconst%sec_per_megayear
        ghead%z = saved_gheads(GV%CurSnapNum,fnum)%z
     end if
 
@@ -140,7 +141,8 @@ contains
 
      real(r8b) :: nHe_over_nH
      real(r8b) :: Hmf, Hemf
-     real(r4b), allocatable :: mu(:), uint(:)
+     real(r4b) :: mu
+     real(r4b), allocatable :: uint(:)
      real(r4b), allocatable :: rblock3(:,:)
 
      ! set defaults
@@ -152,12 +154,15 @@ contains
      write(*,*) 'output type:   ', GV%OutputType
      write(*,*) "writing total state of system"
      write(*,*) "time (elapsed code) ", GV%time_elapsed_code
-     write(*,*) "time (elapsed myr)  ", GV%time_elapsed_s * s2Myr
+     write(*,*) "time (elapsed myr)  ", GV%time_elapsed_s / gconst%sec_per_megayear
 
      if (GV%Comoving) call scale_physical_to_comoving(PLAN%snap(GV%CurSnapNum)%ScalefacAt, pars, hub=GV%LittleH)
 
      100 format(I3.3)
      write(label,100) GV%OutputIndx
+
+
+     call set_ye_pars( pars, GV%H_mf, GV%He_mf, GV%NeBackGround )
 
 
      !================================================================
@@ -209,54 +214,29 @@ contains
 
            ! do some conversions
            !------------------------
-           allocate( mu(Nfile), uint(Nfile) )
-
-           ! always have these electrons
-           pars(:)%ye = pars(:)%xHII 
-
-
-           do i = Nread+1, Nread+Nfile
-                      
-! conditional Hydrogen mass fraction
-#ifdef incHmf
-              Hmf=pars(i)%Hmf
-#else
-              Hmf=GV%H_mf
-#endif
-              
-              
-#ifdef incHe
-              
-              
-! conditional Helium mass fraction
-#ifdef incHemf
-              Hemf=pars(i)%Hemf
-#else
-              Hemf=GV%He_mf
-#endif
-              
-              nHe_over_nH = 0.25d0 * Hemf / Hmf
-              pars(i)%ye = pars(i)%ye + ( pars(i)%xHeII + 2.0d0 * pars(i)%xHeIII ) * nHe_over_nH
-              
-#endif
-           end do
-
+           allocate( uint(Nfile) )
 
            j=1
            do i = Nread+1, Nread+Nfile
+!------------------------------
 #ifdef incHmf
               Hmf=pars(i)%Hmf
 #else
               Hmf=GV%H_mf
 #endif     
-              mu(j) = 4.0d0 / ( 3.0d0 * Hmf + 1.0d0 + 4.0d0 * Hmf * pars(i)%ye )
+!-------------------------------
+              mu      = 4.0d0 / ( 3.0d0 * Hmf + 1.0d0 + 4.0d0 * Hmf * pars(i)%ye )
+              uint(j) = ( gconst%BOLTZMANN * pars(i)%T ) / &
+                        ( (gconst%GAMMA - 1.0d0) * mu * gconst%PROTONMASS  )
+              uint(j) = uint(j) * GV%cgs_mass / GV%cgs_enrg
+
               j = j+1
            end do
 
 
-           uint = ( k_erg_K * pars(Nread+1:Nread+Nfile)%T ) / ( mu * M_p * 2.0d0/3.0d0 * GV%cgs_enrg / GV%cgs_mass) 
-
            write(lun) uint(1:Nfile)
+           deallocate( uint )
+
            write(lun) pars(Nread+1:Nread+Nfile)%rho         
            write(lun) pars(Nread+1:Nread+Nfile)%ye
            write(lun) pars(Nread+1:Nread+Nfile)%xHI
@@ -308,7 +288,6 @@ contains
 
 
            close(lun)
-           deallocate( mu, uint )
            Nread = Nread + Nfile
 
         end do
