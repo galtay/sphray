@@ -16,7 +16,7 @@
 # these flags to be commented out. 
 
 #OPT += -DincHe      # if you want to include Helium
-#OPT += -DoutGamma   # if you want to output HI photoionization rate
+#OPT += -DoutGammaHI # if you want to output HI photoionization rate
 
 #OPT += -DincHmf     # if you want individual Hydrogen mass fractions
 #OPT += -DincHemf    # if you want individual Helium mass fractions
@@ -27,20 +27,37 @@
 #OPT += -DstartNeutral # starts all particles with xHI = 1.0 - 1.0e-6
 #OPT += -DstartIonized # starts all particles with xHII = 1.0 - 1.0e-6
 
+#OPT += -DincEOS  # track the equation of state variable
 
 #OPT += -Dhdf5     # if you are using the hdf
 
+
 #OPT += -DOWLS     # selects input as an OWLS snapshot
+#OPT += -DGIMIC    # selects input as a GIMIC snapshot
 
 
 ifeq (OWLS,$(findstring OWLS, $(OPT)))	
    OPT += -DincHmf
    OPT += -Dhdf5     
-   OPT += -DoutGamma
+   OPT += -DoutGammaHI
    OPT += -Dcloudy
    OPT += -DstartNeutral	
+   OPT += -DincEOS
 #   OPT += -DincHemf
 endif
+
+
+ifeq (GIMIC,$(findstring GIMIC, $(OPT)))	
+   OPT += -DincHmf
+   OPT += -Dhdf5     
+   OPT += -DoutGammaHI
+   OPT += -Dcloudy
+   OPT += -DstartNeutral	
+   OPT += -DincEOS
+#   OPT += -DincHemf
+endif
+
+
 
 # System Definitions
 #=============================================================================
@@ -86,6 +103,7 @@ SRC= 	myf90.o \
 	hummer_atomic_rates.o  \
 	atomic_rates.o \
 	ion_table_class.o \
+	gadget_header_class.o \
 	pluecker.o \
 	cosmology.o \
 	particle_system.o \
