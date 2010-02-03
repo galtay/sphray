@@ -4,6 +4,10 @@
 !<
 module global_mod
 use myf90_mod 
+use gadget_header_class, only: gadget_header_type
+use gadget_header_class, only: gadget_units_type
+use gadget_header_class, only: gadget_constants_type
+
 use particle_system_mod, only: particle_system_type
 use oct_tree_mod, only: oct_tree_type
 use raylist_mod, only: raylist_type
@@ -46,6 +50,9 @@ type(atomic_rates_type) :: xHII_k         !< static rates for xHII-temperature
 
 
 type(run_planning_type) :: PLAN !< run plan
+
+type(gadget_header_type), allocatable :: saved_gheads(:,:) !< nsnaps,nfiles
+type(gadget_constants_type) :: gconst                      !< gadget constants
 
  
 !> global variables type. 
@@ -163,7 +170,6 @@ type global_variables_type
    real(r8b) :: cgs_rho   !< code density [g/cm^3 h^2]
    real(r8b) :: cgs_prs   !< code pressure [dyne/cm^2 h^2]
    real(r8b) :: cgs_enrg  !< code energy [ergs/h]
-   real(r8b) :: cgs_lum   !< code luminosity [ergs/s]
    real(r8b) :: Lunit     !< code source luminosity unit [photons/s]
 
    real(r8b) :: LenFac_cm  !< code (input) length -> cm = cgs_len * a / h

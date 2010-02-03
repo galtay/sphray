@@ -36,8 +36,7 @@ implicit none
 
    ! clear terminal and print splash screen
    !========================================================================
-   call system("clear")
-
+   write(*,*) 
    write(*,*) "**************************************************************"
    write(*,*) "**************************************************************"
    write(*,*) "         Smoothed Particle Hydrodynamics Ray Tracer           "

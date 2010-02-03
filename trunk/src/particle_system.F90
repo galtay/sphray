@@ -8,6 +8,7 @@
 module particle_system_mod
 use myf90_mod
 use atomic_rates_mod, only: calc_colion_eq_fits
+
 implicit none
 private
 
@@ -22,7 +23,7 @@ public :: calc_bytes_per_particle_and_source
 public :: scale_comoving_to_physical
 public :: scale_physical_to_comoving
 public :: set_ye
-public :: set_x_eq
+public :: set_collisional_ionization_equilibrium
 public :: enforce_x_and_T_minmax
 public :: particle_info_to_screen
 public :: adjustbox
@@ -64,9 +65,13 @@ type particle_type
    real(r4b)    :: Hemf       !< Helium mass fraction
 #endif
 
-#ifdef outGamma
+#ifdef outGammaHI
    real(r4b)    :: gammaHI    !< * time averaged HI photoionization rate
    real(r4b)    :: time       !< * elapsed time in seconds - reset at outputs
+#endif
+
+#ifdef incEOS
+   real(r4b)    :: eos        !< equation of state variable
 #endif
 
    integer(i8b) :: lasthit    !< * indx of last ray to cross this particle
@@ -339,36 +344,39 @@ end subroutine scale_physical_to_comoving
 
 !> set electron fraction from ionization fractions
 !=======================================================================================
-subroutine set_ye(psys,dfltH_mf,dfltHe_mf)
+subroutine set_ye(psys, dfltH_mf, dfltHe_mf, ne_bckgnd)
 
   type(particle_system_type) :: psys
   real(r8b), intent(in) :: dfltH_mf
   real(r8b), intent(in) :: dfltHe_mf
+  real(r8b), intent(in) :: ne_bckgnd
   integer(i8b) :: i
   real(r8b) :: Hmf
   real(r8b) :: Hemf
   real(r8b) :: nHe_over_nH
 
 
-  psys%par(:)%ye = psys%par(:)%xHII   
+  psys%par(:)%ye = psys%par(:)%xHII + ne_bckgnd
 
 
 #ifdef incHe
 
   do i = 1,size(psys%par)
      
+!--------------------------
 #ifdef incHmf
      Hmf = psys%par(i)%Hmf
 #else
      Hmf = dfltH_mf
 #endif
-     
+!--------------------------
 #ifdef incHemf
      Hemf = psys%par(i)%Hemf
 #else
      Hemf = dfltHe_mf
 #endif
-     
+!--------------------------     
+
      nHe_over_nH = 0.25d0 * Hemf / Hmf
      psys%par(:)%ye = psys%par(:)%ye + ( psys%par(:)%xHeII + 2.0d0 * psys%par(:)%xHeIII ) * nHe_over_nH
      
@@ -381,62 +389,52 @@ end subroutine set_ye
 
 !> sets ionization fractions to their collisional equilibrium values
 !=======================================================================================
-subroutine set_x_eq(psys,caseA,IsoTemp,JustHe)
+subroutine set_collisional_ionization_equilibrium(psys, caseA, IsoTemp, DoHydrogen, fit)
 
   type(particle_system_type) :: psys
   logical, intent(in) :: caseA(2)   
   real(r8b), intent(in) :: IsoTemp
-  logical, optional, intent(in) :: JustHe
+  logical, intent(in) :: DoHydrogen
+  character(*), intent(in) :: fit
   real(r8b) :: xvec(5)
   real(r8b) :: Tdum
   integer(i8b) :: i
-  logical :: DoH
 
-  if (present(JustHe)) then
-     if (JustHe) then
-        DoH = .false.
-     else
-        DoH = .true.
-     endif
-  else
-     DoH = .true.
-  endif
-  
+
   ! if we have a single temperature
   !------------------------------------
   if (IsoTemp /= 0.0) then
-     call calc_colion_eq_fits(IsoTemp, caseA, xvec)
-     if (DoH) then
-        psys%par(:)%xHI = xvec(1)
-        psys%par(:)%xHII = xvec(2)
+     call calc_colion_eq_fits(fit, IsoTemp, caseA, xvec)
+     if (DoHydrogen) then
+        psys%par(:)%xHI    = xvec(1)
+        psys%par(:)%xHII   = xvec(2)
      endif
 #ifdef incHe
-     psys%par(:)%xHeI = xvec(3)
-     psys%par(:)%xHeII = xvec(4)
+     psys%par(:)%xHeI   = xvec(3)
+     psys%par(:)%xHeII  = xvec(4)
      psys%par(:)%xHeIII = xvec(5)
 #endif
 
   ! if we have individual temperatures
   !------------------------------------
   else
-
      do i = 1,size(psys%par)
         Tdum = psys%par(i)%T
-        call calc_colion_eq_fits(Tdum, caseA, xvec)
-        if (DoH) then
-           psys%par(i)%xHI  = xvec(1)
-           psys%par(i)%xHII = xvec(2)
+        call calc_colion_eq_fits(fit, Tdum, caseA, xvec)
+        if (DoHydrogen) then
+           psys%par(:)%xHI    = xvec(1)
+           psys%par(:)%xHII   = xvec(2)
         endif
 #ifdef incHe
-        psys%par(i)%xHeI   = xvec(3)
-        psys%par(i)%xHeII  = xvec(4)
-        psys%par(i)%xHeIII = xvec(5)
+        psys%par(:)%xHeI   = xvec(3)
+        psys%par(:)%xHeII  = xvec(4)
+        psys%par(:)%xHeIII = xvec(5)
 #endif
      end do
 
   end if
 
-end subroutine set_x_eq
+end subroutine set_collisional_ionization_equilibrium
 
 
 !>   enforces a minimum and maximum value on the ionization fractions and temperatures
@@ -477,7 +475,7 @@ subroutine calc_bytes_per_particle_and_source(bpp, bps)
   integer(i8b), intent(out) :: bps !< bytes per source
   character(clen) :: str
 
-  bpp = 12         ! positions
+  bpp = 12       ! positions
 
 #ifdef incVel
   bpp = bpp + 12 ! velocities  
@@ -491,23 +489,34 @@ subroutine calc_bytes_per_particle_and_source(bpp, bps)
   bpp = bpp + 8  ! H ionization fractions
   bpp = bpp + 4  ! hsml
 
-#ifdef incHmf
-  bpp = bpp + 4  ! H mass fraction
+#ifdef cloudy
+  bpp = bpp + 4  ! cloudy table xHI
 #endif
 
-#ifdef incHemf
-  bpp = bpp + 4  ! He mass fraction
+#ifdef incHmf
+  bpp = bpp + 4  ! H mass fraction
 #endif
 
 #ifdef incHe
   bpp = bpp + 12 ! He ionization fractions
 #endif
 
-#ifdef outGamma
+#ifdef incHemf
+  bpp = bpp + 4  ! He mass fraction
+#endif
+
+#ifdef outGammaHI
   bpp = bpp + 8  ! GammaHI tracking
+  bpp = bpp + 8  ! time var
+#endif
+
+#ifdef incEOS
+  bpp = bpp + 4  ! Equation of State variable
 #endif
 
   bpp = bpp + 8  ! last hit index
+
+
   write(str,'(A,I4)') "  bytes per particle = ", bpp
   call mywrite(str, verb)
 
@@ -619,14 +628,20 @@ subroutine particle_info_to_screen(psys,str,lun)
 #endif
 
 
-#ifdef outGamma
+#ifdef outGammaHI
   write(outlun,100) "gammaHI",   minval(psys%par%gammaHI), maxval(psys%par%gammaHI), &
        meanval_real(psys%par%gammaHI)
   
   write(outlun,100) "time(s)",   minval(psys%par%time), maxval(psys%par%time), &
        meanval_real(psys%par%time)
 #endif
-  
+
+#ifdef incEOS
+  write(outlun,100) "eos",   minval(psys%par%eos), maxval(psys%par%eos), &
+       meanval_real(psys%par%eos)  
+#endif
+
+
   write(outlun,101) "lasthit", minval(psys%par%lasthit), maxval(psys%par%lasthit)
 
   write(outlun,*)

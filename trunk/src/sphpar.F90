@@ -45,7 +45,7 @@ use particle_system_mod, only: transformation_type
      real(r4b)    :: Hemf       !< Helium mass fraction
 #endif
      
-#ifdef outGamma
+#ifdef outGammaHI
      real(r4b)    :: gammaHI    !< * time averaged HI photoionization rate
      real(r4b)    :: time       !< * elapsed time in seconds - reset at outputs
 #endif
@@ -104,7 +104,11 @@ contains
     sphpar%xHeIII = 0.0
 #endif
 
-#ifdef outGamma
+#ifdef incHemf
+    sphpar%Hemf = par%Hemf
+#endif
+
+#ifdef outGammaHI
     sphpar%gammaHI = par%gammaHI
     sphpar%time = par%time
 #endif

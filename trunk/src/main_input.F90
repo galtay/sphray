@@ -14,7 +14,11 @@ use particle_system_mod, only: box_type
 use particle_system_mod, only: scale_comoving_to_physical
 use particle_system_mod, only: scale_physical_to_comoving
 use particle_system_mod, only: set_ye
-use global_mod, only: psys, PLAN, GV, rtable, cmbT_k
+use particle_system_mod, only: enforce_x_and_T_minmax
+use particle_system_mod, only: particle_info_to_screen
+use atomic_rates_mod, only: get_atomic_rates
+use global_mod, only: PLAN, GV, rtable, cmbT_k
+use global_mod, only: psys, gconst
 implicit none
 
 contains
@@ -63,10 +67,7 @@ end subroutine get_planning_data
 !> read in particle, box, and source data 
 !============================================
 subroutine readin_snapshot(skewers)
-use particle_system_mod, only: enforce_x_and_T_minmax
-use particle_system_mod, only: particle_info_to_screen
-use physical_constants_mod, only: M_H, erg2eV, CMBtempNow, cm2kpc3, cm2kpc
-use atomic_rates_mod, only: get_atomic_rates
+
   
   logical, optional, intent(in) :: skewers
 
@@ -84,6 +85,8 @@ use atomic_rates_mod, only: get_atomic_rates
   real(r8b) :: Flux  !< photons / s from planar sources
   character(clen) :: snpbase
   character(clen) :: srcbase
+  real :: cm2kpc
+
 
   if (present(skewers)) then
      skew = skewers
@@ -133,12 +136,12 @@ use atomic_rates_mod, only: get_atomic_rates
         call update_particles()
      end if
 
-  ! gadget w/ cooling, stars, met
+  ! gadget w/ cooling (i.e. ye and xHI)
   !---------------------------------------------------------------
   else if (GV%InputType == 2) then
 
      if (first) then
-        call read_Gtiz_particles()
+        call read_Gcool_particles()
         psys%par(:)%lasthit = 0
      else
         call update_particles()
@@ -204,6 +207,8 @@ use atomic_rates_mod, only: get_atomic_rates
 
   ! take care of all the box variables
   !===============================================================
+  cm2kpc = 1.0d0 / (gconst%cm_per_mpc * 1.0d-3)
+
   GV%BoxLwrsComo = GV%BoxLwrsComoh / h
   GV%BoxLwrsPhys = GV%BoxLwrsComoh / h * a
 
@@ -251,7 +256,7 @@ use atomic_rates_mod, only: get_atomic_rates
            ! we want the flux from all 6 walls that would produce this number 
            ! density in an optically thin volume
            
-           Flux = psys%src(i)%L * c * GV%BoxLensPhys_cm(1)**2 / 6
+           Flux = psys%src(i)%L * gconst%c * GV%BoxLensPhys_cm(1)**2 / 6
            Flux = Flux / GV%Lunit
            psys%src(i)%L = Flux
            
@@ -283,6 +288,16 @@ use atomic_rates_mod, only: get_atomic_rates
 
      end if
   end if
+
+
+  ! set EOS particles to 10,000 K if you want
+  !=======================================================
+#ifdef incEOS
+  do i = 1, size(psys%par(:))
+     if (psys%par(i)%eos == 1.0) psys%par(ngasread+i)%T = 1.0e4
+  enddo
+#endif
+
 
 
   ! set neutral or ionized if we need to
@@ -330,7 +345,7 @@ endif
   ! rezeroed at inputs (because new source files are loaded) and 
   ! outputs (for time dependence)
   !===============================================================
-#ifdef outGamma
+#ifdef outGammaHI
   psys%par(:)%gammaHI = 0.0
   psys%par(:)%time = 0.0
 #endif
@@ -387,7 +402,7 @@ endif
      GV%dtray_s    = GV%dtray_code * GV%cgs_time / h
   endif
 
-  GV%Tcmb_cur = CMBtempNow / a
+  GV%Tcmb_cur = gconst%t_cmb0 / a
   call get_atomic_rates(GV%Tcmb_cur, rtable, cmbT_k)
 
   GV%total_mass = 0.0d0
@@ -400,7 +415,11 @@ endif
      GV%total_lum = GV%total_lum + psys%src(i)%L
   end do
   
-  GV%total_atoms = GV%total_mass * GV%cgs_mass * (GV%H_mf / M_H + GV%He_mf / M_He)
+  GV%total_atoms = GV%total_mass * GV%cgs_mass * &
+       (GV%H_mf  / (gconst%protonmass) + &
+        GV%He_mf / (4*gconst%protonmass) )
+
+
   GV%total_photons = (GV%TotalSimTime * GV%cgs_time / GV%LittleH) * (GV%total_lum * GV%Lunit)
 
   
@@ -415,7 +434,7 @@ endif
      write(GV%srcdatalun,*) 
      write(GV%srcdatalun,'(A,ES12.5)') "dt/ray [code] = ", GV%dtray_code
      write(GV%srcdatalun,'(A,ES12.5)') "dt/ray [s]    = ", GV%dtray_s
-     write(GV%srcdatalun,'(A,ES12.5)') "dt/ray [Myr]  = ", GV%dtray_s * s2Myr
+     write(GV%srcdatalun,'(A,ES12.5)') "dt/ray [Myr]  = ", GV%dtray_s * gconst%sec_per_megayear
      write(GV%srcdatalun,*)
      write(GV%srcdatalun,'(A,ES12.5)') "total photons = ", GV%total_photons
      write(GV%srcdatalun,'(A,ES12.5)') "total atoms   = ", GV%total_atoms
