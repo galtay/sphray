@@ -14,7 +14,7 @@ use particle_system_mod, only: transformation_type
 
      real(r4b)    :: pos(3)     !< x,y,z coordinates
 
-#ifndef incVel
+#ifdef incVel
      real(r4b)    :: vel
 #endif
 
@@ -35,7 +35,7 @@ use particle_system_mod, only: transformation_type
      real(r4b)    :: Hmf        !< Hydrogen mass fraction
 #endif
 
-#ifndef incHe
+#ifdef incHe
      real(r4b)    :: xHeI
      real(r4b)    :: xHeII
      real(r4b)    :: xHeIII
@@ -73,8 +73,6 @@ contains
 
 #ifdef incVel
     sphpar%vel = par%vel
-#else
-    sphpar%vel = 0.0
 #endif
 
     sphpar%id = par%id
@@ -98,10 +96,6 @@ contains
     sphpar%xHeI = par%xHeI
     sphpar%xHeII = par%xHeII
     sphpar%xHeIII = par%xHeIII
-#else
-    sphpar%xHeI = 0.0
-    sphpar%xHeII = 0.0
-    sphpar%xHeIII = 0.0
 #endif
 
 #ifdef incHemf
