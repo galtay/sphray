@@ -59,8 +59,8 @@ endif
 #include makes/make.cosma.openmp
 #include makes/make.cosma.mpi
 
-#include makes/make.santabuntu.serial.opt
-include makes/make.santabuntu.serial.debug
+include makes/make.santabuntu.serial.opt
+#include makes/make.santabuntu.serial.debug
 
 
 
