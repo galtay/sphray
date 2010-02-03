@@ -5,13 +5,13 @@
 ; set plot to screen/file option and input files
 ;====================================================================
 ps=0       ; ps=0 directs output to screen, ps=1 directs output to psfile
-makepng=0  ; if ps=0 and makepng=1 then tries a screen capture to png
+makepng=1  ; if ps=0 and makepng=1 then tries a screen capture to png
 
 ; SPHRAY file IO
 ;----------------
 snapdir  = "../../sphray_output/IT2"
 snapbase = "iliev_test2"
-snapnum = 1
+snapnum = 5
 snapnumstr = string(snapnum, format="(I3.3)")
 
 
@@ -42,100 +42,10 @@ GENRG = GMASS * GLEN^2 / GTIME^2  ; [erg h^-1]
 GLUM  = GENRG / GTIME             ; [erg/s]
 
 
-
-
-
-
-
 ;====================================================================
 ; read sphray snapshot
 ;====================================================================
-gheads = gadget_header_read(sfile, /flag_sphray)
-
-ngas   = gheads.npar_snap[0]
-nfiles = gheads.nfiles
-ghead = gadget_header_define()
-
-
-data = create_struct( "pos",   fltarr(3,ngas), $
-                      "vel",   fltarr(3,ngas), $
-                      "id",    lonarr(ngas),   $
-                      "mass",  fltarr(ngas),   $
-                      "u",     fltarr(ngas),   $
-                      "rho",   fltarr(ngas),   $
-                      "ye",    fltarr(ngas),   $
-                      "xHI",   fltarr(ngas),   $
-                      "hsml",  fltarr(ngas),   $
-                      "T",     fltarr(ngas)    )
-
-nred=0LL
-for ifile = 0, nfiles-1 do begin
-
-   if nfiles eq 1 then begin
-      f = sfile
-   endif else begin
-      f = sfile + "." + strcompress(ifile, /remove_all)
-   endelse
-
-   openr, lun, f, /f77_unformatted, /get_lun
-   readu, lun, ghead
-
-   ngas1 = ghead.npar_file[0]
-   if ngas1 eq 0 then continue
-
-   ; positions
-   tmp = fltarr(3,ngas1)
-   readu, lun, tmp
-   data.pos[*,nred:nred+ngas1-1] = tmp
-
-   ;velocities
-   tmp = fltarr(3,ngas1)
-   readu, lun, tmp
-   data.vel[*,nred:nred+ngas1-1] = tmp
-
-   ; IDs
-   tmp = lonarr(ngas1)
-   readu, lun, tmp
-   data.id[nred:nred+ngas1-1] = tmp
-
-   ; mass
-   tmp = fltarr(ngas1)
-   readu, lun, tmp
-   data.mass[nred:nred+ngas1-1] = tmp
-
-   ; u
-   tmp = fltarr(ngas1)
-   readu, lun, tmp
-   data.u[nred:nred+ngas1-1] = tmp
-
-   ; rho
-   tmp = fltarr(ngas1)
-   readu, lun, tmp
-   data.rho[nred:nred+ngas1-1] = tmp
-
-   ; ye
-   tmp = fltarr(ngas1)
-   readu, lun, tmp
-   data.ye[nred:nred+ngas1-1] = tmp
-
-   ; xHI
-   tmp = fltarr(ngas1)
-   readu, lun, tmp
-   data.xHI[nred:nred+ngas1-1] = tmp
-
-   ; hsml
-   tmp = fltarr(ngas1)
-   readu, lun, tmp
-   data.hsml[nred:nred+ngas1-1] = tmp
-   
-   ; T
-   tmp = fltarr(ngas1)
-   readu, lun, tmp
-   data.T[nred:nred+ngas1-1] = tmp
-
-endfor
-
-
+data = read_sphray(sfile) 
 
 
 ;====================================================================

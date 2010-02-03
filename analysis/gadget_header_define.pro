@@ -14,8 +14,8 @@ function gadget_header_define, flag_sphray=flag_sphray
 ;
 ; KEYWORD PARAMETERS:
 ;    /flag_sphray = If set, then the additional variables omegaB,
-;    nrays, flag_helium, and flag_gammaHI are defined as part of 
-;    the header.
+;    nrays, flag_Hmf, flag_Hemf, flag_helium, flag_gammaHI,
+;    flag_cloudy, and flag_eos are defined as part of the header.
 ;
 ; OUTPUTS:
 ;    Returns an empty header structure.
@@ -25,6 +25,7 @@ function gadget_header_define, flag_sphray=flag_sphray
 ;
 ; MODIFICATION HISTORY:
 ;    Version 1, Gabriel Altay, CMU, 14 Oct 2009.
+;    Version 2, Gabriel Altay, ICC, 3 Feb 2010.
 ;-
 
 
@@ -32,14 +33,14 @@ function gadget_header_define, flag_sphray=flag_sphray
 ; check keyword arguments
 ;---------------------------
 
-  if (n_elements(flag_sphray) eq 0) then flag_sphray=0
+if (n_elements(flag_sphray) eq 0) then flag_sphray=0
 
 ; define header
 ;---------------
 
-  if (flag_sphray) then begin
-
-     header = create_struct( name="sphray_header",        $
+if (flag_sphray) then begin
+    
+    header = create_struct( name="sphray_header",         $
                             "npar_file",     lonarr(6),   $
                             "mass",          dblarr(6),   $
                             "time",          0.0d0,       $
@@ -57,11 +58,15 @@ function gadget_header_define, flag_sphray=flag_sphray
                             "flag_metals",   0L,          $
                             "npar_hw",       lonarr(6),   $
                             "flag_entr_ics", 0L,          $
-                            "omegaB",        0.e0,        $
+                            "omegaB",        0.d0,        $
                             "nrays",         0LL,         $
+                            "flag_Hmf",      0L,          $
+                            "flag_Hemf",     0L,          $                    
                             "flag_helium",   0L,          $
                             "flag_gammaHI",  0L,          $
-                            "unused",        fltarr(9)   )
+                            "flag_cloudy",   0L,          $
+                            "flag_eos",      0L,          $
+                            "unused",        fltarr(5)    )
 
   endif else begin
 
