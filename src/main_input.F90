@@ -272,10 +272,12 @@ subroutine readin_snapshot(skewers)
      if ( trim(GV%TestScenario) == "iliev_test1") then
         psys%par(:)%xHII = 1.2d-3
         psys%par(:)%xHI = 1.0d0 - psys%par(:)%xHII
-        
+        psys%par(:)%T = 1.0d4
+
      else if ( trim(GV%TestScenario) == "iliev_test2" ) then
         psys%par(:)%xHII = 0.0d0
         psys%par(:)%xHI = 1.0d0 - psys%par(:)%xHII
+        psys%par(:)%T = 1.0d2
 
      else if ( trim(GV%TestScenario) == "iliev_test1He" ) then
         psys%par(:)%xHI = 1.0d0
@@ -285,6 +287,7 @@ subroutine readin_snapshot(skewers)
         psys%par(:)%xHeII = 0.0d0
         psys%par(:)%xHeIII = 0.0d0
 #endif
+        psys%par(:)%T = 1.0d4
 
      end if
   end if
@@ -294,7 +297,7 @@ subroutine readin_snapshot(skewers)
   !=======================================================
 #ifdef incEOS
   do i = 1, size(psys%par(:))
-     if (psys%par(i)%eos == 1.0) psys%par(ngasread+i)%T = 1.0e4
+     if (psys%par(i)%eos == 1.0) psys%par(i)%T = 1.0e4
   enddo
 #endif
 

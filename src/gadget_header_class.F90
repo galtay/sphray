@@ -71,7 +71,8 @@ type gadget_header_type
    integer(i4b) :: flag_helium     !< output has xHeI and xHeII?
    integer(i4b) :: flag_gammaHI    !< output has HI photoionization rate? 
    integer(i4b) :: flag_cloudy     !< output has Cloudy xHIeq? 
-   real(i4b)    :: unused(6)       !< spacer
+   integer(i4b) :: flag_eos        !< output has EOS info?
+   real(i4b)    :: unused(5)       !< spacer
 end type gadget_header_type
 
 

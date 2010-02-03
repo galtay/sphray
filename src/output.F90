@@ -12,7 +12,7 @@ use particle_system_mod, only: particle_type
 use oct_tree_mod, only: oct_tree_type
 use physical_constants_mod
 use global_mod, only: PLAN, GV
-use global_mod, only: saved_gheads
+use global_mod, only: saved_gheads, gconst
 implicit none
 
 contains
@@ -50,7 +50,7 @@ contains
        ghead%a = PLAN%snap(GV%CurSnapNum)%ScalefacAt
        ghead%z = 1.0d0 / ghead%a - 1.0d0
     else
-       ghead%a = GV%time_code
+       ghead%a = GV%time_elapsed_s * gconst%sec_per_megayear
        ghead%z = saved_gheads(GV%CurSnapNum,fnum)%z
     end if
 
@@ -104,6 +104,12 @@ contains
     ghead%flag_cloudy = 1
 #else
     ghead%flag_cloudy = 0
+#endif
+!-------------------------
+#ifdef incEOS
+    ghead%flag_eos = 1
+#else
+    ghead%flag_eos = 0
 #endif
 !-------------------------
 
@@ -292,6 +298,10 @@ contains
  
 #ifdef cloudy
            write(lun) pars(Nread+1:Nread+Nfile)%xHI_cloudy
+#endif
+
+#ifdef incEOS
+           write(lun) pars(Nread+1:Nread+Nfile)%eos
 #endif
 
            write(lun) pars(Nread+1:Nread+Nfile)%lasthit
