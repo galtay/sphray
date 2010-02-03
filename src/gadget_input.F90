@@ -18,7 +18,7 @@ public :: read_Gpub_particles
 public :: read_Gcool_particles
 public :: update_particles
 public :: set_temp_from_u
-
+public :: set_u_from_temp
 
 
 contains
@@ -777,6 +777,37 @@ subroutine set_temp_from_u(psys, dfltH_mf, cgs_enrg, cgs_mass)
 
 end subroutine set_temp_from_u
 
+
+
+!> converts temperature K to internal energies / unit mass 
+!=======================================================================================
+subroutine set_u_from_temp(psys, dfltH_mf, cgs_enrg, cgs_mass)
+
+  type(particle_system_type) :: psys
+  real(r8b), intent(in) :: dfltH_mf
+  real(r8b), intent(in) :: cgs_enrg
+  real(r8b), intent(in) :: cgs_mass
+  integer(i8b) :: i
+  real(r8b) :: Hmf
+  real(r8b) :: mu
+  real(r8b) :: Udum
+
+  do i = 1,size(psys%par)
+
+#ifdef incHmf
+     Hmf = psys%par(i)%Hmf
+#else
+     Hmf = dfltH_mf
+#endif
+
+     mu = 4.0d0 / (3.0d0 * Hmf + 1.0d0 + 4.0d0 * Hmf * psys%par(i)%ye)
+     Udum = gconst%BOLTZMANN * psys%par(i)%T /( (gconst%GAMMA - 1.0d0) * mu * gconst%PROTONMASS )
+     psys%par(i)%T = Udum * cgs_mass / cgs_enrg
+
+  end do
+
+
+end subroutine set_u_from_temp
 
 
 
