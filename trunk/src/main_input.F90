@@ -265,9 +265,13 @@ use atomic_rates_mod, only: get_atomic_rates
   if (GV%DoTestScenario) then
 
      if ( trim(GV%TestScenario) == "iliev_test1") then
-        psys%par(:)%xHII = 1.3d-3
+        psys%par(:)%xHII = 1.2d-3
         psys%par(:)%xHI = 1.0d0 - psys%par(:)%xHII
         
+     else if ( trim(GV%TestScenario) == "iliev_test2" ) then
+        psys%par(:)%xHII = 0.0d0
+        psys%par(:)%xHI = 1.0d0 - psys%par(:)%xHII
+
      else if ( trim(GV%TestScenario) == "iliev_test1He" ) then
         psys%par(:)%xHI = 1.0d0
         psys%par(:)%xHII = 0.0d0
