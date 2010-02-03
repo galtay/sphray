@@ -45,6 +45,9 @@ if (n_elements(ghead) ne 1) then begin
     message, "<gadget_header_struct> must be scalar"
 endif
 
+
+
+
 ; formatted print the header
 ;-----------------------------
 
@@ -86,17 +89,24 @@ print, "|gadget flags|",          $
   "  feed:", ghead.flag_feedback, $
   "  cool:", ghead.flag_cool,     $
   "  age:", ghead.flag_age,       $
-  "  metal:", ghead.flag_metals,  $
+  "   metal:", ghead.flag_metals,  $
   "  entr:", ghead.flag_entr_ics, $
   format='( "* ", A, 6(A,I1), T78, " *" )'
 
 
+
+
 tags = tag_names(ghead)
-if ( total( strmatch(tags,"flag_helium",/fold_case), /integer ) eq 1 ) then begin
-    print, "|sphray flags|", $
-      "  He:", ghead.flag_helium, $
-      "  G_HI:", ghead.flag_gammaHI, $
-      format='("* ", A, 2(A,I1), T78, " *")'
+checksphray = total( strmatch(tags,"flag_helium",/fold_case), /integer )
+if (  checksphray eq 1 ) then begin
+    print, "|sphray flags|",         $
+      "  Hmf:", ghead.flag_Hmf,      $
+      "  Hemf:", ghead.flag_Hemf,    $
+      "  He:", ghead.flag_helium,    $
+      "    G_HI:", ghead.flag_gammaHI, $
+      "  cldy:", ghead.flag_cloudy,  $
+      "   eos:", ghead.flag_eos,      $
+      format='("* ", A, 6(A,I1), T78, " *")'
 
     print, format='( "* ", T78, " *" )'
 

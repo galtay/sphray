@@ -10,7 +10,7 @@ function gadget_header_read, snapbase, silent=silent, flag_sphray=flag_sphray
 ;    IDL Hands Library - Gadget Routines
 ;
 ; CALLING SEQUENCE:
-;    gadget_header_read( snapbase, [ /silent, /flag_sphray ] ) 
+;    RESULT = gadget_header_read( snapbase, [ /silent, /flag_sphray ] ) 
 ;
 ; INPUTS:
 ;    snapbase - Full file name (including path) to the gadget
