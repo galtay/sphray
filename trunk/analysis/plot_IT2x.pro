@@ -1,5 +1,5 @@
-; SPHRAY readin and plot for IT1
-;========================================
+; SPHRAY readin and plot for IT2 ionization fractions
+;======================================================
 
 ;====================================================================
 ; set plot to screen/file option and input files
@@ -9,23 +9,22 @@ makepng=0  ; if ps=0 and makepng=1 then tries a screen capture to png
 
 ; SPHRAY file IO
 ;----------------
-snapdir  = "../../sphray_output/IT1"
-snapbase = "iliev_test1"
-snapnum = 5
+snapdir  = "../../sphray_output/IT2"
+snapbase = "iliev_test2"
+snapnum = 1
 snapnumstr = string(snapnum, format="(I3.3)")
 
 
 sfile  = snapdir + "/" + snapbase + "_" + snapnumstr
-psfile = "T1x" + snapnumstr + ".eps"
-pngfile = "T1x" + snapnumstr + ".png"
-cmpfile= "CmpData/CmpT1_" + snapnumstr + "x.txt"
+psfile = "T2x" + snapnumstr + ".eps"
+pngfile = "T2x" + snapnumstr + ".png"
+cmpfile= "CmpData/CmpT2_" + snapnumstr + "x.txt"
 
 print
 print, "comparison project file:", cmpfile
 print, "sphray output file:", sfile
 print, "eps file if doing post script output:", psfile
 print
-
 
 
 ; define some physical constants
@@ -137,6 +136,8 @@ for ifile = 0, nfiles-1 do begin
 endfor
 
 
+
+
 ;====================================================================
 ; sort the particles into radial bins. 
 ;====================================================================
@@ -167,6 +168,7 @@ for i = 0,bins-1 do begin
     y2[i] = mean(data.xHI[indx], /double)
 endfor
 
+ 
 ;====================================================================
 ; define arrays for comparison project data
 ;====================================================================
@@ -179,9 +181,7 @@ xcrash1   = fltarr(Ncmpbins)
 xrsph1    = fltarr(Ncmpbins)
 xart1     = fltarr(Ncmpbins)
 xftte1    = fltarr(Ncmpbins)
-xsimplex1 = fltarr(Ncmpbins)
 xzeus1    = fltarr(Ncmpbins)
-xflash1   = fltarr(Ncmpbins)
 xift1     = fltarr(Ncmpbins)
 
 ;====================================================================
@@ -228,23 +228,11 @@ for i = 0,Ncmpbins-1 do begin
     readf,lun,xx
     xftte1[i]=xx
 endfor  
-
-; simplex data
-for i = 0,Ncmpbins-1 do begin
-    readf,lun,xx
-    xsimplex1[i]=xx
-endfor  
-
+  
 ; zeus data
 for i = 0,Ncmpbins-1 do begin
     readf,lun,xx
     xzeus1[i]=xx
-endfor  
-
-; flash data
-for i = 0,Ncmpbins-1 do begin
-    readf,lun,xx
-    xflash1[i]=xx
 endfor  
 
 ; ift data
@@ -272,8 +260,7 @@ endif else begin
     charthick = 2.0
 endelse
 
-
- 
+  
 c2color=254       ; red     ct 39
 otvetcolor=50     ; blue    ct 39
 crashcolor=150    ; green   ct 39
@@ -299,14 +286,15 @@ flashline=2    ; short dashes
 iftline=3      ; dash dot
 sphrayline=0   ; solid line
 
-               
+
 loadct, 39
 plot,      mlocs, y1,  $
            xstyle=1, xrange=[0.0,0.99], xtitle="r/L!lbox", $
            ystyle=1, yrange=[1.0E-5,1.1], /ylog, ytitle="x, 1-x", $
            position=[0.18,0.15,0.95,0.95], /nodata, color=0, $
            background=255, charsize=charsize, charthick=charthick, $
-           xthick=mythick, ythick=mythick
+           xthick=mythick, ythick=mythick                             
+
 
 oplot,locs,xc2ray1, linestyle=c2line, color=c2color, thick=cmpthick
 oplot,locs,1-xc2ray1, linestyle=c2line, color=c2color, thick=cmpthick
@@ -324,16 +312,10 @@ oplot,locs,1-xart1,linestyle=artline, color=artcolor, thick=cmpthick
 loadct, 12
 oplot,locs,xftte1,linestyle=ftteline, color=fttecolor, thick=cmpthick
 oplot,locs,1-xftte1,linestyle=ftteline, color=fttecolor, thick=cmpthick
-
+  
 loadct, 24
-oplot,locs,xsimplex1,linestyle=simplexline, color=simplexcolor, thick=cmpthick
-oplot,locs,1-xsimplex1,linestyle=simplexline, color=simplexcolor, thick=cmpthick
 oplot,locs,xzeus1,linestyle=zeusline, color=zeuscolor, thick=cmpthick
 oplot,locs,1-xzeus1,linestyle=zeusline, color=zeuscolor, thick=cmpthick
-
-loadct, 28
-oplot,locs,xflash1,linestyle=flashline, color=flashcolor, thick=cmpthick
-oplot,locs,1-xflash1,linestyle=flashline, color=flashcolor, thick=cmpthick
 
 loadct, 39
 oplot,locs,xift1,linestyle=iftline, color=iftcolor, thick=cmpthick
@@ -342,13 +324,14 @@ oplot,locs,1-xift1,linestyle=iftline, color=iftcolor, thick=cmpthick
 oplot,mlocs,y1, linestyle=sphrayline, color=sphraycolor, thick=mythick
 oplot,mlocs,y2, linestyle=sphrayline, color=sphraycolor, thick=mythick
 
-
 if ps then begin
    device, /close
 endif else begin
    if makepng then screen_to_png, pngfile
 endelse
 set_plot, "x"
+
+
   
 
 end
