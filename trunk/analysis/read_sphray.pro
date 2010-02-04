@@ -5,8 +5,8 @@ function read_sphray, snapbase
 gheads = gadget_header_read(snapbase, /flag_sphray)
 
 
-ngas   = gheads.npar_snap[0]
-nfiles = gheads.nfiles
+ngas   = gheads[0].npar_snap[0]
+nfiles = gheads[0].nfiles
 
 
 data = create_struct( "heads", gheads,         $
@@ -42,7 +42,7 @@ if gheads[0].flag_eos then data = create_struct( data, $
 
 
 
-
+dumhead = gadget_header_define( /flag_sphray )
 
 nred=0LL
 for ifile = 0, nfiles-1 do begin
@@ -57,7 +57,7 @@ for ifile = 0, nfiles-1 do begin
    endelse
 
    openr, lun, f, /f77_unformatted, /get_lun
-   readu, lun ; dummy read header
+   readu, lun, dumhead
 
 
    ; positions
@@ -149,6 +149,7 @@ for ifile = 0, nfiles-1 do begin
        data.eos[nred:nred+ngas1-1] = tmp
    endif
 
+   nred = nred + ngas1
    tmp=0
    free_lun, lun
 

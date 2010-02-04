@@ -82,6 +82,9 @@ print, "boxlen:", ghead.boxlen, $
        "omegaL:", ghead.omegaL, $
   format='( "* ", A,T10,E12.5, T25,A,T32,E12.5, T50,A,T57,E12.5, T78, " *" )'
 
+print, "nfiles:", ghead.nfiles, $
+  format='( "* ", A,T10,I12, T78, " *" )'
+
 print, format='( "* ", T78, " *" )'
 
 print, "|gadget flags|",          $
