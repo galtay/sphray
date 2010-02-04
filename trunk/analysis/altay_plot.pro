@@ -1,12 +1,10 @@
-pro altay_plot, x, y, ct=ct, axiscolor=axiscolor, axisct=axisct, _extra=extra
+pro altay_plot, x, y, ct=ct, _extra=extra
 
 on_error,2
 
-
 if n_elements(ct) eq 0 then ct=39
-if n_elements(axiscolor) eq 0 then axiscolor=0
-if n_elements(axisct) eq 0 then axisct=39
 
+loadct, ct
 background=255
 color=0
 
@@ -33,19 +31,6 @@ endif else begin
 endelse
 
 
-
-; dont want extra.color to overide axiscolor
-;--------------------------------------------
-if n_elements(extra) ne 0 then begin
-    tags = tag_names(extra)
-    tagmatch = where( tags eq "COLOR", count )
-    if count ne 0 then begin
-        origcolor = extra.color
-        extra.color=axiscolor
-    endif
-endif
-
-
 ; plot axes
 ;------------
 xmin=min(x)
@@ -62,24 +47,12 @@ ymin = ymin - dy * 0.05
 ymax = ymax + dy * 0.05
 
 
-loadct, axisct
+
 plot, x, y, $
   /xstyle, xrange=[xmin,xmax], xthick=xthick, $
   /ystyle, yrange=[ymin,ymax], ythick=ythick, $
   charsize=charsize, charthick=charthick, $
-  background=background, color=axiscolor, /nodata, _strict_extra=extra
-
-
-; if we need to, switch extra.color back for plotting the data
-;--------------------------------------------------------------
-if n_elements(extra) ne 0 then begin
-    if count ne 0 then extra.color = origcolor
-endif
-
-; plot data
-;-----------
-loadct, ct
-oplot, x, y, color=color, thick=thick, _extra=extra
+  background=background, color=axiscolor, _strict_extra=extra
 
 
 
