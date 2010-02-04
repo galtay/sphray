@@ -326,6 +326,8 @@ contains
 
      real :: Nionfrac, Mionfrac, Vionfrac
      real :: CallsPerCross
+     real :: minGHI, maxGHI, GHI
+     integer :: i
 
      100 format(A,T24,A,T44,A,T64,A)
      101 format(A,T44,A,T64,A)
@@ -419,8 +421,16 @@ contains
                                         maxval(psys%par(:)%T)
 
 #ifdef outGammaHI
-     write(*,160) "Min/Max GHI     = ", minval(psys%par(:)%gammaHI/psys%par(:)%time), &
-                                        maxval(psys%par(:)%gammaHI/psys%par(:)%time)
+     minGHI = huge(1.0)
+     maxGHI = tiny(1.0)
+     do i = 1, size(psys%par(:))
+        if (psys%par(i)%time > 0.0) then
+           GHI = psys%par(i)%gammaHI / psys%par(i)%time
+           if (GHI < minGHI) minGHI = GHI
+           if (GHI > maxGHI) maxGHI = GHI
+        endif
+     enddo
+     write(*,160) "Min/Max GHI     = ", minGHI, maxGHI
 #endif
 
      write(*,162) "Min/Max LastHit = ", minval(psys%par(:)%lasthit), &
