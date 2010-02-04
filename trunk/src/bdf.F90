@@ -110,7 +110,11 @@ subroutine bdfint(ip,scalls,photo,caseA,He,isoT,fixT)
            ip%dudt = ip%COOL
         end if
         ip%dTdt = two * ip%dudt / (three * (ip%nH + ip%nHe + ip%ne) * k_erg_K)
-        ip%tcool = abs(ip%u / ip%dudt)
+        if (abs(ip%dudt) > 0.0) then
+           ip%tcool = abs(ip%u / ip%dudt)
+        else
+           ip%tcool = dt2
+        endif
      end if
 
 
@@ -122,7 +126,12 @@ subroutine bdfint(ip,scalls,photo,caseA,He,isoT,fixT)
 !     if (He) call setDHe(ip,photo,caseA(2))
  
      call set_dnedt(ip,photo,caseA,He)
-     ip%tion = abs(ip%ne / ip%dnedt)
+     if (abs(ip%dnedt) > 0.0) then
+        ip%tion = abs(ip%ne / ip%dnedt)
+     else
+        ip%tion = dt2
+     endif
+
 
 
      !----------------------------------------------------------  
