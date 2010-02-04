@@ -123,7 +123,7 @@ subroutine update_raylist(GV,raylist,pars,box,srcray)
      call ionpar2par(ipar,par)
      if (par%T < GV%Tfloor) par%T = GV%Tfloor
 
-#ifdef outGamma
+#ifdef outGammaHI
      par%gammaHI = pars(ipar%indx)%gammaHI + ipar%gammaHI * ipar%dt_s
      par%time    = pars(ipar%indx)%time + ipar%dt_s
 #endif

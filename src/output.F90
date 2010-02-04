@@ -418,6 +418,10 @@ contains
      write(*,160) "Min/Max T       = ", minval(psys%par(:)%T), &
                                         maxval(psys%par(:)%T)
 
+#ifdef outGammaHI
+     write(*,160) "Min/Max GHI     = ", minval(psys%par(:)%gammaHI/psys%par(:)%time), &
+                                        maxval(psys%par(:)%gammaHI/psys%par(:)%time)
+#endif
 
      write(*,162) "Min/Max LastHit = ", minval(psys%par(:)%lasthit), &
                                         maxval(psys%par(:)%lasthit)
