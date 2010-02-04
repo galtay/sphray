@@ -167,7 +167,10 @@ subroutine update_raylist(GV,raylist,pars,box,srcray)
 !  determine if we move to the next particle and track some ray stats
 !=====================================================================
 
-     raylist%ray%pcnt = raylist%ray%pcnt - ipar%pdeps
+
+      raylist%ray%pcnt = raylist%ray%pcnt - ipar%pdeps
+
+
  
      ! if photons are exhausted
      if (raylist%ray%pini > 0.0) then
