@@ -1,8 +1,8 @@
-!> \file myf90.f90
+!> \file myf90.F90
 
-!> \brief my fortran 90 module
+!> \brief My Fortran 90 module
 !!
-!! this module contains preconnected logical unit numbers (lun), 
+!! Contains preconnected logical unit numbers (lun), 
 !! portable precision definitions and subroutines for reading and 
 !! parsing files 
 !<

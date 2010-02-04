@@ -1,4 +1,4 @@
-!> \file atomic_rates.f90
+!> \file atomic_rates.F90
 
 !> \brief the module that handles atomic rates interpolation tables
 
@@ -63,7 +63,7 @@ end type atomic_rates_type
 !> atomic rates for a single process
 !------------------------------------
 type atomic_rate_type
-   character(14) :: source
+   character(14) :: source             !< reference for the rate fit
    real(r4b), allocatable :: rate(:)   !< allocate to number of temperature bins
 end type atomic_rate_type
 
