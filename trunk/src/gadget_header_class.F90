@@ -37,12 +37,12 @@ public :: broadcast_gadget_units
 public :: broadcast_gadget_constants
 
 
-!> gadget particle types
+!> Gadget particle type names
 !-----------------------------------------
 character(5), parameter :: ptype_names(6) = (/"gas  ","halo ","disk ",&
                                               "bulge","stars","bndry"/)
 
-!> gadget header type
+!> Gadget header type
 !-----------------------------------------
 type gadget_header_type
    sequence

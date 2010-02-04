@@ -1,3 +1,9 @@
+!> \file ion_table_class.F90
+
+!> \brief Handles the CLOUDY ionization rate table used in some versions of 
+!! Gadget simulations.
+!<
+
 module ion_table_class
 use myf90_mod
 

@@ -1,6 +1,6 @@
 !> \file particle_system.F90
 
-!> \brief particles, sources, and box, types and subroutines
+!> \brief Particles, sources, and box, types and subroutines.
 !! 
 !<
 
@@ -29,7 +29,7 @@ public :: enforce_x_and_T_minmax
 public :: particle_info_to_screen
 public :: adjustbox
 
-!> basic particle type. 
+!> Particle type. 
 !=========================
 type particle_type
 

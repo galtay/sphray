@@ -58,4 +58,39 @@ implicit none
 
    call mainloop()
 
+
+!> \mainpage Reference documentation for SPHRAY
+!!
+!! \author Gabriel Altay \n
+!!         gabriel.altay@gmail.com \n
+!!
+!! \n
+!!
+!! \section prelim Getting Started
+!!
+!! The <b>S</b>moothed <b>P</b>article <b>H</b>ydrodynamics 
+!! <b>RAY</b>-tracer (SPHRAY) is a code written by Gabriel Altay and Inti  
+!! Pelupessy designed to perform 3D, time dependent, radiative transfer  
+!! calculations on precomputed SPH density fields. The source code is written  
+!! in standard Fortran 90 and is made publically available under the terms of 
+!! the latest GNU General Public License 
+!! (http://www.gnu.org/copyleft/gpl.html).
+!!
+!! The quickest way to get started is to have a look at the guide on the wiki 
+!! page (http://gabriel-altay.wikidot.com/sphray). 
+!!
+!!
+!!
+!!
+!!
+!!
+!!
+!!
+!!
+!!
+!!
+!!
+!<
+
+
 end program sphray
