@@ -111,7 +111,7 @@ contains
        !------------------------- 
        src_rays: do rayn = one, PLAN%snap(snapn)%SrcRays
           
-          GV%rayn = GV%rayn + 1
+          GV%rayn     = GV%rayn + 1
           GV%src_rayn = GV%src_rayn + 1
           
           

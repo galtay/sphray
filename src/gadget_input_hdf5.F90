@@ -351,7 +351,7 @@ subroutine read_Ghdf5_particles()
      ! read EOS
      !-----------------------------------------------------------!  
 #ifdef incEOS
-     allocate(eosblck(ngas1), stat=err)
+     allocate(rblck(ngas1), stat=err)
      if(err/=0) call myerr("allocating rblck for EOS",myname,crash)
      VarName = 'OnEquationOfState'
      call hdf5_read_data(fh,trim(GroupName)//trim(VarName),rblck)
