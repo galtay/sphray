@@ -54,6 +54,12 @@ subroutine read_config_file(config_file)
     keyword = "FixSnapTemp:"
     call scanfile(config_file,keyword,GV%FixSnapTemp)
 
+    keyword = "EOStemp:"
+    call scanfile(config_file,keyword,GV%EOStemp)
+
+    keyword = "InitxHI:"
+    call scanfile(config_file,keyword,GV%InitxHI)
+
     keyword = "IntSeed:"
     call scanfile(config_file,keyword,GV%IntSeed)
 
@@ -433,6 +439,10 @@ subroutine config_info_to_file()
   write(lun,*)"Iso temperature (0.0 = variable temperature): ", GV%IsoTemp
   write(lun,*) 
   write(lun,*)"Fix temperature at snapshot values?: ", GV%FixSnapTemp
+  write(lun,*) 
+  write(lun,*)"EOS temperature (negative = snapshot temperature): ", GV%EOStemp
+  write(lun,*) 
+  write(lun,*)"Initial xHI (negative = snapshot or collisional equil.): ", GV%InitxHI
   write(lun,*) 
   write(lun,*)"Integer Seed for RNG ", GV%IntSeed
   write(lun,*) 

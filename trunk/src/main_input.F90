@@ -293,12 +293,18 @@ subroutine readin_snapshot(skewers)
   end if
 
 
-  ! set EOS particles to 10,000 K if you want
+  ! set EOS particles to EOS temp if you want
   !=======================================================
 #ifdef incEOS
-  do i = 1, size(psys%par(:))
-     if (psys%par(i)%eos == 1.0) psys%par(i)%T = 1.0e4
-  enddo
+  if (first) then
+     do i = 1, size(psys%par(:))
+        if (GV%EOStemp > 0.0) then
+           if (psys%par(i)%eos == 1.0) then
+              psys%par(i)%T = GV%EOStemp
+           endif
+        endif
+     enddo
+  endif
 #endif
 
 
@@ -307,34 +313,12 @@ subroutine readin_snapshot(skewers)
   !=======================================================
 if (first) then
 
-#ifdef startNeutral
-   psys%par(:)%xHI  = 1.0d0 - 1.0d-5
-   psys%par(:)%xHII = 1.0d-5 
-
-#ifdef incHe
-   psys%par(:)%xHeI   = 1.0d0 - 1.0d-5
-   psys%par(:)%xHeII  = 1.0d-5
-   psys%par(:)%xHeIII = 0.0d0
-#endif
-
-  call set_ye(psys, GV%H_mf, GV%He_mf)
-#endif
-
-
-#ifdef startIonized
-   psys%par(:)%xHII = 1.0d0 - 1.0d-5
-   psys%par(:)%xHI  = 1.0d-5
-
-#ifdef incHe
-   psys%par(:)%xHeIII = 1.0d0 - 1.0d-5
-   psys%par(:)%xHeII  = 1.0d-5 / 2.
-   psys%par(:)%xHeI   = 1.0d-5 / 2.
-#endif
-
-  call set_ye(psys, GV%H_mf, GV%He_mf)
-#endif
- 
-
+   if (GV%InitxHI > 0.0) then
+      psys%par(:)%xHI  = GV%InitxHI
+      psys%par(:)%xHII = 1.0d0 - GV%InitxHI
+      call set_ye(psys, GV%H_mf, GV%He_mf, GV%NeBackGround)
+   endif
+   
 endif
 
 

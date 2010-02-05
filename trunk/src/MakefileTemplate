@@ -24,9 +24,6 @@
 #OPT += -DincHrec  # if you want seperate rays traced for H recomb. radiation
 #OPT += -DincHerec # if you want seperate rays traced for He recomb. radiation
 
-#OPT += -DstartNeutral # starts all particles with xHI = 1.0 - 1.0e-6
-#OPT += -DstartIonized # starts all particles with xHII = 1.0 - 1.0e-6
-
 #OPT += -DincEOS  # track the equation of state variable
 
 #OPT += -Dhdf5     # if you are using the hdf
@@ -41,9 +38,7 @@ ifeq (OWLS,$(findstring OWLS, $(OPT)))
    OPT += -Dhdf5     
    OPT += -DoutGammaHI
    OPT += -Dcloudy
-   OPT += -DstartNeutral	
    OPT += -DincEOS
-#   OPT += -DincHemf
 endif
 
 
@@ -52,9 +47,7 @@ ifeq (GIMIC,$(findstring GIMIC, $(OPT)))
    OPT += -Dhdf5     
    OPT += -DoutGammaHI
    OPT += -Dcloudy
-   OPT += -DstartNeutral	
    OPT += -DincEOS
-#   OPT += -DincHemf
 endif
 
 
@@ -70,13 +63,13 @@ endif
 #include makes/make.icc-graphics.serial.opt
 
 #include makes/make.xgpc.serial.debug
-include makes/make.xgpc.serial.opt
+#include makes/make.xgpc.serial.opt
 
 
 #include makes/make.cosma.openmp
 #include makes/make.cosma.mpi
 
-#include makes/make.santabuntu.serial.opt
+include makes/make.santabuntu.serial.opt
 #include makes/make.santabuntu.serial.debug
 
 

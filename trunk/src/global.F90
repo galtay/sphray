@@ -73,7 +73,9 @@ type global_variables_type
 
    real(r8b)       :: IsoTemp             !< [Config File] if non zero all pars fixed @ IsoTemp
    logical         :: FixSnapTemp         !< [Config File] T = fix temp at snapshot values (ignored if IsoTemp /= 0)
-                                          !!               F = evolve temperature and hand off between snapshots 
+
+   real(r8b)       :: EOStemp             !< [Config File] if non-negative, initialize EOS particles w/ T = EOStemp 
+   real(r8b)       :: InitxHI             !< [Config File] if non-negative, all xHI initialized to this value
 
    integer(i8b)    :: IntSeed             !< [Config File] seed for mersenne twister
 
@@ -153,9 +155,9 @@ type global_variables_type
 
    ! particle and source sizes
    !-----------------------------------------------------------
-   integer(i8b) :: bytesperpar
-   integer(i8b) :: bytespersrc
-   real(r8b) :: MB
+   integer(i8b) :: bytesperpar  !< bytes per particle
+   integer(i8b) :: bytespersrc  !< bytes per source
+   real(r8b) :: MB              !< tracks memory consumption
 
 
    ! these are all set in get_planning_data in main_input.f90
