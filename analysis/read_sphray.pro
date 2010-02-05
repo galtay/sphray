@@ -1,10 +1,45 @@
 function read_sphray, snapbase
+;+
+; NAME: 
+;    READ_SPHRAY
+;
+; PURPOSE: 
+;    Reads in a single/multi file SPHRAY snapshot.
+;
+; CATEGORY:
+;    IDL Hands Library - Sphray Routines
+;
+; CALLING SEQUENCE: 
+;    Result = read_sphray( snapbase )
+;
+; KEYWORD PARAMETERS:
+;
+; OUTPUTS:
+;    Returns a data structure with all the headers and data fields in
+;    the Sphray snapshot. 
+;
+; EXAMPLE:
+;    snapbase = "/home/galtay/data/snap_012"
+;    data = read_sphray( snapbase )    
+;
+; MODIFICATION HISTORY:
+;    Version 1, Gabriel Altay, ICC, 5 Feb 2010.
+;-
+
+
+on_error, 2 ; return to calling routine on error
+
+if (n_elements(snapbase) eq 0) then begin
+    message, "usage: data = read_sphray(snapbase)"
+endif
+
+if (n_params() gt 1) then begin
+   message, "usage: data = read_sphray(snapbase)"
+endif
 
 
 
 gheads = gadget_header_read(snapbase, /flag_sphray)
-
-
 ngas   = gheads[0].npar_snap[0]
 nfiles = gheads[0].nfiles
 
@@ -39,6 +74,8 @@ if gheads[0].flag_cloudy then data = create_struct( data, $
 
 if gheads[0].flag_eos then data = create_struct( data, $
                                                  "eos", fltarr(ngas) )
+
+data = create_struct( data, "lasthit", lon64arr(ngas) )
 
 
 
@@ -148,6 +185,11 @@ for ifile = 0, nfiles-1 do begin
        readu, lun, tmp
        data.eos[nred:nred+ngas1-1] = tmp
    endif
+
+   ; lasthit
+   tmp = lon64arr(ngas1)
+   readu, lun, tmp
+   data.lasthit[nred:nred+ngas1-1] = tmp
 
    nred = nred + ngas1
    tmp=0
