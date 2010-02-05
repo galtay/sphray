@@ -59,7 +59,6 @@ subroutine eulerint(ip,scalls,photo,caseA,He,isoT,fixT)
   t_tot = zero
   dt2 = ip%dt_s / two
 
-
   !---------------------------------------------------------
   ! if constant temperature run, set constant atomic rates
   if (isoT) then
@@ -91,7 +90,6 @@ subroutine eulerint(ip,scalls,photo,caseA,He,isoT,fixT)
      ip%gammaHeI = zero
      ip%gammaHeII = zero
   end if
-
 
 !---------------------------------------------------------  
   

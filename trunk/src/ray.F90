@@ -82,15 +82,15 @@ contains
 !  set the direction of the ray from the emmission profile (src%EmisPrf)
 !     0  = isotropic
 !    -1  = z=0 plane towards +z
-!    -2  = z=blxlen plane towards -z
+!    -2  = z=boxlen plane towards -z
 !    -3  = all planes into box
 !
-!  note that for all sources the luminosity is interpreted as a Flux 
-!  [photons/s].  For point sources (src%EmisPrf >= 0) this flux is just 
-!  src%L * LumFac.  For extended sources, (src%EmisPrf < 0) the luminosity 
+!  note that for all point sources the luminosity is interpreted as a Flux 
+!  [photons/s].  For src%EmisPrf >= 0 this flux is just src%L * LumFac.  
+!  For extended sources, src%EmisPrf < 0,  the luminosity 
 !  that is read in is expected to be a photon number density, n 
 !  [photons/cm^3].  In this case this input value is converted in 
-!  read_src_snapshot to a Flux using the area of the emitting planes such that 
+!  main_input.F90 to a Flux using the area of the emitting planes such that 
 !  the flux F (photons/s) emitted from the planes would produce the number 
 !  density, n,  in an optically thin volume.
 

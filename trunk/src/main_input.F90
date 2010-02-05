@@ -18,7 +18,7 @@ use particle_system_mod, only: enforce_x_and_T_minmax
 use particle_system_mod, only: particle_info_to_screen
 use atomic_rates_mod, only: get_atomic_rates
 use global_mod, only: PLAN, GV, rtable, cmbT_k
-use global_mod, only: psys, gconst
+use global_mod, only: psys, gconst, saved_gheads
 implicit none
 
 contains
@@ -191,7 +191,7 @@ subroutine readin_snapshot(skewers)
  
 
   ! write fresh reads to the particle_data.log and source_data.log files
-  !========================================================================
+  !========================================================================  
   fmt = "(A,A)"
   write(str,fmt) "Fresh read from ", trim(snpbase)
   call particle_info_to_screen(psys,str,GV%pardatalun)
@@ -199,6 +199,10 @@ subroutine readin_snapshot(skewers)
   write(GV%pardatalun,*)
 
   if (.not. skew) then
+     write(GV%srcdatalun,*) "====================================================="
+     write(GV%srcdatalun,*) " HM01 G+C gammaHI for z = ", saved_gheads(GV%CurSnapNum,0)%z, ": ", &
+                              GV%UVB_gammaHI_cloudy
+     write(GV%srcdatalun,*) 
      write(str,fmt) "Fresh read from ", trim(srcbase)
      call source_info_to_screen(psys,str,GV%srcdatalun)
      write(GV%srcdatalun,*)
@@ -255,11 +259,18 @@ subroutine readin_snapshot(skewers)
            ! if this is true the input luminosity is a number density [photons/cm^3]
            ! we want the flux from all 6 walls that would produce this number 
            ! density in an optically thin volume
+
+           write(*,*) 
+           write(*,*) "  converting a photon number density to a flux"
+           write(*,*) "  n_photon/cm^3                = ", psys%src(i)%L
            
            Flux = psys%src(i)%L * gconst%c * GV%BoxLensPhys_cm(1)**2 / 6
            Flux = Flux / GV%Lunit
            psys%src(i)%L = Flux
-           
+
+           write(*,*) "  photons/s from walls [1.e50] = ",  psys%src(i)%L
+           write(*,*)            
+
         end if
         
      end do

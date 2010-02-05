@@ -328,6 +328,7 @@ contains
      real :: CallsPerCross
      real :: minGHI, maxGHI, GHI
      integer :: i
+     integer :: nothit
 
      100 format(A,T24,A,T44,A,T64,A)
      101 format(A,T44,A,T64,A)
@@ -402,22 +403,22 @@ contains
      160 format(T1,A,T20,ES12.5,T34,ES12.5)
      161 format(T1,A,T20,ES12.5)
      162 format(T1,A,T20,I12,T34,I12)
-     write(*,160) "Min/Max xHI     = ", minval(psys%par(:)%xHI), &
+     write(*,160) "Min/Max xHI      = ", minval(psys%par(:)%xHI), &
                                         maxval(psys%par(:)%xHI)
 
-     write(*,160) "Min/Max xHII    = ", minval(psys%par(:)%xHII), &
+     write(*,160) "Min/Max xHII     = ", minval(psys%par(:)%xHII), &
                                         maxval(psys%par(:)%xHII)
 
 #ifdef incHe
-     write(*,160) "Min/Max xHeI    = ", minval(psys%par(:)%xHeI), &
+     write(*,160) "Min/Max xHeI     = ", minval(psys%par(:)%xHeI), &
                                         maxval(psys%par(:)%xHeI)
-     write(*,160) "Min/Max xHeII   = ", minval(psys%par(:)%xHeII), &
+     write(*,160) "Min/Max xHeII    = ", minval(psys%par(:)%xHeII), &
                                         maxval(psys%par(:)%xHeII)
-     write(*,160) "Min/Max xHeIII  = ", minval(psys%par(:)%xHeIII), &
+     write(*,160) "Min/Max xHeIII   = ", minval(psys%par(:)%xHeIII), &
                                         maxval(psys%par(:)%xHeIII)
 #endif
 
-     write(*,160) "Min/Max T       = ", minval(psys%par(:)%T), &
+     write(*,160) "Min/Max T        = ", minval(psys%par(:)%T), &
                                         maxval(psys%par(:)%T)
 
 #ifdef outGammaHI
@@ -430,11 +431,20 @@ contains
            if (GHI > maxGHI) maxGHI = GHI
         endif
      enddo
-     write(*,160) "Min/Max GHI     = ", minGHI, maxGHI
+     write(*,160) "Min/Max GHI      = ", minGHI, maxGHI
 #endif
 
-     write(*,162) "Min/Max LastHit = ", minval(psys%par(:)%lasthit), &
+     write(*,162) "Min/Max LastHit  = ", minval(psys%par(:)%lasthit), &
                                         maxval(psys%par(:)%lasthit)
+
+
+     nothit = 0
+     do i = 1, size(psys%par)
+        if (psys%par(i)%lasthit == 0) then
+           nothit = nothit + 1
+        endif
+     end do
+     write(*,161) "Fraction Not Hit = ", real(nothit) / size(psys%par)
 
 
 ! do test specific outputs

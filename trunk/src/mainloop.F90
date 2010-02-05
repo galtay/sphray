@@ -14,7 +14,7 @@ module mainloop_mod
   use raylist_mod, only: prepare_raysearch, kill_raylist, trace_ray
   use ray_mod, only: make_source_ray, make_recomb_ray
   use ray_mod, only: ray_type, raystat_type, raystatbuffsize
-  use ion_temperature_update, only: update_raylist, non_photo_update_all
+  use ion_temperature_update, only: update_raylist, update_no_hits
   use mt19937_mod, only: genrand_real1
   use output_mod, only: output_total_snap, ion_frac_out
   use physical_constants_mod
@@ -143,7 +143,7 @@ contains
           GV%IonizingPhotonsPerSec = GV%TotalPhotonsCast / GV%time_elapsed_s
           
           srcray = .true.
-          call update_raylist(GV,globalraylist,psys%par,psys%box,srcray)
+          call update_raylist(globalraylist,psys%par,psys%box,srcray)
           
           
           if (GV%raystats) then
@@ -187,7 +187,7 @@ contains
                 call make_recomb_ray( psys%par(pindx), GV%IsoMass, GV%cgs_mass, &
                      GV%H_mf, GV%He_mf, ray)
                 
-                call trace_ray(ray,globalraylist,psys,searchtree) 
+                call trace_ray(ray,globalraylist,psys,tree) 
                 
                 
                 psys%par(pindx)%xHIIrc = 0.0
@@ -199,7 +199,7 @@ contains
                 lasthitcheck = psys%par(pindx)%lasthit 
                 
                 srcray = .false.
-                call update_raylist(GV,globalraylist,psys,srcray)
+                call update_raylist(globalraylist,psys,srcray)
                 
                 if (.not. psys%par(pindx)%lasthit == lasthitcheck) then
                    write(*,*) "lasthit check failed"
@@ -217,13 +217,10 @@ contains
 #endif
           
 
-!          write(*,*) 'rayn = ', GV%rayn
-!          write(*,*) 'UpdateAllRays = ', GV%UpdateAllRays
-
-          if (GV%UpdateAllRays == 0) GV%UpdateAllRays = huge(1_i8b)
-          if ( mod(GV%rayn,GV%UpdateAllRays) .EQ. 0 ) then
-             write(*,*) "doing a non-photo sweep through all particles"
-             call non_photo_update_all(GV,psys%par)
+          if (GV%NraysUpdateNoHits == 0) GV%NraysUpdateNoHits = huge(1_i8b)
+          if ( mod(GV%rayn, GV%NraysUpdateNoHits)==0 ) then
+             write(*,*) "updating particles not hit by rays"
+             call update_no_hits(psys, tree)
           end if
           
           

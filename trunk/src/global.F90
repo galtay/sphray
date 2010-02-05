@@ -76,6 +76,7 @@ type global_variables_type
 
    real(r8b)       :: EOStemp             !< [Config File] if non-negative, initialize EOS particles w/ T = EOStemp 
    real(r8b)       :: InitxHI             !< [Config File] if non-negative, all xHI initialized to this value
+   logical         :: RayDepletion        !< [Config File] remove photons from rays as they travel?
 
    integer(i8b)    :: IntSeed             !< [Config File] seed for mersenne twister
 
@@ -128,7 +129,7 @@ type global_variables_type
 
    real(r8b)       :: NeBackGround        !< [Config File] constant background electron number density from metals
 
-   integer(i8b)    :: UpdateAllRays       !< [Config File] update all particles every UpdateAllRays rays
+   integer(i8b)    :: NraysUpdateNoHits   !< [Config File] update all pars not hit by a ray in last NraysUpdateNoHits
    integer(i8b)    :: RecRaysPerSrcRay    !< [Config File] number of recomb ray for each source ray
 
    real(r8b)       :: H_mf                !< [Config File] hydrogen mass fraction
@@ -241,6 +242,8 @@ type global_variables_type
    real(r8b) :: Tcmb_cur        !< CMB temperature for the current snapshot
 
    real(r8b) :: sf_gamma_eos    !< index for polytropic equation of state for star forming gas.
+
+   real(r8b) :: UVB_gammaHI_cloudy !< magnitude of UVB from cloudy ionization table
    
    ! these are updated continuosly while the code runs 
    ! and most are initialized in initialize.f90
