@@ -232,6 +232,7 @@ subroutine read_Ghdf5_particles()
   real(r8b) :: Hmf
   real(r8b) :: nH8
   real(r4b) :: nH4
+  real(r4b) :: temp
 
   type(ion_table_type) :: itab
   real :: redshift
@@ -431,9 +432,20 @@ subroutine read_Ghdf5_particles()
            Hmf / gconst%PROTONMASS
      nH4 = nH8
 
+     temp = psys%par(i)%T
+
+#ifdef incEOS
+     if (GV%EOStemp > 0.0) then
+        if (psys%par(i)%eos == 1.0) then
+           temp = GV%EOStemp
+        endif
+     endif
+#endif
+
      psys%par(i)%xHI = &
-          interpolate_ion_table( itab, redshift, log10(psys%par(i)%T), log10(nH4) )
+          interpolate_ion_table( itab, redshift, log10(temp), log10(nH4) )
   end do
+
 
 
 #ifdef cloudy
