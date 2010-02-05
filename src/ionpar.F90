@@ -22,50 +22,81 @@ implicit none
 !> ionization particle type. 
 type ionpart_type
 
-   integer(i8b) :: id      !< particle id
+   ! quantities taken from standard particle
+
    real(r8b) :: pos(3)       !< x,y,z coordinates
    real(r8b) :: vel(3)       !< x,y,z velocities
-   real(r8b) :: hsml         !< smoothing length
-   real(r8b) :: rho          !< density = mass * NsphNnb / hsml^3 
+   integer(i8b) :: id        !< particle id
    real(r8b) :: mass         !< particle mass
    real(r8b) :: T            !< temperature in K       
-   real(r8b) :: xHI     !< HII ionization fraction
-   real(r8b) :: xHII    !< nHII/nH
-   real(r8b) :: xHeI    !< HeII ionization fraction
-   real(r8b) :: xHeII   !< HeIII ionization fraction
-   real(r8b) :: xHeIII  !< nHeIII/nHe
-   integer(i8b) :: lasthit !< last ray to cross this particle
+   real(r8b) :: rho          !< density
+   real(r8b) :: hsml         !< smoothing length
 
-   real(r8b) :: xHI_in      !< initial xHI
-   real(r8b) :: xHII_in     !< initial xHII
-   real(r8b) :: xHeI_in     !< initial xHeI
-   real(r8b) :: xHeII_in    !< initial xHeII
-   real(r8b) :: xHeIII_in   !< initial xHeIII
-   real(r8b) :: T_in        !< initial T
+   real(r8b) :: H_mf         !< Hydrogen mass fraction
+   real(r8b) :: He_mf        !< Helium mass fraction
 
-   real(r8b) :: DH(2,2)   !< dxH/dt array
-   real(r8b) :: DHe(3,3)  !< dxHe/dt array
+   real(r8b) :: xHI          !< nHI  / nH
+   real(r8b) :: xHII         !< nHII / nH
+   real(r8b) :: xHeI         !< nHeI   / nHe 
+   real(r8b) :: xHeII        !< nHeII  / nHe 
+   real(r8b) :: xHeIII       !< nHeIII / nHe
 
-   integer(i8b) :: rayn   !< ray number
-   integer(i8b) :: iter   !< number of the iteration in the solver
-   integer(i8b) :: impact !< index of the particle in the raylist
-   integer(i8b) :: indx   !< index of the particle in the psys
-   real(r8b) :: d         !< distance along ray (code)
-   real(r8b) :: b         !< impact parameter 
+   integer(i8b) :: lasthit   !< last ray to cross this particle
 
-   real(r8b) :: bnorm     !< impact parameter normalized to smoothing length
-   real(r8b) :: cdfac     !< column depth conversion factor
-   real(r8b) :: gpercm3   !< density in cgs
-   real(r8b) :: cm3       !< volume in cgs
 
-   real(r8b) :: dt_code  !< time step for this par (code)
-   real(r8b) :: dt_s     !< time step for this par (s)
+   ! quantities initialized before solver is called 
 
-   real(r8b) :: pflux       !< photons per second arriving at the particle
-   real(r8b) :: fracabsorb  !< fraction of all photons absorbed
-   real(r8b) :: pdepr       !< photons per second deposited in particle
-   real(r8b) :: penrg       !< energy of one photon in the ray (ergs)
-   real(r8b) :: pdeps       !< total photons deposited into particle
+   real(r8b) :: xHI_in       !< initial xHI
+   real(r8b) :: xHII_in      !< initial xHII
+   real(r8b) :: xHeI_in      !< initial xHeI
+   real(r8b) :: xHeII_in     !< initial xHeII
+   real(r8b) :: xHeIII_in    !< initial xHeIII
+   real(r8b) :: T_in         !< initial T
+
+   integer(i8b) :: iter      !< number of the iteration in the solver
+   integer(i8b) :: rayn      !< ray number that impacted
+
+   real(r8b) :: NeBckgnd     !< number density of metallic electrons
+   real(r8b) :: Tcmb         !< background radiation field temperature
+
+   real(r8b) :: gpercm3      !< density in cgs
+   real(r8b) :: cm3          !< volume in cgs
+
+   real(r8b) :: nH           !< number density of H
+   real(r8b) :: nHe          !< number density of He
+   real(r8b) :: Hcnt         !< number of H nuclei
+   real(r8b) :: Hecnt        !< number of He nuclei
+
+
+   ! ray/photo quantities initialied before solver is called
+
+   integer(i8b) :: impact    !< index of the particle in the raylist
+   real(r8b) :: d            !< distance along ray (code)
+   real(r8b) :: b            !< impact parameter 
+   real(r8b) :: bnorm        !< impact parameter normalized to smoothing length
+   real(r8b) :: cdfac        !< column depth conversion factor
+
+   real(r8b) :: dt_code      !< time step for this par (code)
+   real(r8b) :: dt_s         !< time step for this par (s)
+
+   real(r8b) :: penrg        !< energy of one photon in the ray (ergs)
+   real(r8b) :: pdeps        !< total photons deposited into particle
+   real(r8b) :: pdeps_eq     !< photons deposited in equilibrium conditions
+   real(r8b) :: pflux        !< photons per second arriving at the particle
+
+   real(r8b) :: DH(2,2)      !< dxH/dt array
+   real(r8b) :: DHe(3,3)     !< dxHe/dt array
+   integer(i8b) :: indx      !< index of the particle in the psys
+
+   real(r8b) :: sigmaHI      !< HI photo cross-section
+   real(r8b) :: sigmaHeI     !< HeI photo cross-section
+   real(r8b) :: sigmaHeII    !< HeII photo cross-section
+
+
+
+   real(r8b) :: fracabsorb   !< fraction of all photons absorbed
+   real(r8b) :: pdepr        !< photons per second deposited in particle
+
 
 !   real(r8b) :: HIcolions   !< total HI collisional ionizations in the particle
 !   real(r8b) :: HeIcolions  !< total HI collisional ionizations in the particle
@@ -79,87 +110,80 @@ type ionpart_type
 !   real(r8b) :: HeIIIrcmbsA !< total HeIII recombinations to all levels
 
 
-   real(r8b) :: Tcmb     !< background radiation field temperature
-   real(r8b) :: H_mf     !< Hydrogen mass fraction
-   real(r8b) :: He_mf    !< Helium mass fraction
 
-   real(r8b) :: nH       !< number density of H
-   real(r8b) :: nHe      !< number density of He
-   real(r8b) :: Hcnt     !< number of H nuclei
-   real(r8b) :: Hecnt    !< number of He nuclei
 
-   real(r8b) :: NeBckgnd !< number density of metallic electrons
-   real(r8b) :: ne       !< number density of electrons
-   real(r8b) :: dnedt    !< time rate of change of ne
 
-   real(r8b) :: nHI      !< number density of HI
-   real(r8b) :: nHII     !< number density of HII
-   real(r8b) :: nHeI     !< number density of HeI
-   real(r8b) :: nHeII    !< number density of HeII
-   real(r8b) :: nHeIII   !< number density of HeIII
 
-   real(r8b) :: HIcnt    !< number of HI atoms
-   real(r8b) :: HIIcnt   !< number of HII atoms
-   real(r8b) :: HeIcnt   !< number of HeI atoms
-   real(r8b) :: HeIIcnt  !< number of HeII atoms
-   real(r8b) :: HeIIIcnt !< number of HeIII atoms
-   real(r8b) :: Allcnt   !< number of all photo absorbing species (HI,HeI,HeII)
 
-   real(r8b) :: tauHI    !< HI optical depth
-   real(r8b) :: tauHeI   !< HeI optical depth
-   real(r8b) :: tauHeII  !< HeII optical depth
-   real(r8b) :: tausum   !< sum of all optical depths
+   real(r8b) :: ne           !< number density of electrons
+   real(r8b) :: dnedt        !< time rate of change of ne
 
-   real(r8b) :: HItaufac   !< 1-exp(-tauHI)
-   real(r8b) :: HeItaufac  !< 1-exp(-tauHeI)
-   real(r8b) :: HeIItaufac !< 1-exp(-tauHeII)
-   real(r8b) :: taufacsum  !< sum of all tau factors
+   real(r8b) :: nHI          !< number density of HI
+   real(r8b) :: nHII         !< number density of HII
+   real(r8b) :: nHeI         !< number density of HeI
+   real(r8b) :: nHeII        !< number density of HeII
+   real(r8b) :: nHeIII       !< number density of HeIII
 
-   real(r8b) :: HIfrac   !< fraction of photons absorbed by HI
-   real(r8b) :: HeIfrac  !< fraction of photons absorbed by HeI
-   real(r8b) :: HeIIfrac !< fraction of photons absorbed by HeII
+   real(r8b) :: HIcnt        !< number of HI atoms
+   real(r8b) :: HIIcnt       !< number of HII atoms
+   real(r8b) :: HeIcnt       !< number of HeI atoms
+   real(r8b) :: HeIIcnt      !< number of HeII atoms
+   real(r8b) :: HeIIIcnt     !< number of HeIII atoms
+   real(r8b) :: Allcnt       !< number of all photo absorbing species (HI,HeI,HeII)
 
-   real(r8b) :: sigmaHI   !< HI photo cross-section
-   real(r8b) :: sigmaHeI  !< HeI photo cross-section
-   real(r8b) :: sigmaHeII !< HeII photo cross-section
+   real(r8b) :: tauHI        !< HI optical depth
+   real(r8b) :: tauHeI       !< HeI optical depth
+   real(r8b) :: tauHeII      !< HeII optical depth
+   real(r8b) :: tausum       !< sum of all optical depths
 
-   real(r8b) :: gammaHI   !< HI photoionization rate
-   real(r8b) :: gammaHeI  !< HeI photoionization rate
-   real(r8b) :: gammaHeII !< HeII photoionization rate
-   real(r8b) :: gammasum  !< sum of all photoionization rates
+   real(r8b) :: HItaufac     !< 1-exp(-tauHI)
+   real(r8b) :: HeItaufac    !< 1-exp(-tauHeI)
+   real(r8b) :: HeIItaufac   !< 1-exp(-tauHeII)
+   real(r8b) :: taufacsum    !< sum of all tau factors
 
-   real(r8b) :: GG     !< HIci * ne
-   real(r8b) :: GGp    !< HI photoionization rate + HIci * ne
-   real(r8b) :: RRa    !< HII recombination rate case A * ne
-   real(r8b) :: RRb    !< HII recombination rate case B * ne
+   real(r8b) :: HIfrac       !< fraction of photons absorbed by HI
+   real(r8b) :: HeIfrac      !< fraction of photons absorbed by HeI
+   real(r8b) :: HeIIfrac     !< fraction of photons absorbed by HeII
 
-   real(r8b) :: GGI    !< HeIci * ne
-   real(r8b) :: GGII   !< HeIIci * ne
-   real(r8b) :: GGIp   !< HeI photoionization rate + HeIci * ne
-   real(r8b) :: GGIIp  !< HeII photoionization rate + HeIIci * ne
-   real(r8b) :: RRIIa  !< HeII recombination rate case A * ne
-   real(r8b) :: RRIIIa !< HeIII recombination rate case A * ne
-   real(r8b) :: RRIIb  !< HeII recombination rate case B * ne
-   real(r8b) :: RRIIIb !< HeIII recombination rate case B * ne
 
-   real(r8b) :: CIC   !< collisional ionization cooling rate
-   real(r8b) :: CEC   !< collisional excitation cooling rate
-   real(r8b) :: RCC   !< recombination cooling 
-   real(r8b) :: PH    !< photo heating rate
-   real(r8b) :: BREM  !< bremsstrahlung cooling rate
-   real(r8b) :: COMP  !< compton heating/cooling rate
-   real(r8b) :: COOL  !< total cooling function w/o photo heating
-   real(r8b) :: COOLp !< total cooling function w photo heating
 
-   real(r8b) :: tion     !< ionization time (s)
-   real(r8b) :: tcool    !< cooling time (s)
-   real(r8b) :: u        !< energy of particle (ergs)
-   real(r8b) :: dudt     !< time rate of change of energy
-   real(r8b) :: dTdt     !< time rate of change of temperature
+   real(r8b) :: gammaHI      !< HI photoionization rate
+   real(r8b) :: gammaHeI     !< HeI photoionization rate
+   real(r8b) :: gammaHeII    !< HeII photoionization rate
+   real(r8b) :: gammasum     !< sum of all photoionization rates
+
+   real(r8b) :: GG           !< HIci * ne
+   real(r8b) :: GGp          !< HI photoionization rate + HIci * ne
+   real(r8b) :: RRa          !< HII recombination rate case A * ne
+   real(r8b) :: RRb          !< HII recombination rate case B * ne
+
+   real(r8b) :: GGI          !< HeIci * ne
+   real(r8b) :: GGII         !< HeIIci * ne
+   real(r8b) :: GGIp         !< HeI photoionization rate + HeIci * ne
+   real(r8b) :: GGIIp        !< HeII photoionization rate + HeIIci * ne
+   real(r8b) :: RRIIa        !< HeII recombination rate case A * ne
+   real(r8b) :: RRIIIa       !< HeIII recombination rate case A * ne
+   real(r8b) :: RRIIb        !< HeII recombination rate case B * ne
+   real(r8b) :: RRIIIb       !< HeIII recombination rate case B * ne
+
+   real(r8b) :: CIC          !< collisional ionization cooling rate
+   real(r8b) :: CEC          !< collisional excitation cooling rate
+   real(r8b) :: RCC          !< recombination cooling rate
+   real(r8b) :: PH           !< photo heating rate
+   real(r8b) :: BREM         !< bremsstrahlung cooling rate
+   real(r8b) :: COMP         !< compton heating/cooling rate
+   real(r8b) :: COOL         !< total cooling function w/o photo heating
+   real(r8b) :: COOLp        !< total cooling function w photo heating
+
+   real(r8b) :: tion         !< ionization time (s)
+   real(r8b) :: tcool        !< cooling time (s)
+   real(r8b) :: u            !< energy per unit mass of particle (ergs)
+   real(r8b) :: dudt         !< time rate of change of energy
+   real(r8b) :: dTdt         !< time rate of change of temperature
    
-   real(r8b) :: pdeps_eq    !< photons deposited in equilibrium conditions
 
-   character(200) :: strtag !< labels code landmarks for debugging 
+
+   character(200) :: strtag  !< labels code landmarks for debugging 
 
 end type ionpart_type
 
@@ -180,33 +204,31 @@ subroutine initialize_ionpar(ipar,par,srcray,He,raylist,impact)
   real(r8b) :: rho_cgs
 
   call par2ionpar(par,ipar)
-  ipar%iter = 0
 
-  ipar%xHI_in = ipar%xHI
+  ipar%xHI_in  = ipar%xHI
   ipar%xHII_in = ipar%xHII
-  
   if (He) then
-     ipar%xHeI_in = ipar%xHeI
-     ipar%xHeII_in = ipar%xHeII
+     ipar%xHeI_in   = ipar%xHeI
+     ipar%xHeII_in  = ipar%xHeII
      ipar%xHeIII_in = ipar%xHeIII
   else
-     ipar%xHeI_in = 0.0d0
-     ipar%xHeII_in = 0.0d0
+     ipar%xHeI_in   = 0.0d0
+     ipar%xHeII_in  = 0.0d0
      ipar%xHeIII_in = 0.0d0
   end if
-
   ipar%T_in = ipar%T
 
+  ipar%iter = 0
   ipar%rayn = GV%rayn
-  if (present(impact)) ipar%impact = impact
+
   ipar%NeBckgnd = GV%NeBackground
-  ipar%Tcmb = GV%Tcmb_cur
+  ipar%Tcmb     = GV%Tcmb_cur
 
   mass_cgs = ipar%mass * GV%cgs_mass 
   rho_cgs  = ipar%rho *  GV%cgs_rho 
- 
+
   ipar%gpercm3 = rho_cgs
-  ipar%cm3 = mass_cgs / rho_cgs
+  ipar%cm3     = mass_cgs / rho_cgs
 
   ipar%nH = rho_cgs * ipar%H_mf  / M_H
   ipar%Hcnt = mass_cgs * ipar%H_mf / M_H  
@@ -222,6 +244,9 @@ subroutine initialize_ionpar(ipar,par,srcray,He,raylist,impact)
 
   if (present(raylist)) then
 
+     if (.not. present(impact)) stop "raylist but no impact in initialize_ionpar"
+     ipar%impact = impact
+
      ipar%d = raylist%intersection(impact)%d
      ipar%b = raylist%intersection(impact)%b
      ipar%bnorm = ipar%b/ipar%hsml
@@ -230,15 +255,10 @@ subroutine initialize_ionpar(ipar,par,srcray,He,raylist,impact)
      ipar%dt_code = (GV%rayn - ipar%lasthit) * GV%dtray_code
      ipar%dt_s    = (GV%rayn - ipar%lasthit) * GV%dtray_s
      
-     if (srcray) then        
-        ipar%pflux = raylist%ray%pcnt / ipar%dt_s 
-     else
-        ipar%pflux = raylist%ray%pcnt 
-     end if
+     ipar%pdeps    = 0.0d0
+     ipar%pdeps_eq = 0.0d0
 
      ipar%penrg = raylist%ray%enrg
-     ipar%pdeps = 0.0d0
-     ipar%pdeps_eq = 0.0d0
 
      ipar%sigmaHI = Osterbrok_HI_photo_cs(raylist%ray%freq * HI_th_Hz)    
      if (He) then
@@ -249,6 +269,12 @@ subroutine initialize_ionpar(ipar,par,srcray,He,raylist,impact)
         ipar%sigmaHeII = 0.0d0
      end if
      
+     if (srcray) then        
+        ipar%pflux = raylist%ray%pcnt / ipar%dt_s 
+     else
+        ipar%pflux = raylist%ray%pcnt 
+     end if
+
   end if
 
 
@@ -257,71 +283,75 @@ subroutine initialize_ionpar(ipar,par,srcray,He,raylist,impact)
      
 end subroutine initialize_ionpar
 
-!-----------------------------------------------------------------------
+
 !> copies the basic particle data into an ionization particle
+!-----------------------------------------------------------------------
 subroutine par2ionpar(par,ipar)
  type(particle_type), intent(in) :: par     !< input particle
  type(ionpart_type), intent(inout) :: ipar  !< output ionization particle
 
 
- ipar%id = par%id
- ipar%pos = par%pos
+ ipar%pos     = par%pos
 
 #ifdef incVel
- ipar%vel = par%vel
+ ipar%vel     = par%vel
 #else
- ipar%vel = 0.0
+ ipar%vel     = 0.0
 #endif
 
+ ipar%id      = par%id
+ ipar%mass    = par%mass
+ ipar%T       = par%T
+ ipar%rho     = par%rho
+
+ ipar%xHI     = par%xHI
+ ipar%xHII    = par%xHII
+
+ ipar%hsml    = par%hsml
+
 #ifdef incHmf
-  ipar%H_mf = par%Hmf
+  ipar%H_mf   = par%Hmf
 #else
-  ipar%H_mf = GV%H_mf
+  ipar%H_mf   = GV%H_mf
 #endif
 
 #ifdef incHemf
-  ipar%He_mf = GV%He_mf
+  ipar%He_mf  = GV%He_mf
 #else
-  ipar%He_mf = GV%He_mf
+  ipar%He_mf  = GV%He_mf
 #endif
 
- ipar%hsml = par%hsml
- ipar%rho = par%rho
- ipar%mass = par%mass
- ipar%T = par%T
-
- ipar%xHI = par%xHI
- ipar%xHII = par%xHII
 
 #ifdef incHe
- ipar%xHeI = par%xHeI
- ipar%xHeII = par%xHeII
- ipar%xHeIII = par%xHeIII
+ ipar%xHeI    = par%xHeI
+ ipar%xHeII   = par%xHeII
+ ipar%xHeIII  = par%xHeIII
 #else
- ipar%xHeI  = 0.0d0
- ipar%xHeII = 0.0d0
- ipar%xHeIII = 0.0d0
+ ipar%xHeI    = 0.0d0
+ ipar%xHeII   = 0.0d0
+ ipar%xHeIII  = 0.0d0
 #endif
 
  ipar%lasthit = par%lasthit
 
 end subroutine par2ionpar
 
-!-----------------------------------------------------------------------
+
 !> copies the ionization particle data into a basic particle 
+!-----------------------------------------------------------------------
 subroutine ionpar2par(ipar,par)
  type(ionpart_type), intent(in) :: ipar    !< input ionization particle
  type(particle_type), intent(inout) :: par !< output particle
 
- par%T = ipar%T
+ par%T       = ipar%T
 
- par%xHI = ipar%xHI
- par%xHII = ipar%xHII
+ par%xHI     = ipar%xHI
+ par%xHII    = ipar%xHII
 
 #ifdef incHe
- par%xHeI = ipar%xHeI
- par%xHeII = ipar%xHeII
- par%xHeIII = ipar%xHeIII
+ par%xHeI    = ipar%xHeI
+ par%xHeII   = ipar%xHeII
+ par%xHeIII  = ipar%xHeIII
 #endif
 
  par%lasthit = ipar%lasthit
@@ -330,8 +360,9 @@ end subroutine ionpar2par
 
 
 
-!-----------------------------------------------------
+
 !> prints ionization particle information to screen
+!-----------------------------------------------------
 subroutine ionpar2screen(ipar)
 
   type(ionpart_type), intent(inout) :: ipar  !< ionization particle

@@ -420,6 +420,10 @@ subroutine read_Ghdf5_particles()
   call read_ion_table_file( "../data/ionization_tables/h1.hdf5", itab )
   redshift = ghead%z
 
+  ! first get the gammaHI from the uniform UVB at this redshift
+  GV%UVB_gammaHI_cloudy = return_gammaHI_at_z( itab, redshift )
+
+ 
   do i = 1,ngas
 
 #ifdef incHmf

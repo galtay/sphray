@@ -7,27 +7,34 @@
 !<
 module ion_temperature_update
 use myf90_mod
-use global_mod, only: global_variables_type
 use raylist_mod, only: raylist_type
-use ray_mod, only: ray_type, make_recomb_ray
-use particle_system_mod, only: particle_type, box_type
+use ray_mod, only: ray_type
+use ray_mod, only: make_recomb_ray, make_probe_ray
+use particle_system_mod, only: particle_system_type
+use particle_system_mod, only: particle_type
+use particle_system_mod, only: box_type
 use raylist_mod, only: trace_ray
+use oct_tree_mod, only: oct_tree_type
+use raylist_mod, only: raylist_type
 use ionpar_mod
+use spectra_mod, only: rn2freq
 use euler_mod, only: eulerint, recombeulerint
 use bdf_mod, only: bdfint
+use atomic_rates_mod, only: get_atomic_rates
 use physical_constants_mod
+use global_mod, only: GV, saved_gheads, gconst, rtable
 implicit none
 
 private
-public :: update_raylist, non_photo_update_all
+public :: update_raylist
+public :: update_no_hits
  
 contains
 
 !> updates the particles intersected by a ray using 
 !! one of the photo solvers
-subroutine update_raylist(GV,raylist,pars,box,srcray)
+subroutine update_raylist(raylist, pars, box, srcray)
 
-  type(global_variables_type), intent(inout) :: GV !< global variables
   type(raylist_type), intent(inout) :: raylist !< ray/particle intersections
   type(particle_type), intent(inout) :: pars(:)  !< particle system
   type(box_type), intent(in) :: box  !< particle system
@@ -118,8 +125,8 @@ subroutine update_raylist(GV,raylist,pars,box,srcray)
      call check_x(ipar)
 
 
-!    put the updated particle data into the particle system
-!===========================================================
+     !    put the updated particle data into the particle system
+     !===========================================================
      call ionpar2par(ipar,par)
      if (par%T < GV%Tfloor) par%T = GV%Tfloor
 
@@ -135,8 +142,8 @@ subroutine update_raylist(GV,raylist,pars,box,srcray)
      end if
 
 
-!  use the solution to set some global variables
-!=================================================
+     !  use the solution to set some global variables
+     !=================================================
      GV%TotalPhotonsAbsorbed = GV%TotalPhotonsAbsorbed + ipar%pdeps
      GV%TotalIonizations = GV%TotalIonizations + &
                            (ipar%xHII - ipar%xHII_in) * ipar%Hcnt
@@ -148,8 +155,8 @@ subroutine update_raylist(GV,raylist,pars,box,srcray)
 #endif
 
 
-! if the particle satisfies the rec ray tol put it on the recomb list
-!=====================================================================
+     ! if the particle satisfies the rec ray tol put it on the recomb list
+     !=====================================================================
 #ifdef incHrec
      if (srcray) then
         if (.not. pars(ipar%indx)%OnRecList) then
@@ -162,23 +169,23 @@ subroutine update_raylist(GV,raylist,pars,box,srcray)
      end if
 #endif
      
-
      
-!  determine if we move to the next particle and track some ray stats
-!=====================================================================
+     
+     !  determine if we move to the next particle and track some ray stats
+     !=====================================================================
 
-
-      raylist%ray%pcnt = raylist%ray%pcnt - ipar%pdeps
-
-
- 
+     if (GV%RayDepletion) then
+        raylist%ray%pcnt = raylist%ray%pcnt - ipar%pdeps
+     endif
+     
+     
      ! if photons are exhausted
      if (raylist%ray%pini > 0.0) then
         if (raylist%ray%pcnt/raylist%ray%pini < GV%RayPhotonTol) then
            exit
         end if
      end if
-
+     
      ! if vacuum BCs and exiting box
      if(box%tbound(1)==0) then
         if(impact==raylist%nnb) then
@@ -198,15 +205,29 @@ end subroutine update_raylist
 !! it loops through every particle and does a non-photo update on all those
 !! that havent been hit by a ray in the last GV%NonPhotoUpdateAllRays rays
 !! traced.
-subroutine non_photo_update_all(GV,pars)
+subroutine update_no_hits(psys, tree)
+
+  integer, parameter :: MaxSteps = 50000000
+
+  integer, parameter :: ray_dirs(3,6) = reshape( (/  1, 0, 0, &
+                                                     0, 1, 0, &
+                                                     0, 0, 1, &
+                                                    -1, 0, 0, &
+                                                     0,-1, 0, &
+                                                     0, 0,-1 /), (/3, 6/) )
   
-  type(global_variables_type), intent(inout) :: GV !< global variables
-  type(particle_type), intent(inout) :: pars(:) !< particle system
-  
+  type(particle_system_type), intent(inout) :: psys !< particle system
+  type(oct_tree_type), intent(in) :: tree !< oct-tree to search  
+
   type(particle_type) :: par
   type(ionpart_type) :: ipar  
+  type(ray_type) :: ray(6)
+  type(raylist_type) :: raylist(6)
+  real(r8b) :: tauHI(6)
+  real(r8b) :: parflux(6)
   
-  integer(i8b) :: p               ! particle counter.
+
+  integer(i8b) :: ip              ! particle counter.
   integer(i8b) :: rays_since_hit  ! rays traced since this particle has been hit.
   integer(i8b) :: scalls          ! number of times solver was called
   logical :: photo 
@@ -216,66 +237,168 @@ subroutine non_photo_update_all(GV,pars)
   logical :: isoT
   logical :: fixT
 
-#ifdef incHe
-  He = .true.
-#else
-  He = .false.
-#endif
+  integer :: i, j, isrc
+  integer :: nsrcs
 
-  caseA = .false.
-  if (.not. GV%OnTheSpotH  .or. GV%HydrogenCaseA) caseA(1) = .true.
-  if (.not. GV%OnTheSpotHe .or. GV%HeliumCaseA)   caseA(2) = .true.
+  real :: Hmf
+  real(r8b) :: dir(3)
+  real(r8b) :: pos(3)
+  real(r8b) :: delta
+  real(r8b) :: sigmaHI
+  real(r8b) :: nHI
+  real(r8b) :: wallflux
+  real :: freq
 
-  if (GV%IsoTemp /= 0.0) then
-     isoT = .true.
-  else
-     isoT = .false.
-  end if
+  integer :: pindx_here
+  integer :: pindx_last
+  integer :: itravel
 
-  if (GV%FixSnapTemp) then
-     fixT = .true.
-  else
-     fixT = .false.
-  end if
+  real(r8b) :: dt2, t_tot
+ 
 
-
-
-  ipar%dt_code = GV%dtray_code * GV%UpdateAllRays
-  ipar%dt_s = GV%dtray_s * GV%UpdateAllRays
+  photo=.true.
   
+
+  ! find background source
+  !--------------------------------------------
+  do i = 1, size(psys%src)
+     if ( psys%src(i)%EmisPrf == -3 ) isrc = i
+     exit
+  end do  
+  freq = rn2freq( psys%src(isrc)%SpcType )
+  wallflux = psys%src(isrc)%L * GV%Lunit
+
+
   ! loop through all the particles
-  do p = 1, size(pars)
-     rays_since_hit = GV%rayn - pars(p)%lasthit
-     
-     ! dont update if particle has been hit by a ray recently
-     if (rays_since_hit < GV%UpdateAllRays) then
+  !--------------------------------------------
+  do ip = 1, size(psys%par)
+
+     rays_since_hit = GV%rayn - psys%par(ip)%lasthit
+
+     if (rays_since_hit < GV%NraysUpdateNoHits) then
+
+        ! dont update if particle has been hit by a ray recently
+        !------------------------------------------------
         cycle
         
-     ! update ionization and temperature
      else
 
+        ! find the flux from each wall at this particle
+        !------------------------------------------------
+        par = psys%par(ip)
 
-        !  set the initial conditions of the system
-        !  and call the appropriate solver
-        !=============================================
-        par = pars(p)
-        srcray = .false.
-        call initialize_ionpar(ipar,par,srcray,He)
-        photo = .false.
-        call eulerint(ipar,scalls,photo,caseA,He,isoT,fixT)
-        call ionpar2par(ipar,par)
+        tauHI   = 0.0d0
+        parflux = 0.0d0
 
-        if (par%T < GV%Tfloor) par%T = GV%Tfloor
+        do i = 1,6
+           pos = par%pos
+           dir = ray_dirs(:,i)
 
+           call make_probe_ray( pos, dir, ray(i) )
+           call trace_ray(ray(i), raylist(i), psys, tree) 
+
+           itravel = sum ( maxloc( abs( dir ) ) ) ! x=1, y=2, z=3
+           
+           ! loop over particles in ray from source particle to wall
+           ! first in list will be source particle
+           !---------------------------------------------------------
+           do j = 2,raylist(i)%nnb  
+
+              pindx_here = raylist(i)%intersection(j)%pindx
+              pindx_last = raylist(i)%intersection(j-1)%pindx
+
+#ifdef incHmf
+              Hmf = psys%par(pindx_here)%Hmf
+#else
+              Hmf = GV%H_mf
+#endif
+
+              nHI = psys%par(pindx_here)%rho * GV%cgs_rho * &
+                   Hmf / gconst%PROTONMASS * psys%par(pindx_here)%xHI
+
+              delta = abs( psys%par(pindx_here)%pos(itravel) - &
+                           psys%par(pindx_last)%pos(itravel)   )
+
+              delta = delta * GV%cgs_len
+              
+              sigmaHI = Osterbrok_HI_photo_cs(freq * HI_th_Hz)    
+
+              tauHI(i) = tauHI(i) + nHI * delta * sigmaHI
+
+           end do
+
+           parflux(i) = wallflux * exp(-tauHI(i))           
+
+        end do
+
+
+        ! calculate He, caseA, isoT, and fixT
+        !--------------------------------------------
+#ifdef incHe
+        He = .true.
+#else
+        He = .false.
+#endif
         
-        pars(p) = par
-        pars(p)%lasthit = GV%rayn
+        caseA = .false.
+        if (.not. GV%OnTheSpotH  .or. GV%HydrogenCaseA) caseA(1) = .true.
+        if (.not. GV%OnTheSpotHe .or. GV%HeliumCaseA)   caseA(2) = .true.
+        
+        if (GV%IsoTemp > 0.0) then
+           isoT = .true.
+        else
+           isoT = .false.
+        end if
+        
+        if (GV%FixSnapTemp) then
+           fixT = .true.
+        else
+           fixT = .false.
+        end if
+
+
+        srcray = .false.
+        call initialize_ionpar(ipar, par, srcray, He)
+
+        ! time step for each particle being updated
+        !--------------------------------------------
+        ipar%dt_code = GV%dtray_code * GV%NraysUpdateNoHits
+        ipar%dt_s    = GV%dtray_s    * GV%NraysUpdateNoHits
+        ipar%nH = GV%cgs_rho * ipar%H_mf / gconst%PROTONMASS
+
+        if (He) then
+           ipar%nHe = GV%cgs_rho * ipar%He_mf / (4*gconst%PROTONMASS)
+        endif
+
+        ipar%pflux = sum(parflux)
+        ipar%sigmaHI = sigmaHI
+        ipar%gammaHI = ipar%pflux * ipar%sigmaHI
+
+
+        ! need to fill this in
+
+
+
+        write(*,*) "xHI = ", ipar%xHI
+        call ionpar2par(ipar,par)
+        if (par%T < GV%Tfloor) par%T = GV%Tfloor
+        if (par%T > GV%Tceiling) par%T = GV%Tceiling
+        psys%par(ip) = par
+        psys%par(ip)%lasthit = GV%rayn
         
      end if
+
+     write(*,*) "parflux = ", sum(parflux)
+     write(*,*) "xHI_i   = ", ipar%xHI_in
+     write(*,*) "xHI_o   = ", psys%par(ip)%xHI
+
+
+     stop
+
      
   end do
   
-end subroutine non_photo_update_all
+end subroutine update_no_hits
 
 
 

@@ -23,6 +23,7 @@ public :: ion_table_type
 public :: ion_header_type
 public :: ion_spectrum_type
 public :: read_ion_table_file
+public :: return_gammaHI_at_z
 public :: interpolate_ion_table
 public :: broadcast_ion_table
 
@@ -67,82 +68,58 @@ end type ion_table_type
 
 contains
 
-  subroutine broadcast_ion_table( MyPE, itab )
-    integer, intent(in) :: MyPE
+
+  ! returns the HI photoionization rate at z
+  !---------------------------------------------
+  function return_gammaHI_at_z( itab, z ) result(GHI)
     type(ion_table_type) :: itab
-    integer :: count
-    integer :: root
-    integer :: ierr
+    real :: z
+    real :: GHI
+
+    real :: zsearch, zlow, zhigh
+    real :: dz1, dz2, z1, z2
+    real :: frac1, frac2, dGHI
+    integer :: n, i, iz1, iz2
+
+    zsearch = z
+    n = size(itab%ihead%ispec%gammaHI)
+
+    zlow  = itab%ihead%ispec%z(1)
+    zhigh = itab%ihead%ispec%z(n)
     
-    root = 0
+    write(*,*) "zlow, zhigh", zlow, zhigh
 
-#ifdef usempi
-
-    count = 1
-    call mpi_bcast( itab%logd_max, count, mpi_real, root, mpi_comm_world, ierr )
-    call mpi_bcast( itab%logt_max, count, mpi_real, root, mpi_comm_world, ierr )
-
-    call mpi_bcast( itab%s_logd,    count, mpi_integer, root, mpi_comm_world, ierr )
-    call mpi_bcast( itab%s_logt,    count, mpi_integer, root, mpi_comm_world, ierr )
-    call mpi_bcast( itab%s_z,       count, mpi_integer, root, mpi_comm_world, ierr )
-    call mpi_bcast( itab%s_ibal,    count, mpi_integer, root, mpi_comm_world, ierr )
-
-    call mpi_bcast( itab%ihead%ispec%s_logflux, count, mpi_integer, root, mpi_comm_world, ierr )
-    call mpi_bcast( itab%ihead%ispec%s_logryd,  count, mpi_integer, root, mpi_comm_world, ierr )
-    call mpi_bcast( itab%ihead%ispec%s_z,       count, mpi_integer, root, mpi_comm_world, ierr )
-    call mpi_bcast( itab%ihead%ispec%s_gammaHI, count, mpi_integer, root, mpi_comm_world, ierr )
-
-
-    call mpi_barrier(mpi_comm_world, ierr)
-    if (MyPE /= root) then
-       allocate( itab%logd( itab%s_logd ) )
-       allocate( itab%logt( itab%s_logt ) )
-       allocate( itab%z   ( itab%s_z    ) )
-       allocate( itab%ibal( itab%s_z, itab%s_logt, itab%s_logd ) )
-
-       allocate( itab%ihead%ispec%logflux ( itab%ihead%ispec%s_z, itab%ihead%ispec%s_logryd  ) )
-       allocate( itab%ihead%ispec%logryd  ( itab%ihead%ispec%s_logryd  ) )
-       allocate( itab%ihead%ispec%z       ( itab%ihead%ispec%s_z       ) )
-       allocate( itab%ihead%ispec%gammaHI ( itab%ihead%ispec%s_gammaHI ) )
+    if (z <= zlow) then
+       GHI = itab%ihead%ispec%gammaHI(1)
+       return
     endif
-    call mpi_barrier(mpi_comm_world, ierr)
+    if (z >= zhigh) then
+       GHI = itab%ihead%ispec%gammaHI(n)
+       return
+    endif
 
+    ! bracket the redshift
+    do i = 2, n
+       if (itab%ihead%ispec%z(i) > z) then
+          iz2 = i
+          iz1 = iz2-1
+          exit
+       end if
+    end do
 
-    count = itab%s_logd  
-    call mpi_bcast( itab%logd, count, mpi_real, root, mpi_comm_world, ierr )
+    z1 = itab%ihead%ispec%z(iz1)
+    z2 = itab%ihead%ispec%z(iz2)
 
-    count = itab%s_logt  
-    call mpi_bcast( itab%logt, count, mpi_real, root, mpi_comm_world, ierr )
+    dz1 = z  - z1
+    dz2 = z2 - z
 
-    count = itab%s_z 
-    call mpi_bcast( itab%z, count, mpi_real, root, mpi_comm_world, ierr )
+    frac1 = dz1 / (z2-z1)
+    frac2 = dz2 / (z2-z1)
 
-    count = itab%s_ibal 
-    call mpi_bcast( itab%ibal, count, mpi_real, root, mpi_comm_world, ierr )
+    dGHI = itab%ihead%ispec%gammaHI(iz2) - itab%ihead%ispec%gammaHI(iz1)
+    GHI = itab%ihead%ispec%gammaHI(iz1) + frac1 * dGHI
 
-
-    count = clen
-    call mpi_bcast( itab%ihead%cloudy_version,   count, mpi_character, root, mpi_comm_world, ierr )
-    call mpi_bcast( itab%ihead%ispec%model_name, count, mpi_character, root, mpi_comm_world, ierr )
-
-    count = itab%ihead%ispec%s_logflux
-    call mpi_bcast( itab%ihead%ispec%logflux(1,1), count, mpi_real, root, mpi_comm_world, ierr )
-
-    count = itab%ihead%ispec%s_logryd 
-    call mpi_bcast( itab%ihead%ispec%logryd, count, mpi_real, root, mpi_comm_world, ierr )
-
-    count = itab%ihead%ispec%s_z 
-    call mpi_bcast( itab%ihead%ispec%z, count, mpi_real, root, mpi_comm_world, ierr )
-
-    count = itab%ihead%ispec%s_gammaHI 
-    call mpi_bcast( itab%ihead%ispec%gammaHI, count, mpi_real, root, mpi_comm_world, ierr )
-
-
-
-#endif
-
-
-  end subroutine broadcast_ion_table
+  end function return_gammaHI_at_z
 
 
 
@@ -420,6 +397,85 @@ contains
   end function interpolate_ion_table
 
 
+
+  !> broadcasts the ionization table to all processing elements
+  !--------------------------------------------------------------
+  subroutine broadcast_ion_table( MyPE, itab )
+    integer, intent(in) :: MyPE
+    type(ion_table_type) :: itab
+    integer :: count
+    integer :: root
+    integer :: ierr
+    
+    root = 0
+
+#ifdef usempi
+
+    count = 1
+    call mpi_bcast( itab%logd_max, count, mpi_real, root, mpi_comm_world, ierr )
+    call mpi_bcast( itab%logt_max, count, mpi_real, root, mpi_comm_world, ierr )
+
+    call mpi_bcast( itab%s_logd,    count, mpi_integer, root, mpi_comm_world, ierr )
+    call mpi_bcast( itab%s_logt,    count, mpi_integer, root, mpi_comm_world, ierr )
+    call mpi_bcast( itab%s_z,       count, mpi_integer, root, mpi_comm_world, ierr )
+    call mpi_bcast( itab%s_ibal,    count, mpi_integer, root, mpi_comm_world, ierr )
+
+    call mpi_bcast( itab%ihead%ispec%s_logflux, count, mpi_integer, root, mpi_comm_world, ierr )
+    call mpi_bcast( itab%ihead%ispec%s_logryd,  count, mpi_integer, root, mpi_comm_world, ierr )
+    call mpi_bcast( itab%ihead%ispec%s_z,       count, mpi_integer, root, mpi_comm_world, ierr )
+    call mpi_bcast( itab%ihead%ispec%s_gammaHI, count, mpi_integer, root, mpi_comm_world, ierr )
+
+
+    call mpi_barrier(mpi_comm_world, ierr)
+    if (MyPE /= root) then
+       allocate( itab%logd( itab%s_logd ) )
+       allocate( itab%logt( itab%s_logt ) )
+       allocate( itab%z   ( itab%s_z    ) )
+       allocate( itab%ibal( itab%s_z, itab%s_logt, itab%s_logd ) )
+
+       allocate( itab%ihead%ispec%logflux ( itab%ihead%ispec%s_z, itab%ihead%ispec%s_logryd  ) )
+       allocate( itab%ihead%ispec%logryd  ( itab%ihead%ispec%s_logryd  ) )
+       allocate( itab%ihead%ispec%z       ( itab%ihead%ispec%s_z       ) )
+       allocate( itab%ihead%ispec%gammaHI ( itab%ihead%ispec%s_gammaHI ) )
+    endif
+    call mpi_barrier(mpi_comm_world, ierr)
+
+
+    count = itab%s_logd  
+    call mpi_bcast( itab%logd, count, mpi_real, root, mpi_comm_world, ierr )
+
+    count = itab%s_logt  
+    call mpi_bcast( itab%logt, count, mpi_real, root, mpi_comm_world, ierr )
+
+    count = itab%s_z 
+    call mpi_bcast( itab%z, count, mpi_real, root, mpi_comm_world, ierr )
+
+    count = itab%s_ibal 
+    call mpi_bcast( itab%ibal, count, mpi_real, root, mpi_comm_world, ierr )
+
+
+    count = clen
+    call mpi_bcast( itab%ihead%cloudy_version,   count, mpi_character, root, mpi_comm_world, ierr )
+    call mpi_bcast( itab%ihead%ispec%model_name, count, mpi_character, root, mpi_comm_world, ierr )
+
+    count = itab%ihead%ispec%s_logflux
+    call mpi_bcast( itab%ihead%ispec%logflux(1,1), count, mpi_real, root, mpi_comm_world, ierr )
+
+    count = itab%ihead%ispec%s_logryd 
+    call mpi_bcast( itab%ihead%ispec%logryd, count, mpi_real, root, mpi_comm_world, ierr )
+
+    count = itab%ihead%ispec%s_z 
+    call mpi_bcast( itab%ihead%ispec%z, count, mpi_real, root, mpi_comm_world, ierr )
+
+    count = itab%ihead%ispec%s_gammaHI 
+    call mpi_bcast( itab%ihead%ispec%gammaHI, count, mpi_real, root, mpi_comm_world, ierr )
+
+
+
+#endif
+
+
+  end subroutine broadcast_ion_table
 
 
 end module ion_table_class

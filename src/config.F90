@@ -60,6 +60,9 @@ subroutine read_config_file(config_file)
     keyword = "InitxHI:"
     call scanfile(config_file,keyword,GV%InitxHI)
 
+    keyword = "RayDepletion:"
+    call scanfile(config_file,keyword,GV%RayDepletion)
+
     keyword = "IntSeed:"
     call scanfile(config_file,keyword,GV%IntSeed)
 
@@ -161,8 +164,8 @@ subroutine read_config_file(config_file)
     keyword = "NeBackGround:"
     call scanfile(config_file,keyword,GV%NeBackGround)
 
-    keyword = "UpdateAllRays:"
-    call scanfile(config_file,keyword,GV%UpdateAllRays)
+    keyword = "NraysUpdateNoHits:"
+    call scanfile(config_file,keyword,GV%NraysUpdateNoHits)
 
     keyword = "RecRaysPerSrcRay:"
     call scanfile(config_file,keyword,GV%RecRaysPerSrcRay)
@@ -444,6 +447,8 @@ subroutine config_info_to_file()
   write(lun,*) 
   write(lun,*)"Initial xHI (negative = snapshot or collisional equil.): ", GV%InitxHI
   write(lun,*) 
+  write(lun,*)"Rremove photons from ray as it travels?: ", GV%RayDepletion
+  write(lun,*) 
   write(lun,*)"Integer Seed for RNG ", GV%IntSeed
   write(lun,*) 
   write(lun,*)"Static field simulation time: ", GV%StaticFieldSimTime
@@ -512,7 +517,7 @@ subroutine config_info_to_file()
 
 
   write(lun,*)  "ne background      : ", GV%NeBackGround
-  write(lun,*)  "Rays between all particle update:  ", GV%UpdateAllRays
+  write(lun,*)  "Rays between all particle update:  ", GV%NraysUpdateNoHits
   write(lun,*)  "Recomb ray / src ray: ", GV%RecRaysPerSrcRay
 
   write(lun,*) 
