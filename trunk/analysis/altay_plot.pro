@@ -1,10 +1,7 @@
-pro altay_plot, x, y, ct=ct, _extra=extra
+pro altay_plot, x, y, _extra=extra
 
 on_error,2
 
-if n_elements(ct) eq 0 then ct=39
-
-loadct, ct
 background=255
 color=0
 
@@ -52,7 +49,7 @@ plot, x, y, $
   /xstyle, xrange=[xmin,xmax], xthick=xthick, $
   /ystyle, yrange=[ymin,ymax], ythick=ythick, $
   charsize=charsize, charthick=charthick, $
-  background=background, color=axiscolor, _strict_extra=extra
+  background=background, color=color, _strict_extra=extra
 
 
 
