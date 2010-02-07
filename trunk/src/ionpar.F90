@@ -42,6 +42,7 @@ type ionpart_type
    real(r8b) :: xHeIII       !< nHeIII / nHe
 
    integer(i8b) :: lasthit   !< last ray to cross this particle
+   integer(i8b) :: index     !< index of the particle in the psys
 
 
    ! quantities initialized before solver is called 
@@ -72,7 +73,7 @@ type ionpart_type
 
    integer(i8b) :: impact    !< index of the particle in the raylist
    real(r8b) :: d            !< distance along ray (code)
-   real(r8b) :: b            !< impact parameter 
+   real(r8b) :: b            !< impact parameter (code)
    real(r8b) :: bnorm        !< impact parameter normalized to smoothing length
    real(r8b) :: cdfac        !< column depth conversion factor
 
@@ -80,27 +81,25 @@ type ionpart_type
    real(r8b) :: dt_s         !< time step for this par (s)
 
    real(r8b) :: penrg        !< energy of one photon in the ray (ergs)
+   real(r8b) :: pflux        !< photons per second arriving at the particle
    real(r8b) :: pdeps        !< total photons deposited into particle
    real(r8b) :: pdeps_eq     !< photons deposited in equilibrium conditions
-   real(r8b) :: pflux        !< photons per second arriving at the particle
 
    real(r8b) :: DH(2,2)      !< dxH/dt array
    real(r8b) :: DHe(3,3)     !< dxHe/dt array
-   integer(i8b) :: indx      !< index of the particle in the psys
+
 
    real(r8b) :: sigmaHI      !< HI photo cross-section
    real(r8b) :: sigmaHeI     !< HeI photo cross-section
    real(r8b) :: sigmaHeII    !< HeII photo cross-section
-
-
 
    real(r8b) :: fracabsorb   !< fraction of all photons absorbed
    real(r8b) :: pdepr        !< photons per second deposited in particle
 
 
 !   real(r8b) :: HIcolions   !< total HI collisional ionizations in the particle
-!   real(r8b) :: HeIcolions  !< total HI collisional ionizations in the particle
-!   real(r8b) :: HeIIcolions !< total HI collisional ionizations in the particle
+!   real(r8b) :: HeIcolions  !< total HeI collisional ionizations in the particle
+!   real(r8b) :: HeIIcolions !< total HeII collisional ionizations in the particle
 
 !   real(r8b) :: HIIrcmbsB   !< total HII recombinations excluding to n=1 lvl
 !   real(r8b) :: HIIrcmbsA   !< total HII recombinations to all levels
@@ -108,10 +107,6 @@ type ionpart_type
 !   real(r8b) :: HeIIrcmbsA  !< total HeII recombinations to all levels
 !   real(r8b) :: HeIIIrcmbsB !< total HeIII recombinations excluding to n=1 lvl
 !   real(r8b) :: HeIIIrcmbsA !< total HeIII recombinations to all levels
-
-
-
-
 
 
 
@@ -145,10 +140,8 @@ type ionpart_type
    real(r8b) :: HeIfrac      !< fraction of photons absorbed by HeI
    real(r8b) :: HeIIfrac     !< fraction of photons absorbed by HeII
 
-
-
-   real(r8b) :: gammaHI      !< HI photoionization rate
-   real(r8b) :: gammaHeI     !< HeI photoionization rate
+   real(r8b) :: gammaHI      !< HI   photoionization rate
+   real(r8b) :: gammaHeI     !< HeI  photoionization rate
    real(r8b) :: gammaHeII    !< HeII photoionization rate
    real(r8b) :: gammasum     !< sum of all photoionization rates
 
@@ -181,8 +174,6 @@ type ionpart_type
    real(r8b) :: dudt         !< time rate of change of energy
    real(r8b) :: dTdt         !< time rate of change of temperature
    
-
-
    character(200) :: strtag  !< labels code landmarks for debugging 
 
 end type ionpart_type
@@ -190,106 +181,13 @@ end type ionpart_type
 
 contains
 
-!> initializes the ionization particle values
-subroutine initialize_ionpar(ipar,par,srcray,He,raylist,impact)
-
-  type(ionpart_type), intent(inout) :: ipar           !< ionization particle
-  type(particle_type), intent(in) :: par              !< standard particle
-  logical, intent(in) :: srcray                       !< source ray update ?
-  logical, intent(in) :: He                           !< update Helium ?
-  type(raylist_type), intent(in), optional :: raylist !< optional raylist
-  integer(i8b), intent(in), optional :: impact        !< optional impact number
-  
-  real(r8b) :: mass_cgs
-  real(r8b) :: rho_cgs
-
-  call par2ionpar(par,ipar)
-
-  ipar%xHI_in  = ipar%xHI
-  ipar%xHII_in = ipar%xHII
-  if (He) then
-     ipar%xHeI_in   = ipar%xHeI
-     ipar%xHeII_in  = ipar%xHeII
-     ipar%xHeIII_in = ipar%xHeIII
-  else
-     ipar%xHeI_in   = 0.0d0
-     ipar%xHeII_in  = 0.0d0
-     ipar%xHeIII_in = 0.0d0
-  end if
-  ipar%T_in = ipar%T
-
-  ipar%iter = 0
-  ipar%rayn = GV%rayn
-
-  ipar%NeBckgnd = GV%NeBackground
-  ipar%Tcmb     = GV%Tcmb_cur
-
-  mass_cgs = ipar%mass * GV%cgs_mass 
-  rho_cgs  = ipar%rho *  GV%cgs_rho 
-
-  ipar%gpercm3 = rho_cgs
-  ipar%cm3     = mass_cgs / rho_cgs
-
-  ipar%nH = rho_cgs * ipar%H_mf  / M_H
-  ipar%Hcnt = mass_cgs * ipar%H_mf / M_H  
-
-  if (He) then
-     ipar%nHe = rho_cgs * ipar%He_mf / M_He
-     ipar%Hecnt = mass_cgs * ipar%He_mf / M_He
-  else
-     ipar%nHe = 0.0d0
-     ipar%Hecnt = 0.0d0
-  end if
-
-
-  if (present(raylist)) then
-
-     if (.not. present(impact)) stop "raylist but no impact in initialize_ionpar"
-     ipar%impact = impact
-
-     ipar%d = raylist%intersection(impact)%d
-     ipar%b = raylist%intersection(impact)%b
-     ipar%bnorm = ipar%b/ipar%hsml
-     ipar%cdfac = b2cdfac(ipar%bnorm,ipar%hsml,GV%cgs_len)
-
-     ipar%dt_code = (GV%rayn - ipar%lasthit) * GV%dtray_code
-     ipar%dt_s    = (GV%rayn - ipar%lasthit) * GV%dtray_s
-     
-     ipar%pdeps    = 0.0d0
-     ipar%pdeps_eq = 0.0d0
-
-     ipar%penrg = raylist%ray%enrg
-
-     ipar%sigmaHI = Osterbrok_HI_photo_cs(raylist%ray%freq * HI_th_Hz)    
-     if (He) then
-        ipar%sigmaHeI = Osterbrok_HeI_photo_cs(raylist%ray%freq * HI_th_Hz)    
-        ipar%sigmaHeII = Osterbrok_HeII_photo_cs(raylist%ray%freq * HI_th_Hz)
-     else
-        ipar%sigmaHeI = 0.0d0
-        ipar%sigmaHeII = 0.0d0
-     end if
-     
-     if (srcray) then        
-        ipar%pflux = raylist%ray%pcnt / ipar%dt_s 
-     else
-        ipar%pflux = raylist%ray%pcnt 
-     end if
-
-  end if
-
-
-  ipar%strtag = "in initialize_ionpar"
-  call check_x(ipar)
-     
-end subroutine initialize_ionpar
-
 
 !> copies the basic particle data into an ionization particle
 !-----------------------------------------------------------------------
-subroutine par2ionpar(par,ipar)
+subroutine par2ionpar(par,ipar,index)
  type(particle_type), intent(in) :: par     !< input particle
  type(ionpart_type), intent(inout) :: ipar  !< output ionization particle
-
+ integer(i8b) :: index                      !< par = psys%par(index)
 
  ipar%pos     = par%pos
 
@@ -333,6 +231,7 @@ subroutine par2ionpar(par,ipar)
 #endif
 
  ipar%lasthit = par%lasthit
+ ipar%index   = index
 
 end subroutine par2ionpar
 
@@ -359,192 +258,120 @@ subroutine ionpar2par(ipar,par)
 end subroutine ionpar2par
 
 
+!> initializes the ionization particle values
+!-----------------------------------------------------------------------
+subroutine initialize_ionpar(ipar,par,index,srcray,He,raylist,impact)
 
-
-!> prints ionization particle information to screen
-!-----------------------------------------------------
-subroutine ionpar2screen(ipar)
-
-  type(ionpart_type), intent(inout) :: ipar  !< ionization particle
+  type(ionpart_type), intent(inout) :: ipar           !< ionization particle
+  type(particle_type), intent(in) :: par              !< standard particle
+  integer(i8b) :: index                               !< par = psys%par(index)
+  logical, intent(in) :: srcray                       !< source ray update ?
+  logical, intent(in) :: He                           !< update Helium ?
+  type(raylist_type), intent(in), optional :: raylist !< optional raylist
+  integer(i8b), intent(in), optional :: impact        !< optional impact number
   
-   95 format(A,T25,I15)
-   100 format(A,T25,3F12.4)
-   102 format(A,T25,2F12.4)
-   105 format(A,T25,1F12.4)
-   110 format(A,T25,3ES18.9)
-   115 format(A,T25,2ES18.9)
-   write(*,*) 
-   write(*,*) "ID", ipar%id
-   write(*,*) "pos", ipar%pos
-   write(*,*) "vel", ipar%vel
-   write(*,*) "hsml", ipar%hsml
-   write(*,*) "rho", ipar%rho
-   write(*,*) "mass", ipar%mass
-   write(*,*) "T", ipar%T
-   write(*,*) "lasthit", ipar%lasthit
-   write(*,*) 
-   write(*,*) "ray num", ipar%rayn
-   write(*,*) "psys indx", ipar%indx
-   write(*,*) "impact", ipar%impact
-   write(*,*) "iteration", ipar%iter
-   write(*,*) "raydist", ipar%d
-   write(*,*) 
-   write(*,*) "string tag = ", trim(ipar%strtag)
-   write(*,*) "xHI+xHII", ipar%xHI + ipar%xHII
-   write(*,*) "xHeI+xHeII+xHeIII", ipar%xHeI + ipar%xHeII + ipar%xHeIII
-   write(*,'(A,T25,ES18.9)') "T_in", ipar%T_in
-   write(*,110) "b, hsml, bnorm",ipar%b, ipar%hsml, ipar%bnorm
-   write(*,*) 
-   write(*,*) "penrg/(HIth,HeIth,HeIIth)"
-   write(*,*) ipar%penrg / HI_th_erg, ipar%penrg / HeI_th_erg, &
-              ipar%penrg / HeII_th_erg
-   write(*,*) 
-   write(*,*) "input(xHI,xHII / xHeI,xHeII,xHeIII)"
-   write(*,*) ipar%xHI_in, ipar%xHII_in
-   write(*,*) ipar%xHeI_in, ipar%xHeII_in, ipar%xHeIII_in
-   write(*,*) 
-   write(*,*) "current(xHI,xHII / xHeI,xHeII,xHeIII)"
-   write(*,*) ipar%xHI, ipar%xHII
-   write(*,*) ipar%xHeI, ipar%xHeII, ipar%xHeIII
-   write(*,*) 
-   write(*,*) "current(nHI,nHII / nHeI,nHeII,nHeIII)"
-   write(*,*) ipar%nHI, ipar%nHII
-   write(*,*) ipar%nHeI, ipar%nHeII, ipar%nHeIII
-   write(*,*) 
-   write(*,*) "optical depths / tau facs (HI,HeI,HeII)"
-   write(*,*) ipar%tauHI, ipar%tauHeI, ipar%tauHeII
-   write(*,*) ipar%HItaufac, ipar%HeItaufac, ipar%HeIItaufac
-   write(*,*) 
-   write(*,*) "nH,nHe,ne / Hcnt,Hecnt,dnedt"
-   write(*,*)  ipar%nH, ipar%nHe, ipar%ne
-   write(*,*)  ipar%Hcnt, ipar%Hecnt, ipar%dnedt
-   write(*,*) 
-   write(*,*) "HIcnt,HeIcnt,HeIIcnt / HIfrac,HeIfrac,HeIIfrac"
-   write(*,*) ipar%HIcnt, ipar%HeIcnt, ipar%HeIIcnt 
-   write(*,*) ipar%HIfrac,ipar%HeIfrac,ipar%HeIIfrac
-   write(*,*)
-   write(*,*) "sigmas (HI,HeI,HeII) / Gammas (HI,HeI,HeII)"
-   write(*,*) ipar%sigmaHI, ipar%sigmaHeI, ipar%sigmaHeII
-   write(*,*) ipar%gammaHI, ipar%gammaHeI, ipar%gammaHeII
-   write(*,*)
-   write(*,*) "GGp (HI,HeI,HeII) / RRb (HII,HeII,HeIII)"
-   write(*,*) ipar%GGp, ipar%GGIp, ipar%GGIIp
-   write(*,*) ipar%RRb, ipar%RRIIb, ipar%RRIIIb
-   write(*,*)
-   write(*,*) "CIC,CEC,RCC / PH,BREM,COMP / COOLp, COOL"
-   write(*,*) ipar%CIC, ipar%CEC, ipar%RCC
-   write(*,*) ipar%PH, ipar%BREM, ipar%COMP
-   write(*,*) ipar%COOLp, ipar%COOL
-   write(*,*) 
-   write(*,*) "pflux, fracabsorb, pdepr"
-   write(*,*) ipar%pflux, ipar%fracabsorb, ipar%pdepr
-   write(*,*) 
-   write(*,110) "pdepr,penrg,pdeps", ipar%pdepr, ipar%penrg, ipar%pdeps
+  real(r8b) :: mass_cgs
+  real(r8b) :: rho_cgs
 
-   write(*,*)
-   write(*,115) "cdfac,d", ipar%cdfac,  ipar%d
-   write(*,*) 
-   write(*,115) "gpercm3,cm3", ipar%gpercm3, ipar%cm3
+  call par2ionpar(par,ipar,index)
 
-   write(*,*) 
-   write(*,115) "u,dudt", ipar%u, ipar%dudt 
-   write(*,115) "t,dTdt", ipar%T, ipar%dTdt
-   write(*,*) 
-   write(*,115) "Allcnt,GammaSum", ipar%Allcnt,ipar%gammasum
-   write(*,115) "tausum,taufacsum",ipar%tausum, ipar%taufacsum
-   write(*,*) 
-   write(*,115) "tion,tcool", ipar%tion, ipar%tcool
-   write(*,115) "dt_code, dt_s", ipar%dt_code, ipar%dt_s
-
-   write(*,'(A,T25,ES18.9)') "pdeps_eq", ipar%pdeps_eq
-
-   ipar%strtag = ""
-
- end subroutine ionpar2screen
-
-
-!================================================================
-!> dummy checks the bounds on HII, HeII, HeIII, and T
-subroutine check_x(ip) 
-
-  real(r8b), parameter :: zero = 0.0d0
-  real(r8b), parameter :: one = 1.0d0
-
-  real(r8b), parameter :: TOL = 0.0d+0
-  type(ionpart_type), intent(inout) :: ip  !< ionization particle
-  logical :: bad
-
-  100 format(A,I2,A)
-  101 format(A,I2,A,F15.8)
-  102 format(A,I15)
-  103 format(A,2F15.8)
-
-  bad = .false.
- 
-  if ( ip%xHI .LT. zero - TOL ) then
-     bad = .true.
-     write(*,100) "xHI < zero in check_x"
+  ! store initial values
+  !-------------------------
+  ipar%xHI_in  = ipar%xHI
+  ipar%xHII_in = ipar%xHII
+  if (He) then
+     ipar%xHeI_in   = ipar%xHeI
+     ipar%xHeII_in  = ipar%xHeII
+     ipar%xHeIII_in = ipar%xHeIII
+  else
+     ipar%xHeI_in   = 0.0d0
+     ipar%xHeII_in  = 0.0d0
+     ipar%xHeIII_in = 0.0d0
   end if
+  ipar%T_in = ipar%T
+
+  ! set values that are static during the update
+  !-----------------------------------------------
+  ipar%rayn     = GV%rayn
+
+  ipar%NeBckgnd = GV%NeBackground
+  ipar%Tcmb     = GV%Tcmb_cur
+
+  mass_cgs      = ipar%mass * GV%cgs_mass 
+  rho_cgs       = ipar%rho *  GV%cgs_rho 
+
+  ipar%gpercm3  = rho_cgs
+  ipar%cm3      = mass_cgs / rho_cgs
+
+  ipar%nH       = rho_cgs  * ipar%H_mf / M_H
+  ipar%Hcnt     = mass_cgs * ipar%H_mf / M_H  
+
+  if (He) then
+     ipar%nHe   = rho_cgs  * ipar%He_mf / M_He
+     ipar%Hecnt = mass_cgs * ipar%He_mf / M_He
+  else
+     ipar%nHe   = 0.0d0
+     ipar%Hecnt = 0.0d0
+  end if
+
+  ! initialize solver iteration counter to zero
+  !---------------------------------------------
+  ipar%iter = 0
+
+
+  ! set ray specific quantities 
+  !---------------------------------------------
+  if (present(raylist)) then
+
+     if (.not. present(impact)) stop "raylist but no impact in initialize_ionpar"
+     ipar%impact = impact  ! which impact in the raylist
+
+
+     ipar%d = raylist%intersection(impact)%d   ! distance along ray
+     ipar%b = raylist%intersection(impact)%b   ! impact parameter
+
+
+     ipar%bnorm = ipar%b / ipar%hsml
+     ipar%cdfac = b2cdfac(ipar%bnorm,ipar%hsml,GV%cgs_len)
+
+     ipar%dt_code = (GV%rayn - ipar%lasthit) * GV%dtray_code
+     ipar%dt_s    = (GV%rayn - ipar%lasthit) * GV%dtray_s
      
-  if ( ip%xHI > one + TOL ) then
-     bad = .true.
-     write(*,*) "xHI = ", ip%xHI
-     write(*,100) "xHI > one in check_x"
-  end if
+     ipar%pdeps    = 0.0d0
+     ipar%pdeps_eq = 0.0d0
 
-  if ( ip%xHII .LT. zero - TOL ) then
-     bad = .true.
-     write(*,100) "xHII < zero in check_x"
-  end if
+     ipar%penrg = raylist%ray%enrg
+
+     ipar%sigmaHI = Osterbrok_HI_photo_cs(raylist%ray%freq * HI_th_Hz)    
+     if (He) then
+        ipar%sigmaHeI = Osterbrok_HeI_photo_cs(raylist%ray%freq * HI_th_Hz)    
+        ipar%sigmaHeII = Osterbrok_HeII_photo_cs(raylist%ray%freq * HI_th_Hz)
+     else
+        ipar%sigmaHeI = 0.0d0
+        ipar%sigmaHeII = 0.0d0
+     end if
      
-  if ( ip%xHII .GT. one + TOL ) then
-     bad = .true.
-     write(*,100) "xHII > one in check_x"
+     if (srcray) then        
+        ipar%pflux = raylist%ray%pcnt / ipar%dt_s 
+     else
+        ipar%pflux = raylist%ray%pcnt 
+     end if
+
   end if
+
+
+  ipar%strtag = "in initialize_ionpar"
+  call check_x(ipar)
      
-
-  if ( ip%xHeI .LT. zero - TOL ) then
-     bad = .true.
-     write(*,100) "xHeI < zero in check_x"
-  end if
-     
-  if ( ip%xHeI .GT. one + TOL ) then
-     bad = .true.
-     write(*,100) "xHeI > one in check_x"
-  end if
-
-  if ( ip%xHeII .LT. zero - TOL ) then
-     bad = .true.
-     write(*,100) "xHeII < zero in check_x"
-  end if
-     
-  if ( ip%xHeII .GT. one + TOL ) then
-     bad = .true.
-     write(*,100) "xHeII > one in check_x"
-  end if
-
-  if ( ip%xHeIII .LT. zero - TOL ) then
-     bad = .true.
-     write(*,100) "xHeIII < zero in check_x"
-  end if
-     
-  if ( ip%xHeIII .GT. one + TOL ) then
-     bad = .true.
-     write(*,100) "xHeIII > one in check_x"
-  end if
-
-  if ( ip%T .LE. zero ) then
-     bad = .true.
-     write(*,*) "T <= zero in check_x"
-  end if
+end subroutine initialize_ionpar
 
 
-  if (bad) then
-     call ionpar2screen(ip)
-     stop
-  end if
 
-end subroutine check_x
+
+
+
+
+
 
 
 !> sets the photoionization rate for an ionization particle
@@ -963,6 +790,192 @@ subroutine setDHe(ip,photo,caseA)
   
 end subroutine setDHe
 
+
+
+!> prints ionization particle information to screen
+!-----------------------------------------------------
+subroutine ionpar2screen(ipar)
+
+  type(ionpart_type), intent(inout) :: ipar  !< ionization particle
+  
+   95 format(A,T25,I15)
+   100 format(A,T25,3F12.4)
+   102 format(A,T25,2F12.4)
+   105 format(A,T25,1F12.4)
+   110 format(A,T25,3ES18.9)
+   115 format(A,T25,2ES18.9)
+   write(*,*) 
+   write(*,*) "ID", ipar%id
+   write(*,*) "pos", ipar%pos
+   write(*,*) "vel", ipar%vel
+   write(*,*) "hsml", ipar%hsml
+   write(*,*) "rho", ipar%rho
+   write(*,*) "mass", ipar%mass
+   write(*,*) "T", ipar%T
+   write(*,*) "lasthit", ipar%lasthit
+   write(*,*) 
+   write(*,*) "ray num", ipar%rayn
+   write(*,*) "psys index", ipar%index
+   write(*,*) "impact", ipar%impact
+   write(*,*) "iteration", ipar%iter
+   write(*,*) "raydist", ipar%d
+   write(*,*) 
+   write(*,*) "string tag = ", trim(ipar%strtag)
+   write(*,*) "xHI+xHII", ipar%xHI + ipar%xHII
+   write(*,*) "xHeI+xHeII+xHeIII", ipar%xHeI + ipar%xHeII + ipar%xHeIII
+   write(*,'(A,T25,ES18.9)') "T_in", ipar%T_in
+   write(*,110) "b, hsml, bnorm",ipar%b, ipar%hsml, ipar%bnorm
+   write(*,*) 
+   write(*,*) "penrg/(HIth,HeIth,HeIIth)"
+   write(*,*) ipar%penrg / HI_th_erg, ipar%penrg / HeI_th_erg, &
+              ipar%penrg / HeII_th_erg
+   write(*,*) 
+   write(*,*) "input(xHI,xHII / xHeI,xHeII,xHeIII)"
+   write(*,*) ipar%xHI_in, ipar%xHII_in
+   write(*,*) ipar%xHeI_in, ipar%xHeII_in, ipar%xHeIII_in
+   write(*,*) 
+   write(*,*) "current(xHI,xHII / xHeI,xHeII,xHeIII)"
+   write(*,*) ipar%xHI, ipar%xHII
+   write(*,*) ipar%xHeI, ipar%xHeII, ipar%xHeIII
+   write(*,*) 
+   write(*,*) "current(nHI,nHII / nHeI,nHeII,nHeIII)"
+   write(*,*) ipar%nHI, ipar%nHII
+   write(*,*) ipar%nHeI, ipar%nHeII, ipar%nHeIII
+   write(*,*) 
+   write(*,*) "optical depths / tau facs (HI,HeI,HeII)"
+   write(*,*) ipar%tauHI, ipar%tauHeI, ipar%tauHeII
+   write(*,*) ipar%HItaufac, ipar%HeItaufac, ipar%HeIItaufac
+   write(*,*) 
+   write(*,*) "nH,nHe,ne / Hcnt,Hecnt,dnedt"
+   write(*,*)  ipar%nH, ipar%nHe, ipar%ne
+   write(*,*)  ipar%Hcnt, ipar%Hecnt, ipar%dnedt
+   write(*,*) 
+   write(*,*) "HIcnt,HeIcnt,HeIIcnt / HIfrac,HeIfrac,HeIIfrac"
+   write(*,*) ipar%HIcnt, ipar%HeIcnt, ipar%HeIIcnt 
+   write(*,*) ipar%HIfrac,ipar%HeIfrac,ipar%HeIIfrac
+   write(*,*)
+   write(*,*) "sigmas (HI,HeI,HeII) / Gammas (HI,HeI,HeII)"
+   write(*,*) ipar%sigmaHI, ipar%sigmaHeI, ipar%sigmaHeII
+   write(*,*) ipar%gammaHI, ipar%gammaHeI, ipar%gammaHeII
+   write(*,*)
+   write(*,*) "GGp (HI,HeI,HeII) / RRb (HII,HeII,HeIII)"
+   write(*,*) ipar%GGp, ipar%GGIp, ipar%GGIIp
+   write(*,*) ipar%RRb, ipar%RRIIb, ipar%RRIIIb
+   write(*,*)
+   write(*,*) "CIC,CEC,RCC / PH,BREM,COMP / COOLp, COOL"
+   write(*,*) ipar%CIC, ipar%CEC, ipar%RCC
+   write(*,*) ipar%PH, ipar%BREM, ipar%COMP
+   write(*,*) ipar%COOLp, ipar%COOL
+   write(*,*) 
+   write(*,*) "pflux, fracabsorb, pdepr"
+   write(*,*) ipar%pflux, ipar%fracabsorb, ipar%pdepr
+   write(*,*) 
+   write(*,110) "pdepr,penrg,pdeps", ipar%pdepr, ipar%penrg, ipar%pdeps
+
+   write(*,*)
+   write(*,115) "cdfac,d", ipar%cdfac,  ipar%d
+   write(*,*) 
+   write(*,115) "gpercm3,cm3", ipar%gpercm3, ipar%cm3
+
+   write(*,*) 
+   write(*,115) "u,dudt", ipar%u, ipar%dudt 
+   write(*,115) "t,dTdt", ipar%T, ipar%dTdt
+   write(*,*) 
+   write(*,115) "Allcnt,GammaSum", ipar%Allcnt,ipar%gammasum
+   write(*,115) "tausum,taufacsum",ipar%tausum, ipar%taufacsum
+   write(*,*) 
+   write(*,115) "tion,tcool", ipar%tion, ipar%tcool
+   write(*,115) "dt_code, dt_s", ipar%dt_code, ipar%dt_s
+
+   write(*,'(A,T25,ES18.9)') "pdeps_eq", ipar%pdeps_eq
+
+   ipar%strtag = ""
+
+ end subroutine ionpar2screen
+
+
+!================================================================
+!> dummy checks the bounds on HII, HeII, HeIII, and T
+subroutine check_x(ip) 
+
+  real(r8b), parameter :: zero = 0.0d0
+  real(r8b), parameter :: one = 1.0d0
+
+  real(r8b), parameter :: TOL = 0.0d+0
+  type(ionpart_type), intent(inout) :: ip  !< ionization particle
+  logical :: bad
+
+  100 format(A,I2,A)
+  101 format(A,I2,A,F15.8)
+  102 format(A,I15)
+  103 format(A,2F15.8)
+
+  bad = .false.
+ 
+  if ( ip%xHI .LT. zero - TOL ) then
+     bad = .true.
+     write(*,100) "xHI < zero in check_x"
+  end if
+     
+  if ( ip%xHI > one + TOL ) then
+     bad = .true.
+     write(*,*) "xHI = ", ip%xHI
+     write(*,100) "xHI > one in check_x"
+  end if
+
+  if ( ip%xHII .LT. zero - TOL ) then
+     bad = .true.
+     write(*,100) "xHII < zero in check_x"
+  end if
+     
+  if ( ip%xHII .GT. one + TOL ) then
+     bad = .true.
+     write(*,100) "xHII > one in check_x"
+  end if
+     
+
+  if ( ip%xHeI .LT. zero - TOL ) then
+     bad = .true.
+     write(*,100) "xHeI < zero in check_x"
+  end if
+     
+  if ( ip%xHeI .GT. one + TOL ) then
+     bad = .true.
+     write(*,100) "xHeI > one in check_x"
+  end if
+
+  if ( ip%xHeII .LT. zero - TOL ) then
+     bad = .true.
+     write(*,100) "xHeII < zero in check_x"
+  end if
+     
+  if ( ip%xHeII .GT. one + TOL ) then
+     bad = .true.
+     write(*,100) "xHeII > one in check_x"
+  end if
+
+  if ( ip%xHeIII .LT. zero - TOL ) then
+     bad = .true.
+     write(*,100) "xHeIII < zero in check_x"
+  end if
+     
+  if ( ip%xHeIII .GT. one + TOL ) then
+     bad = .true.
+     write(*,100) "xHeIII > one in check_x"
+  end if
+
+  if ( ip%T .LE. zero ) then
+     bad = .true.
+     write(*,*) "T <= zero in check_x"
+  end if
+
+
+  if (bad) then
+     call ionpar2screen(ip)
+     stop
+  end if
+
+end subroutine check_x
 
 
 end module ionpar_mod

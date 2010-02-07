@@ -6,24 +6,22 @@
 
 module euler_mod
 use ionpar_mod
-use cen_atomic_rates_mod
 use atomic_rates_mod
 use physical_constants_mod
 use global_mod, only: isoT_k, rtable
-use physical_constants_mod
 
 implicit none
 
   integer(i8b), parameter :: MaxSteps = 50000000 !< maximum number of steps
   real(r8b), parameter :: ION_FAC  = 1.0d-2      !< ionization time factor
   real(r8b), parameter :: COOL_FAC = 1.0d-3      !< cooling time factor
-  real(r8b), parameter :: TIME_TOL = 1.0d-4
+  real(r8b), parameter :: TIME_TOL = 1.0d-4      !< max frac. of step undone
 
   real(r8b), parameter :: zero = 0.0d0
   real(r8b), parameter :: one = 1.0d0
   real(r8b), parameter :: two = 2.0d0
   real(r8b), parameter :: three = 3.0d0
-
+ 
 contains
 
 !> this routine takes in the initial values in ipar 
@@ -43,24 +41,24 @@ subroutine eulerint(ip,scalls,photo,caseA,He,isoT,fixT)
 
   real(r8b) :: xH(2)
   real(r8b) :: xHe(3)
-  type(atomic_rates_type) :: k
   real(r8b) :: t_tot
   real(r8b) :: dt2
   real(r8b) :: dt_i
   real(r8b) :: t_min
   integer(i8b) :: i
   real(r8b) :: mfac
+  type(atomic_rates_type) :: k
 
-  ! check logicals
-  !-----------------
-  if (isoT .and. fixT) stop "isoT and fixT cant both be true"
-
+  ! initialize solver calls counter and time step
+  !------------------------------------------------
   scalls = 0   
-  t_tot = zero
-  dt2 = ip%dt_s / two
+  t_tot  = zero
+  dt2    = ip%dt_s / two
 
-  !---------------------------------------------------------
   ! if constant temperature run, set constant atomic rates
+  !---------------------------------------------------------
+  if (isoT .and. fixT) stop "isoT and fixT can't both be true"
+
   if (isoT) then
      k = isoT_k
   end if
@@ -69,12 +67,11 @@ subroutine eulerint(ip,scalls,photo,caseA,He,isoT,fixT)
      call get_atomic_rates(ip%T,rtable,k)
   end if
 
-  !-------------------------------------------------------------------
   ! do first round of calculations (only have xHI,xHeI,xHeII,nH,nHe)
-
+  !-------------------------------------------------------------------
   ip%nHI  = ip%nH * ip%xHI
   ip%nHII = ip%nH * ip%xHII
-  ip%ne = ip%nHII + ip%NeBckgnd
+  ip%ne   = ip%nHII + ip%NeBckgnd
 
   if (He) then
      ip%nHeI   = ip%nHe * ip%xHeI
@@ -86,8 +83,8 @@ subroutine eulerint(ip,scalls,photo,caseA,He,isoT,fixT)
   if (photo) then
      call set_gammas(ip,He)
   else
-     ip%gammaHI = zero
-     ip%gammaHeI = zero
+     ip%gammaHI   = zero
+     ip%gammaHeI  = zero
      ip%gammaHeII = zero
   end if
 

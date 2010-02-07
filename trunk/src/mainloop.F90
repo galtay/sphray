@@ -74,6 +74,8 @@ contains
     snaps: do snapn = GV%StartSnapNum, GV%EndSnapNum
               
        call readin_snapshot()
+
+       write(*,*) "read snapshot "
        
 #ifdef incHrec
        if (snapn == GV%StartSnapNum) then
@@ -110,6 +112,7 @@ contains
        ! begin ray tracing 
        !------------------------- 
        src_rays: do rayn = one, PLAN%snap(snapn)%SrcRays
+
           
           GV%rayn     = GV%rayn + 1
           GV%src_rayn = GV%src_rayn + 1
