@@ -379,12 +379,13 @@ subroutine set_ye(psys, dfltH_mf, dfltHe_mf, ne_bckgnd)
 !--------------------------     
 
      nHe_over_nH = 0.25d0 * Hemf / Hmf
-     psys%par(:)%ye = psys%par(:)%ye + $
-                     ( psys%par(:)%xHeII + 2.0d0 * psys%par(:)%xHeIII ) * nHe_over_nH
+     psys%par(i)%ye = psys%par(i)%ye + &
+          ( psys%par(i)%xHeII + 2.0d0 * psys%par(i)%xHeIII ) * nHe_over_nH
      
   end do
 
 #endif
+
 
 end subroutine set_ye
 
@@ -423,8 +424,8 @@ subroutine set_ye_pars(pars, dfltH_mf, dfltHe_mf, ne_bckgnd)
 !--------------------------     
 
      nHe_over_nH = 0.25d0 * Hemf / Hmf
-     pars(:)%ye = pars(:)%ye + $
-                     ( pars(:)%xHeII + 2.0d0 * pars(:)%xHeIII ) * nHe_over_nH
+     pars(i)%ye = pars(i)%ye + &
+          ( pars(i)%xHeII + 2.0d0 * pars(i)%xHeIII ) * nHe_over_nH
      
   end do
 
@@ -470,13 +471,13 @@ subroutine set_collisional_ionization_equilibrium(psys, caseA, IsoTemp, DoHydrog
         Tdum = psys%par(i)%T
         call calc_colion_eq_fits(fit, Tdum, caseA, xvec)
         if (DoHydrogen) then
-           psys%par(:)%xHI    = xvec(1)
-           psys%par(:)%xHII   = xvec(2)
+           psys%par(i)%xHI    = xvec(1)
+           psys%par(i)%xHII   = xvec(2)
         endif
 #ifdef incHe
-        psys%par(:)%xHeI   = xvec(3)
-        psys%par(:)%xHeII  = xvec(4)
-        psys%par(:)%xHeIII = xvec(5)
+        psys%par(i)%xHeI   = xvec(3)
+        psys%par(i)%xHeII  = xvec(4)
+        psys%par(i)%xHeIII = xvec(5)
 #endif
      end do
 

@@ -223,7 +223,6 @@ subroutine read_Gpub_particles()
      nmass1  = sum(ghead%npar_file, mask=varmass)
      if (ngas1 == 0) cycle
 
-
      ! begin read
      !-----------------------------------------------------------!  
      call form_gadget_snapshot_file_name(GV%SnapPath,GV%ParFileBase,GV%CurSnapNum,fn,snapfile)
@@ -343,6 +342,7 @@ subroutine read_Gpub_particles()
   call set_temp_from_u(psys, GV%H_mf, GV%cgs_enrg, GV%cgs_mass)
 
 
+
   ! set caseA true or false for collisional equilibrium
   !-----------------------------------------------------
   caseA = .false.
@@ -433,7 +433,7 @@ subroutine read_Gcool_particles()
      ! begin read
      !-----------------------------------------------------------!  
      call form_gadget_snapshot_file_name(GV%SnapPath,GV%ParFileBase,GV%CurSnapNum,fn,snapfile)
-     call mywrite("reading tiziana gadget snapshot file "//trim(snapfile), verb)
+     call mywrite("reading gadget w/ cooling snapshot file "//trim(snapfile), verb)
      call open_unformatted_file_r( snapfile, lun )
      read(lun) ghead
 
