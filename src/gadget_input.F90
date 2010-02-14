@@ -810,7 +810,7 @@ subroutine read_Gbromm_particles()
      if (err/=0) call myerr("dummy read for HDI",myname,crash) 
 
 
-
+#ifdef incHe
      ! read HeII = nHeII / nH
      !-----------------------------------------------------------!  
      allocate(rblck(ngas1), stat=err)
@@ -829,7 +829,7 @@ subroutine read_Gbromm_particles()
      if (err/=0) call myerr("reading rblk for HeIII",myname,crash) 
      forall(i=1:ngas1) psys%par(ngasread+i)%xHeIII = rblck(i)
      deallocate(rblck)
-
+#endif
 
      ngasread = ngasread + ngas1
      close(lun)
