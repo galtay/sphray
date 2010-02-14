@@ -318,17 +318,45 @@ contains
 
 
   ! scan file routines, one for each type
-  !====================================================================
+  !==================================================================
+  function tmp_file_name(nchars) result(file)
+    integer :: nchars
+    character(nchars) :: file
+    
+    integer :: i, ticks, seedsize
+    integer, allocatable :: seed(:)
+    real :: x
+    
+    call random_seed(size=seedsize)
+    allocate( seed(seedsize) )
+    do i = 1,seedsize
+       call system_clock(count=ticks)
+       seed(i)=ticks
+    end do
+    call random_seed(put=seed)
+    
+    file="a"
+    do i = 1,nchars-1
+       call random_number(x)
+       write(file,"(A,I1)") trim(file), int(x*10)
+    end do
+    
+  end function tmp_file_name
+
 
   subroutine scanfile_r4b(filename,keyword,var) 
     character(*), intent(in) :: filename
     character(*), intent(in) :: keyword
     real(r4b), intent(out) :: var
-    character(26), parameter :: tmpfile = "file_scanner_temp_file.out"
+    character(26) :: tmpfile 
     character(clen) :: cmnd
 
     integer(i8b) :: lun, Nfound
-        
+    real :: rn
+    integer :: i, c
+
+    tmpfile = tmp_file_name(len(tmpfile))
+
     ! produce awk command and send it to the system
     !-----------------------------------------------
     100 format("awk '{if ($1 ~ /^",A,"$/) print $2}' ",A, " > ",A)
@@ -356,11 +384,13 @@ contains
     character(*), intent(in) :: filename
     character(*), intent(in) :: keyword
     real(r8b), intent(out) :: var
-    character(26), parameter :: tmpfile = "file_scanner_temp_file.out"
+    character(26) :: tmpfile 
     character(clen) :: cmnd
 
     integer(i8b) :: lun, Nfound
     
+    tmpfile = tmp_file_name(len(tmpfile))
+
     ! produce awk command and send it to the system
     !-----------------------------------------------
     100 format("awk '{if ($1 ~ /^",A,"$/) print $2}' ",A, " > ",A)
@@ -388,11 +418,13 @@ contains
     character(*), intent(in) :: filename
     character(*), intent(in) :: keyword
     integer(i4b), intent(out) :: var
-    character(26), parameter :: tmpfile = "file_scanner_temp_file.out"
+    character(26) :: tmpfile 
     character(clen) :: cmnd
 
     integer(i8b) :: lun, Nfound
         
+    tmpfile = tmp_file_name(len(tmpfile))
+
     ! produce awk command and send it to the system
     !-----------------------------------------------
     100 format("awk '{if ($1 ~ /^",A,"$/) print $2}' ",A, " > ",A)
@@ -421,11 +453,12 @@ contains
     character(*), intent(in) :: filename
     character(*), intent(in) :: keyword
     integer(i8b), intent(out) :: var
-    character(26), parameter :: tmpfile = "file_scanner_temp_file.out"
+    character(26) :: tmpfile 
     character(clen) :: cmnd
     
     integer(i8b) :: lun, Nfound
     
+    tmpfile = tmp_file_name(len(tmpfile))
     
     ! produce awk command and send it to the system
     !-----------------------------------------------
@@ -455,11 +488,13 @@ contains
     character(*), intent(in) :: filename
     character(*), intent(in) :: keyword
     character(clen), intent(out) :: var
-    character(26), parameter :: tmpfile = "file_scanner_temp_file.out"
+    character(26) :: tmpfile 
     character(clen) :: cmnd
 
     integer(i8b) :: lun, Nfound    
     
+    tmpfile = tmp_file_name(len(tmpfile))
+
     ! produce awk command and send it to the system
     !-----------------------------------------------
     100 format("awk '{if ($1 ~ /^",A,"$/) print $2}' ",A, " > ",A)
@@ -488,11 +523,13 @@ contains
     character(*), intent(in) :: filename
     character(*), intent(in) :: keyword
     logical, intent(out) :: var
-    character(*), parameter :: tmpfile = "file_scanner_temp_file.out"
+    character(26) :: tmpfile 
     character(clen) :: cmnd
 
     integer(i8b) :: lun, Nfound
         
+    tmpfile = tmp_file_name(len(tmpfile))
+
     ! produce awk command and send it to the system
     !-----------------------------------------------
     100 format("awk '{if ($1 ~ /^",A,"$/) print $2}' ",A, " > ",A)
@@ -523,9 +560,11 @@ contains
     character(*), intent(in) :: paramfile
     character(*), intent(in) :: keyword
     integer(i8b) :: N
-    character(27), parameter :: tmpfile = "file_scanner_temp_file.out1"
+    character(27) :: tmpfile 
     character(clen) :: cmnd
     integer(i8b) :: lun
+
+    tmpfile = tmp_file_name(len(tmpfile))
  
     100 format("awk 'END {print NR}' ",A, " > ",A)
     write(cmnd,100) awkoutfile, tmpfile
