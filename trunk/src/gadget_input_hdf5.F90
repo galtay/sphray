@@ -6,7 +6,6 @@
 module gadget_input_hdf5_mod
 use myf90_mod
 use gadget_header_class
-use gadget_input_mod
 use ion_table_class
 use particle_system_mod, only: set_ye
 use global_mod, only: psys, PLAN, GV
@@ -22,7 +21,6 @@ private
 
 public :: get_planning_data_gadget_hdf5
 public :: read_Ghdf5_particles
-public :: update_hdf5_particles
 public :: gadget_output_hdf5
 
 contains
@@ -43,10 +41,6 @@ end subroutine get_planning_data_gadget_hdf5
 subroutine read_Ghdf5_particles()
   call myerr("this routine shuold not have been called","hdf5dummy",crash=.true.)
 end subroutine read_Ghdf5_particles
-
-subroutine update_hdf5_particles()
-  call myerr("this routine shuold not have been called","hdf5dummy",crash=.true.)
-end subroutine update_hdf5_particles
 
 subroutine gadget_output_hdf5()
   call myerr("this routine shuold not have been called","hdf5dummy",crash=.true.)
@@ -488,12 +482,6 @@ subroutine read_Ghdf5_particles()
 
 end subroutine read_Ghdf5_particles
 
-
-
-
-
-subroutine update_hdf5_particles()
-end subroutine update_hdf5_particles
 
 
 

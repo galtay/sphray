@@ -6,6 +6,7 @@
 module gadget_input_mod
 use myf90_mod
 use gadget_header_class
+use gadget_input_hdf5_mod
 use particle_system_mod, only: particle_system_type
 use particle_system_mod, only: set_collisional_ionization_equilibrium, set_ye
 use global_mod, only: psys, PLAN, GV
@@ -16,6 +17,7 @@ private
 public :: get_planning_data_gadget
 public :: read_Gpub_particles
 public :: read_Gcool_particles
+public :: read_Gbromm_particles
 public :: update_particles
 public :: set_temp_from_u
 public :: set_u_from_temp
@@ -357,7 +359,7 @@ subroutine read_Gpub_particles()
 
 end subroutine read_Gpub_particles
 
-
+ 
 
 !> reads a Gadget snapshot that includes ye and xHI (i.e. cooling) into a particle array  
 !=========================================================================================
@@ -598,6 +600,282 @@ end subroutine read_Gcool_particles
 
 
 
+
+!> reads a Gadget snapshot from Volker Bromm's group
+!=========================================================================================
+subroutine read_Gbromm_particles()
+
+  character(clen), parameter :: myname="read_Gbromm_particles"
+  logical, parameter :: crash=.true.
+  integer, parameter :: verb=2
+  character(clen) :: str,fmt 
+
+  real(r4b), allocatable :: rblck(:)
+  real(r4b), allocatable :: rblck3(:,:)
+  integer(i4b), allocatable :: iblck(:)
+  integer(i8b) :: ngasread
+
+  type(gadget_header_type) :: ghead
+  character(clen) :: snapfile
+  integer(i8b) :: lun,i
+  integer(i4b) :: err
+
+  integer(i8b) :: npar, ngas, nmass
+  integer(i8b) :: npar1, ngas1, nmass1
+  logical :: varmass(6)
+  integer(i8b) :: fn
+
+  real(r8b) :: meanweight
+  real(r8b) :: nH_over_nHe
+  logical :: caseA(2)
+  real(r8b) :: xvec(5)
+  real(r8b) :: Tdum
+  real(r8b) :: MB 
+
+
+  ! set local particle numbers
+  !============================
+  ghead = saved_gheads( GV%CurSnapNum, 0 )
+  varmass = (ghead%npar_all > 0 .and. ghead%mass == 0)
+  npar = sum(ghead%npar_all)
+  ngas = ghead%npar_all(1)
+  nmass = sum(ghead%npar_all, mask=varmass)
+
+  ! do Gadget dummy checks
+  !============================
+  if (ngas .EQ. 0) call myerr("snapshot has no gas particles",myname,crash)
+
+  ! calculate bytes per particle and allocate particle array
+  !===========================================================
+  MB = GV%bytesperpar * real(ngas) / 2.**20
+  GV%MB = GV%MB + MB
+
+  fmt="(A,F10.4,A,I10,A)"
+  write(str,fmt) "allocating ", MB, " MB for ", ngas, " particles"
+  call mywrite(str,verb)
+
+  allocate (psys%par(ngas), stat=err)
+  if (err /= 0) call myerr("failed to allocate par",myname,crash)
+
+
+
+  ! now read all snapshot files
+  !==============================          
+  ngasread = 0
+  files: do fn = 0, ghead%nfiles-1
+
+     ! recall the header info
+     !-----------------------------------------------------------!  
+     ghead   = saved_gheads( GV%CurSnapNum, fn )
+     varmass = (ghead%npar_file > 0 .and. ghead%mass == 0)
+     npar1   = sum(ghead%npar_file)
+     ngas1   = ghead%npar_file(1)
+     nmass1  = sum(ghead%npar_file, mask=varmass)
+     if (ngas1 == 0) cycle
+
+     ! begin read
+     !-----------------------------------------------------------!  
+     call form_gadget_snapshot_file_name(GV%SnapPath,GV%ParFileBase,GV%CurSnapNum,fn,snapfile)
+     call mywrite("reading gadget w/ cooling snapshot file "//trim(snapfile), verb)
+     call open_unformatted_file_r( snapfile, lun )
+     read(lun) ghead
+
+
+     ! read positions 
+     !-----------------------------------------------------------!  
+     allocate(rblck3(3,ngas1), stat=err)
+     if(err/=0) call myerr("allocating rblck3 for pos",myname,crash)
+     read(lun, iostat=err) rblck3
+     if (err/=0) call myerr("reading rblk3 for pos",myname,crash) 
+     forall(i=1:ngas1) psys%par(ngasread+i)%pos(1) = rblck3(1,i)
+     forall(i=1:ngas1) psys%par(ngasread+i)%pos(2) = rblck3(2,i)
+     forall(i=1:ngas1) psys%par(ngasread+i)%pos(3) = rblck3(3,i)
+     deallocate(rblck3)
+
+     ! read velocities 
+     !-----------------------------------------------------------!  
+#ifdef incVel
+     allocate(rblck3(3,ngas1), stat=err)
+     if(err/=0) call myerr("allocating rblck3 for vel",myname,crash)
+     read(lun, iostat=err) rblck3
+     if (err/=0) call myerr("reading rblk3 for vel",myname,crash) 
+     forall(i=1:ngas1) psys%par(ngasread+i)%vel(1) = rblck3(1,i)
+     forall(i=1:ngas1) psys%par(ngasread+i)%vel(2) = rblck3(2,i)
+     forall(i=1:ngas1) psys%par(ngasread+i)%vel(3) = rblck3(3,i)
+     deallocate(rblck3)
+#else
+     read(lun, iostat=err)
+     if (err/=0) call myerr("dummy reading vel",myname,crash) 
+#endif
+
+
+     ! read id's 
+     !-----------------------------------------------------------!  
+     allocate(iblck(ngas1), stat=err )
+     if(err/=0) call myerr("allocating iblck for ID",myname,crash)
+     read(lun, iostat=err) iblck  
+     if (err/=0) call myerr("reading iblk for ID",myname,crash) 
+     forall(i=1:ngas1) psys%par(ngasread+i)%id = iblck(i)
+     deallocate(iblck)
+
+     ! read masses 
+     !-----------------------------------------------------------!  
+
+     ! if there are variable mass particles of any type
+     if (nmass1 > 0) then  
+
+        ! if there are variable mass gas particles
+        if (varmass(1)) then  
+           allocate(rblck(ngas1), stat=err)
+           if(err/=0) call myerr("allocating rblck for mass",myname,crash)
+           read(lun, iostat=err) rblck 
+           if (err/=0) call myerr("reading rblk for mass",myname,crash) 
+           forall(i=1:ngas1) psys%par(ngasread+i)%mass = rblck(i)
+           deallocate(rblck)
+
+        ! just dummy read non gas particles
+        else 
+           read(lun)  
+           psys%par(ngasread+1:ngasread+ngas1)%mass = ghead%mass(1)
+        end if
+
+     ! if none of the particles are variable mass
+     else  
+        psys%par(ngasread+1:ngasread+ngas1)%mass = ghead%mass(1)
+     end if
+
+
+     ! read temperature (internal energy / unit mass for now)
+     !-----------------------------------------------------------!  
+     allocate(rblck(ngas1), stat=err)
+     if(err/=0) call myerr("allocating rblck for u",myname,crash)
+     read(lun, iostat=err) rblck
+     if (err/=0) call myerr("reading rblk for u",myname,crash) 
+     forall(i=1:ngas1) psys%par(ngasread+i)%T = rblck(i) 
+     deallocate(rblck)
+
+
+     ! read density 
+     !-----------------------------------------------------------!  
+     allocate(rblck(ngas1), stat=err)
+     if(err/=0) call myerr("allocating rblck for rho",myname,crash)
+     read(lun, iostat=err) rblck
+     if (err/=0) call myerr("reading rblk for rho",myname,crash) 
+     forall(i=1:ngas1) psys%par(ngasread+i)%rho = rblck(i)
+     deallocate(rblck)
+
+
+     ! read smoothing lengths 
+     !-----------------------------------------------------------!  
+     allocate(rblck(ngas1), stat=err)
+     if(err/=0) call myerr("allocating rblck for hsml",myname,crash)
+     read(lun, iostat=err) rblck
+     if (err/=0) call myerr("reading rblk for hsml",myname,crash) 
+     forall(i=1:ngas1) psys%par(ngasread+i)%hsml = rblck(i)
+     deallocate(rblck)
+
+
+     ! dummy read 
+     !-----------------------------------------------------------!  
+     read(lun, iostat=err) ! H2I
+     if (err/=0) call myerr("dummy read for H2I",myname,crash) 
+
+
+     ! read HII = nHII / nH
+     !-----------------------------------------------------------!  
+     allocate(rblck(ngas1), stat=err)
+     if(err/=0) call myerr("allocating rblck for HII",myname,crash)
+     read(lun, iostat=err) rblck
+     if (err/=0) call myerr("reading rblk for HII",myname,crash) 
+     forall(i=1:ngas1) psys%par(ngasread+i)%xHII = rblck(i)
+     deallocate(rblck)
+
+
+     read(lun, iostat=err) ! CII
+     if (err/=0) call myerr("dummy read for CII",myname,crash) 
+
+     read(lun, iostat=err) ! SiII
+     if (err/=0) call myerr("dummy read for SiII",myname,crash) 
+
+     read(lun, iostat=err) ! SiIII
+     if (err/=0) call myerr("dummy read for SiIII",myname,crash) 
+
+     read(lun, iostat=err) ! OII
+     if (err/=0) call myerr("dummy read for OII",myname,crash) 
+
+     read(lun, iostat=err) ! DII
+     if (err/=0) call myerr("dummy read for DII",myname,crash) 
+
+     read(lun, iostat=err) ! HDI
+     if (err/=0) call myerr("dummy read for HDI",myname,crash) 
+
+
+
+     ! read HeII = nHeII / nH
+     !-----------------------------------------------------------!  
+     allocate(rblck(ngas1), stat=err)
+     if(err/=0) call myerr("allocating rblck for HeII",myname,crash)
+     read(lun, iostat=err) rblck
+     if (err/=0) call myerr("reading rblk for HeII",myname,crash) 
+     forall(i=1:ngas1) psys%par(ngasread+i)%xHeII = rblck(i)
+     deallocate(rblck)
+
+
+     ! read HeIII = nHeIII / nH
+     !-----------------------------------------------------------!  
+     allocate(rblck(ngas1), stat=err)
+     if(err/=0) call myerr("allocating rblck for HeIII",myname,crash)
+     read(lun, iostat=err) rblck
+     if (err/=0) call myerr("reading rblk for HeIII",myname,crash) 
+     forall(i=1:ngas1) psys%par(ngasread+i)%xHeIII = rblck(i)
+     deallocate(rblck)
+
+
+     ngasread = ngasread + ngas1
+     close(lun)
+
+  end do files
+
+
+
+  ! set xHI from xHII 
+  !----------------------------------------------------------------!  
+  psys%par(:)%xHI = 1.0d0 - psys%par(:)%xHII
+
+
+  ! use Hydrogen and Helium mass fractions from config file to
+  ! set the Helium ionization fractions
+  !----------------------------------------------------------------!  
+#ifdef incHe
+  nH_over_nHe = 4 * GV%H_mf / GV%He_mf
+  psys%par(:)%xHeII  = psys%par(:)%xHeII  * nH_over_nHe
+  psys%par(:)%xHeIII = psys%par(:)%xHeIII * nH_over_nHe
+  psys%par(:)%xHeI   = 1.0d0 - psys%par(:)%xHeII - psys%par(:)%xHeIII
+#endif 
+
+  ! set ye from ionization fractions
+  !----------------------------------------------------------------!  
+  psys%par(:)%ye = psys%par(:)%xHII
+#ifdef incHe
+  psys%par(:)%ye = psys%par(:)%ye + psys%par(:)%xHeII + 2 * psys%par(:)%xHeIII
+#endif
+
+  ! convert the internal energy to temperature using ye 
+  !----------------------------------------------------------------!  
+  call set_temp_from_u(psys, GV%H_mf, GV%cgs_enrg, GV%cgs_mass)
+
+
+  ! shrink particles with negative IDs to 
+  !----------------------------------------------------------------!  
+  where( psys%par(:)%id < 0 ) psys%par(:)%hsml = 0.0
+
+
+
+
+end subroutine read_Gbromm_particles
+
+
+
 !> Reads in an update snapshot.  The idea is to keep the ionization fractions
 !! and temperature from the already loaded snapshot while updating the 
 !! positions, velocities, smoothing lengths ... from the snapshot on disk.
@@ -681,10 +959,14 @@ subroutine update_particles()
   ! deallocate the current particle array and read new particle data
   !==================================================================
   deallocate( psys%par )
-  if (GV%InputType == 2) then
+  if (GV%InputType == 1) then
      call read_Gpub_particles()
-  else if (GV%InputType == 3) then
+  else if (GV%InputType == 2) then
      call read_Gcool_particles()
+  else if (GV%InputType == 3) then
+     call read_Ghdf5_particles()
+  else if (GV%InputType == 4) then
+     call read_Gbromm_particles()
   end if
   minIDnew = minval(psys%par%id)
   maxIDnew = maxval(psys%par%id)

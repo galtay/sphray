@@ -230,9 +230,9 @@ subroutine dummy_check_config_variables()
   Mwarning = "please edit Makefile"
   config_good = .true. 
 
-  if (GV%InputType /= 1 .and. GV%InputType /= 2 .and. GV%InputType /= 3) then
+  if (GV%InputType /= 1 .and. GV%InputType /= 2 .and. GV%InputType /= 3 .and. GV%InputType /= 4) then
      write(*,*) "Input Type ", GV%InputType, " not recognized"
-     write(*,*) "must be 1 (Gadget2 Public Standard), 2 (Gadget w/ xHI), or 3 (Gadget HDF5)"
+     write(*,*) "must be 1 (Gadget2 Public Standard), 2 (Gadget w/ xHI), 3 (Gadget HDF5), or 4 (Gadget Bromm)"
      config_good = .false. 
   end if
 
@@ -458,7 +458,7 @@ subroutine config_info_to_file()
 
   write(lun,*)
 
-  write(lun,*)"Input Type (1=Sphray, 2=Gadget Public, 3=Gadget Tiziana)", GV%InputType
+  write(lun,*)"Input Type (1=Gadget Public, 2=Gadget Cooling, 3=Gadget HDF5, 4=Gadget Bromm)", GV%InputType
   write(lun,*)
   write(lun,*)"Path to Snapshot File(s):"
   write(lun,*)trim(GV%SnapPath)

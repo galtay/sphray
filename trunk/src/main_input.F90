@@ -50,7 +50,7 @@ subroutine get_planning_data(skewers)
   if (allocated(PLAN%snap)) deallocate(PLAN%snap)
   allocate( PLAN%snap(GV%StartSnapNum : GV%EndSnapNum) )
 
-  if (GV%InputType == 1 .or. GV%InputType == 2) then
+  if (GV%InputType == 1 .or. GV%InputType == 2 .or. GV%InputType == 4) then
      call get_planning_data_gadget()
   else if (GV%InputType == 3) then
      call get_planning_data_gadget_hdf5()
@@ -111,6 +111,8 @@ subroutine readin_snapshot(skewers)
      call mywrite(" Gadget w/ cooling, stars, UVB (SnapFormat=1)", verb)
   else if (GV%InputType==3) then
      call mywrite(" Gadget HDF5", verb)
+  else if (GV%InputType==4) then
+     call mywrite(" Gadget Bromm", verb)
   end if
 
 
@@ -155,9 +157,20 @@ subroutine readin_snapshot(skewers)
         call read_Ghdf5_particles()
         psys%par(:)%lasthit = 0
      else
-        call update_hdf5_particles()
+        call update_particles()
      end if
      
+  ! gadget w/ ions from Volker Bromm's group 
+  !---------------------------------------------------------------
+  else if (GV%InputType == 4) then
+
+     if (first) then
+        call read_Gbromm_particles()
+        psys%par(:)%lasthit = 0
+     else
+        call update_particles()
+     end if
+
   ! not recognized
   !---------------------------------------------------------------
   else
