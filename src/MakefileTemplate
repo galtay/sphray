@@ -69,8 +69,8 @@ endif
 #include makes/make.cosma.openmp
 #include makes/make.cosma.mpi
 
-include makes/make.santabuntu.serial.opt
-#include makes/make.santabuntu.serial.debug
+#include makes/make.santabuntu.serial.opt
+include makes/make.santabuntu.serial.debug
 
 
 
@@ -109,8 +109,8 @@ SRC= 	myf90.o \
 	global.o \
 	config.o \
 	source_input.o \
-	gadget_input.o \
 	gadget_input_hdf5.o \
+	gadget_input.o \
 	main_input.o \
 	ionpar.o \
 	euler.o \

@@ -84,7 +84,7 @@ type global_variables_type
    character(clen) :: StaticSimTimeUnit   !< [Config File] one of {codetime,myr}
 
 
-   integer(i8b)    :: InputType           !< [Config File] one of {1: Gadget Public 2: Gadget Cooling 3: Gadget HDF5}
+   integer(i8b)    :: InputType           !< [Config File] one of {1: Gadget Public 2: Gadget Cooling 3: Gadget HDF5 4: Gadget Bromm}
    character(clen) :: SnapPath            !< [Config File] dir where particle snapshots are
    character(clen) :: SourcePath          !< [Config File] dir where source snapshots are
 
