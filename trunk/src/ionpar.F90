@@ -68,6 +68,8 @@ type ionpart_type
    real(r8b) :: Hcnt         !< number of H nuclei
    real(r8b) :: Hecnt        !< number of He nuclei
 
+   real(r8b) :: dl           !< path length for particle
+   logical   :: inside       !< is the source inside the particle? 
 
    ! ray/photo quantities initialied before solver is called
 
@@ -273,6 +275,7 @@ subroutine initialize_ionpar(ipar,par,index,srcray,He,raylist,impact)
   real(r8b) :: mass_cgs
   real(r8b) :: rho_cgs
 
+
   call par2ionpar(par,ipar,index)
 
   ! store initial values
@@ -330,7 +333,33 @@ subroutine initialize_ionpar(ipar,par,index,srcray,He,raylist,impact)
      ipar%d = raylist%intersection(impact)%d   ! distance along ray
      ipar%b = raylist%intersection(impact)%b   ! impact parameter
 
+     if ( sqrt( sum( (raylist%ray%start - ipar%pos)**2 ) ) <= ipar%hsml ) then
+        ipar%inside=.true.
+     else
+        ipar%inside=.false.
+     endif
 
+     if (raylist%nnb == 1) then 
+        ipar%dl = 2 * ipar%hsml
+
+     else 
+        if (impact == 1) then 
+           if (ipar%inside) then
+              ipar%dl = ipar%hsml
+           else
+              ipar%dl = 0.5 * (raylist%intersection(2)%d + ipar%d )  
+!              ipar%dl = raylist%intersection(2)%d - ipar%d  
+!              ipar%dl = 2 * ipar%hsml
+           endif
+        else if (impact == raylist%nnb) then
+           ipar%dl = ipar%d - raylist%intersection(raylist%nnb-1)%d
+        else
+           ipar%dl = 0.5 * ( raylist%intersection(impact+1)%d - &
+                             raylist%intersection(impact-1)%d )
+        endif
+     endif
+
+     
      ipar%bnorm = ipar%b / ipar%hsml
      ipar%cdfac = b2cdfac(ipar%bnorm,ipar%hsml,GV%cgs_len)
 
@@ -419,7 +448,8 @@ subroutine set_taus(ip,He)
   ! calculate taus
   !---------------------------------------
   if (HI) then
-     ip%tauHI = ip%cdfac * ip%HIcnt * ip%sigmaHI
+!     ip%tauHI = ip%cdfac * ip%HIcnt * ip%sigmaHI
+     ip%tauHI = ip%dl * GV%cgs_len * ip%nH * ip%xHI * ip%sigmaHI
   else
      ip%tauHI = zero
   end if

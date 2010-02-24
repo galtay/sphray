@@ -23,7 +23,8 @@ module mainloop_mod
   use global_mod, only: psys
   use global_mod, only: globalraylist
   use global_mod, only: tree
-  use global_mod, only: GV, PLAN
+  use global_mod, only: GV
+  use global_mod, only: PLAN
   
   implicit none
   
@@ -74,8 +75,6 @@ contains
     snaps: do snapn = GV%StartSnapNum, GV%EndSnapNum
               
        call readin_snapshot()
-
-       write(*,*) "read snapshot "
        
 #ifdef incHrec
        if (snapn == GV%StartSnapNum) then
@@ -138,6 +137,10 @@ contains
           
           !  create a source ray and calc the impacts
           call make_source_ray(psys%src(srcn), GV%rayn, GV%dtray_s, GV%Lunit, psys%box, ray)
+
+!          ray%dir = (/1.,0.,0./)
+!          write(*,"(A,3F6.3)") "ray start: ", ray%start
+
 
           globalraylist%ray = ray
           call trace_ray(globalraylist%ray, globalraylist, psys, tree) 
