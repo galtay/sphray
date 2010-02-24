@@ -102,6 +102,8 @@ subroutine update_raylist(raylist, pars, box, srcray)
      par = pars(index)
 
 
+     
+
      ! check we dont have double intersections when we shouldn't
      !-------------------------------------------------------------
      if (srcray) then
@@ -125,6 +127,10 @@ subroutine update_raylist(raylist, pars, box, srcray)
      call initialize_ionpar(ipar,par,index,srcray,He,raylist,impact)
 
 
+!     write(*,*) "d,dl:", raylist%intersection(impact)%d, ipar%dl
+!     write(*,"(A,4F12.6)") "pos,nH: ", ipar%pos, ipar%nH
+!     write(*,*) "inside: ", ipar%inside
+!     write(*,*) 
 
      if (srcray) then
         if (GV%IonTempSolver==1) then
@@ -219,6 +225,7 @@ subroutine update_raylist(raylist, pars, box, srcray)
      
   end do impact_loop
 
+!  stop "finished impact loop"
 
 end subroutine update_raylist
 

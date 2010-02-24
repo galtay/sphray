@@ -33,6 +33,7 @@ implicit none
       integer(i8b) :: pindx   !< particle index
       real :: b          !< impact parameter
       real :: d          !< distance along ray
+      real :: dl         !< path length
    end type intersection_type
  
 !> grouping of all things ray + impacts
@@ -332,6 +333,10 @@ contains
    raylist%intersection(1:N)%pindx=raylist%intersection(indexx(1:N))%pindx  
 
  end subroutine sort3_raylist
+
+
+
+
 
 !> given a ray creates a raylist with intersections
 !------------------------------------------------------
