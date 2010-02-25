@@ -332,32 +332,32 @@ subroutine initialize_ionpar(ipar,par,index,srcray,He,raylist,impact)
 
      ipar%d = raylist%intersection(impact)%d   ! distance along ray
      ipar%b = raylist%intersection(impact)%b   ! impact parameter
-
-     if ( sqrt( sum( (raylist%ray%start - ipar%pos)**2 ) ) <= ipar%hsml ) then
-        ipar%inside=.true.
-     else
-        ipar%inside=.false.
-     endif
-
-     if (raylist%nnb == 1) then 
-        ipar%dl = 2 * ipar%hsml
-
-     else 
-        if (impact == 1) then 
-           if (ipar%inside) then
-              ipar%dl = ipar%hsml
-           else
-              ipar%dl = 0.5 * (raylist%intersection(2)%d + ipar%d )  
-!              ipar%dl = raylist%intersection(2)%d - ipar%d  
-!              ipar%dl = 2 * ipar%hsml
-           endif
-        else if (impact == raylist%nnb) then
-           ipar%dl = ipar%d - raylist%intersection(raylist%nnb-1)%d
-        else
-           ipar%dl = 0.5 * ( raylist%intersection(impact+1)%d - &
-                             raylist%intersection(impact-1)%d )
-        endif
-     endif
+ 
+!!$     if ( sqrt( sum( (raylist%ray%start - ipar%pos)**2 ) ) <= ipar%hsml ) then
+!!$        ipar%inside=.true.
+!!$     else
+!!$        ipar%inside=.false.
+!!$     endif
+!!$
+!!$     if (raylist%nnb == 1) then 
+!!$        ipar%dl = 2 * ipar%hsml
+!!$
+!!$     else 
+!!$        if (impact == 1) then 
+!!$           if (ipar%inside) then
+!!$              ipar%dl = ipar%hsml
+!!$           else
+!!$              ipar%dl = 0.5 * (raylist%intersection(2)%d + ipar%d )  
+!!$!              ipar%dl = raylist%intersection(2)%d - ipar%d  
+!!$!              ipar%dl = 2 * ipar%hsml
+!!$           endif
+!!$        else if (impact == raylist%nnb) then
+!!$           ipar%dl = ipar%d - raylist%intersection(raylist%nnb-1)%d
+!!$        else
+!!$           ipar%dl = 0.5 * ( raylist%intersection(impact+1)%d - &
+!!$                             raylist%intersection(impact-1)%d )
+!!$        endif
+!!$     endif
 
      
      ipar%bnorm = ipar%b / ipar%hsml
@@ -448,8 +448,11 @@ subroutine set_taus(ip,He)
   ! calculate taus
   !---------------------------------------
   if (HI) then
-!     ip%tauHI = ip%cdfac * ip%HIcnt * ip%sigmaHI
-     ip%tauHI = ip%dl * GV%cgs_len * ip%nH * ip%xHI * ip%sigmaHI
+     ip%tauHI = ip%cdfac * ip%HIcnt * ip%sigmaHI
+!     write(*,*) "tau int: ", ip%tauHI
+!     ip%tauHI = ip%dl * GV%cgs_len * ip%nH * ip%xHI * ip%sigmaHI
+!     write(*,*) "tau path:", ip%tauHI
+!     write(*,*) 
   else
      ip%tauHI = zero
   end if
