@@ -149,6 +149,9 @@ subroutine form_gadget_snapshot_file_name(path,base,SnapNum,FileNum,SnapFile)
   ! first write a file with no extension
   !--------------------------------------
   write(SnapFile,fmt) trim(path), trim(base), SnapNum
+#ifdef hdf5
+  SnapFile = trim(SnapFile) // ".hdf5"
+#endif
   inquire( file=SnapFile, exist=Fthere )
 
   ! if the file number is 0 and a file with no extension exists then return
