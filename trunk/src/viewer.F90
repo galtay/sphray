@@ -395,8 +395,9 @@ end subroutine visible
   
 subroutine gaslist
 use global_mod, only: psys,GV
+
     
-real(kind=glfloat) :: xt,yt,zt,temp,dT,Tmin,Tmax
+real(kind=glfloat) :: xt,yt,zt,temp,dT,Tmin,Tmax,Tmid
 real(kind=glfloat) :: red,green,blue,alpha_c
 integer :: i,step
     
@@ -411,9 +412,10 @@ call glBegin(GL_POINTS)
 call glColor4f(5._glfloat, .3_glfloat, .3_glfloat, 0.1_glfloat)
 
 
-Tmax = 8.0
-Tmin = 3.0
-dT = 8.0-3.0
+Tmax = 6.0
+Tmin = 4.0
+Tmid = 4.0
+dT = Tmax-Tmin
 
 do i=1,size(psys%par)
    
@@ -436,8 +438,9 @@ do i=1,size(psys%par)
 
       red=temp
       blue=(1.0_glfloat - temp)
-      green=0.01
+      green=0.00
       alpha_c=0.1
+
       call glColor4f(red, green, blue, alpha_c)
    end if
 
@@ -461,7 +464,7 @@ do i=1,size(psys%par)
    !---------------
    if(show_temp.EQ.4) then
       temp = psys%par(i)%xHII 
-      if (temp <= 0.05) then
+      if (temp <= 0.5) then
          green = 0.2
          red = 0.5
          blue=0.5
@@ -480,7 +483,7 @@ do i=1,size(psys%par)
    !---------------
    if(show_temp.EQ.5) then
       temp = psys%par(i)%xHI 
-      if (temp <= 0.05) then
+      if (temp <= 0.5) then
          green = 0.2
          red = 0.5
          blue=0.5

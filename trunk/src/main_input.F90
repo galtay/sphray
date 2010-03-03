@@ -186,6 +186,15 @@ subroutine readin_snapshot(skewers)
   psys%box%tbound = GV%BndryCond
   psys%box%bbound = GV%BndryCond
 
+  ! tighten box - add this to config file also
+
+!  do i = 1,3
+!     psys%box%top(i) = maxval( psys%par(:)%pos(i) )
+!     psys%box%bot(i) = minval( psys%par(:)%pos(i) )
+!     GV%BoxUprsComoh(i) = psys%box%top(i)
+!     GV%BoxLwrsComoh(i) = psys%box%bot(i)
+!  end do
+
 
   ! read in the source data
   !============================================

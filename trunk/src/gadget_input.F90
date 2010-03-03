@@ -676,7 +676,7 @@ subroutine read_Gbromm_particles()
      ! begin read
      !-----------------------------------------------------------!  
      call form_gadget_snapshot_file_name(GV%SnapPath,GV%ParFileBase,GV%CurSnapNum,fn,snapfile)
-     call mywrite("reading gadget w/ cooling snapshot file "//trim(snapfile), verb)
+     call mywrite("reading bromm gadget snapshot file "//trim(snapfile), verb)
      call open_unformatted_file_r( snapfile, lun )
      read(lun) ghead
 
@@ -773,63 +773,31 @@ subroutine read_Gbromm_particles()
      if (err/=0) call myerr("reading rblk for hsml",myname,crash) 
      forall(i=1:ngas1) psys%par(ngasread+i)%hsml = rblck(i)
      deallocate(rblck)
-
-
-     ! dummy read 
-     !-----------------------------------------------------------!  
-     read(lun, iostat=err) ! H2I
-     if (err/=0) call myerr("dummy read for H2I",myname,crash) 
-
-
-     ! read HII = nHII / nH
-     !-----------------------------------------------------------!  
-     allocate(rblck(ngas1), stat=err)
-     if(err/=0) call myerr("allocating rblck for HII",myname,crash)
+     
+     ! CAFG: First, big array containing all the abundances.
+     allocate(rblck(10*ngas1), stat=err)
+     if(err/=0) call myerr("allocating rblck for all abundances",myname,crash)
      read(lun, iostat=err) rblck
-     if (err/=0) call myerr("reading rblk for HII",myname,crash) 
-     forall(i=1:ngas1) psys%par(ngasread+i)%xHII = rblck(i)
-     deallocate(rblck)
-
-
-     read(lun, iostat=err) ! CII
-     if (err/=0) call myerr("dummy read for CII",myname,crash) 
-
-     read(lun, iostat=err) ! SiII
-     if (err/=0) call myerr("dummy read for SiII",myname,crash) 
-
-     read(lun, iostat=err) ! SiIII
-     if (err/=0) call myerr("dummy read for SiIII",myname,crash) 
-
-     read(lun, iostat=err) ! OII
-     if (err/=0) call myerr("dummy read for OII",myname,crash) 
-
-     read(lun, iostat=err) ! DII
-     if (err/=0) call myerr("dummy read for DII",myname,crash) 
-
-     read(lun, iostat=err) ! HDI
-     if (err/=0) call myerr("dummy read for HDI",myname,crash) 
-
-
+     if (err/=0) call myerr("reading rblk for all abundances",myname,crash) 
+     
+     ! CAFG: Here is where we should assign the desired abundances to the
+     ! relevant particle data.
+     forall(i=1:ngas1) psys%par(ngasread+i)%xHII = rblck(10*(i-1)+2)
+     
+ 
 #ifdef incHe
      ! read HeII = nHeII / nH
      !-----------------------------------------------------------!  
-     allocate(rblck(ngas1), stat=err)
-     if(err/=0) call myerr("allocating rblck for HeII",myname,crash)
-     read(lun, iostat=err) rblck
-     if (err/=0) call myerr("reading rblk for HeII",myname,crash) 
-     forall(i=1:ngas1) psys%par(ngasread+i)%xHeII = rblck(i)
-     deallocate(rblck)
+     forall(i=1:ngas1) psys%par(ngasread+i)%xHeII = rblck(10*(i-1)+9)
 
 
      ! read HeIII = nHeIII / nH
      !-----------------------------------------------------------!  
-     allocate(rblck(ngas1), stat=err)
-     if(err/=0) call myerr("allocating rblck for HeIII",myname,crash)
-     read(lun, iostat=err) rblck
-     if (err/=0) call myerr("reading rblk for HeIII",myname,crash) 
-     forall(i=1:ngas1) psys%par(ngasread+i)%xHeIII = rblck(i)
-     deallocate(rblck)
+     forall(i=1:ngas1) psys%par(ngasread+i)%xHeIII = rblck(10*(i-1)+10)
+
 #endif
+     
+     deallocate(rblck)
 
      ngasread = ngasread + ngas1
      close(lun)
@@ -862,7 +830,8 @@ subroutine read_Gbromm_particles()
 
   ! convert the internal energy to temperature using ye 
   !----------------------------------------------------------------!  
-  call set_temp_from_u(psys, GV%H_mf, GV%cgs_enrg, GV%cgs_mass)
+  
+  call set_temp_from_u_bromm(psys, GV%H_mf, GV%cgs_enrg, GV%cgs_mass)
 
 
   ! shrink particles with negative IDs to 
@@ -1046,8 +1015,8 @@ subroutine set_temp_from_u(psys, dfltH_mf, cgs_enrg, cgs_mass)
 
 #ifdef incHmf
      Hmf = psys%par(i)%Hmf
-#else
-     Hmf = dfltH_mf
+#else     
+     Hmf = dfltH_mf    
 #endif
 
      mu = 4.0d0 / (3.0d0 * Hmf + 1.0d0 + 4.0d0 * Hmf * psys%par(i)%ye)
@@ -1058,6 +1027,44 @@ subroutine set_temp_from_u(psys, dfltH_mf, cgs_enrg, cgs_mass)
 
 
 end subroutine set_temp_from_u
+
+
+!> converts internal energies / unit mass to temperature K using Hmf and ye = ne/nH
+!=======================================================================================
+subroutine set_temp_from_u_bromm(psys, dfltH_mf, cgs_enrg, cgs_mass)
+
+  type(particle_system_type) :: psys
+  real(r8b), intent(in) :: dfltH_mf
+  real(r8b), intent(in) :: cgs_enrg
+  real(r8b), intent(in) :: cgs_mass
+  integer(i8b) :: i
+  real(r8b) :: Hmf
+  real(r8b) :: mu
+  real(r8b) :: Tdum
+
+  do i = 1,size(psys%par)
+
+#ifdef incHmf
+     Hmf = psys%par(i)%Hmf
+#else
+     
+     Hmf = dfltH_mf    
+
+#endif
+
+     mu = 4.0d0 / (3.0d0 * Hmf + 1.0d0 + 4.0d0 * Hmf * psys%par(i)%ye)
+
+     ! CAFG: artificially 'correct' abnormally large values, which are
+     ! producing floating overflow
+     if (psys%par(i)%T .GT. 1000000000.0d0) psys%par(i)%T = 1000.0d0
+
+     Tdum = mu * gconst%PROTONMASS / gconst%BOLTZMANN * (gconst%GAMMA - 1.0d0) * psys%par(i)%T
+     psys%par(i)%T = Tdum * cgs_enrg / cgs_mass
+
+  end do
+
+
+end subroutine set_temp_from_u_bromm
 
 
 
