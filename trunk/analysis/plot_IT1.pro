@@ -5,7 +5,7 @@
 ; set plot to screen/file option and input files
 ;====================================================================
 ps=0       ; ps=0 directs output to screen, ps=1 directs output to psfile
-makepng=1  ; if ps=0 and makepng=1 then tries a screen capture to png
+makepng=0  ; if ps=0 and makepng=1 then tries a screen capture to png
 
 ; SPHRAY file IO
 ;----------------
@@ -59,7 +59,7 @@ r = sqrt( (data.pos[0,*]-cen[0])^2 + $
           (data.pos[1,*]-cen[1])^2 + $
           (data.pos[2,*]-cen[2])^2   )
   
-bins=50L
+bins=60L
 mlocs = fltarr(bins)
 minr=0.0
 maxr=1.0
