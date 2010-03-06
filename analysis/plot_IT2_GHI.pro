@@ -1,4 +1,4 @@
-; SPHRAY readin and plot for IT1 photoionization rates
+; SPHRAY readin and plot for IT2 photoionization rates
 ;========================================================
 
 ;====================================================================
@@ -7,10 +7,19 @@
 ps=0       ; ps=0 directs output to screen, ps=1 directs output to psfile
 makepng=0  ; if ps=0 and makepng=1 then tries a screen capture to png
 
+; spectra file IO
+;----------------
+cdf_file = '../data/spectra/thermal1e5.cdf'
+spc_file = '../data/spectra/thermal1e5.spec'
+
+readcol, cdf_file, ryd, cdf, skipline=2
+readcol, spc_file, ryd, Lpdf
+
+
 ; SPHRAY file IO
 ;----------------
-snapdir  = "../../sphray_output/IT1"
-snapbase = "iliev_test1"
+snapdir  = "../../sphray_output/IT2"
+snapbase = "iliev_test2"
 snapnum = [1,3,5]
 snapnumstr = string(snapnum, format="(I3.3)")
 
@@ -145,9 +154,21 @@ for i = 0,nbins-1 do begin
     bdata.tau_003[i] = bdata.dl[i] * bdata.nHI_003[i] * SIGMA0
     bdata.tau_005[i] = bdata.dl[i] * bdata.nHI_005[i] * SIGMA0
 
-    bdata.GHIa_001[i] = bdata.flux[i] * SIGMA0 * exp( -total(bdata.tau_001[0:i]) )
-    bdata.GHIa_003[i] = bdata.flux[i] * SIGMA0 * exp( -total(bdata.tau_003[0:i]) )
-    bdata.GHIa_005[i] = bdata.flux[i] * SIGMA0 * exp( -total(bdata.tau_005[0:i]) )
+    tau_nu_001  = total( bdata.tau_001[0:i] ) * ryd^(-3)
+    tau_nu_003  = total( bdata.tau_003[0:i] ) * ryd^(-3)
+    tau_nu_005  = total( bdata.tau_005[0:i] ) * ryd^(-3)
+
+    integrand_nu_001 = bdata.flux[i] * Lpdf * SIGMA0 * ryd^(-3) * exp(-tau_nu_001)
+    integrand_nu_003 = bdata.flux[i] * Lpdf * SIGMA0 * ryd^(-3) * exp(-tau_nu_003)
+    integrand_nu_005 = bdata.flux[i] * Lpdf * SIGMA0 * ryd^(-3) * exp(-tau_nu_005)
+
+    bdata.GHIa_001[i] = altay_int_tabulated_simp(ryd, integrand_nu_001)
+    bdata.GHIa_003[i] = altay_int_tabulated_simp(ryd, integrand_nu_003)
+    bdata.GHIa_005[i] = altay_int_tabulated_simp(ryd, integrand_nu_005)
+
+;    bdata.GHIa_001[i] = bdata.flux[i] * SIGMA0 * exp( -total(bdata.tau_001[0:i]) )
+;    bdata.GHIa_003[i] = bdata.flux[i] * SIGMA0 * exp( -total(bdata.tau_003[0:i]) )
+;    bdata.GHIa_005[i] = bdata.flux[i] * SIGMA0 * exp( -total(bdata.tau_005[0:i]) )
 
 endfor
 
@@ -178,7 +199,7 @@ analine=0
 loadct, 39
 plot,      [0], [0],  $
            xstyle=1, xrange=[0.0,0.99], xtitle="r/L!lbox", $
-           ystyle=1, yrange=[-18,-10], ytitle=TexToIdl("Log \Gamma_{HI}"), $
+           ystyle=1, yrange=[-17.5,-12], ytitle=TexToIdl("Log \Gamma_{HI}"), $
            position=[0.18,0.15,0.95,0.95], /nodata, color=0, $
            background=255, charsize=charsize, charthick=charthick, $
            xthick=mythick, ythick=mythick
@@ -194,7 +215,7 @@ oplot,bdata.locs, alog10(bdata.GHIa_005), linestyle=analine, color=anacolor, thi
 
 legend, ["Analytic", "SPHRAY"], $
   linestyle=[0,2], color=[50,254], textcolor=[0,0], $
-  charsize=2, charthick=2, thick=2, position=[0.4, -10.5], box=0
+  charsize=2, charthick=2, thick=2, position=[0.4, -12.2], box=0
 
 
 
