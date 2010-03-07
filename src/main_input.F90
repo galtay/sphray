@@ -221,10 +221,13 @@ subroutine readin_snapshot(skewers)
   write(GV%pardatalun,*)
 
   if (.not. skew) then
-     write(GV%srcdatalun,*) "====================================================="
+#ifdef hdf5
+     write(GV%srcdatalun,*) "================================================================="
      write(GV%srcdatalun,*) " HM01 G+C gammaHI for z = ", saved_gheads(GV%CurSnapNum,0)%z, ": ", &
                               GV%UVB_gammaHI_cloudy
+     write(GV%srcdatalun,*) "================================================================="
      write(GV%srcdatalun,*) 
+#endif
      write(str,fmt) "Fresh read from ", trim(srcbase)
      call source_info_to_screen(psys,str,GV%srcdatalun)
      write(GV%srcdatalun,*)
@@ -277,16 +280,18 @@ subroutine readin_snapshot(skewers)
   if (.not. skew) then
      do i = 1,size(psys%src)
         
-        if (psys%src(i)%EmisPrf == -3) then 
-           ! if this is true the input luminosity is a number density [photons/cm^3]
-           ! we want the flux from all 6 walls that would produce this number 
-           ! density in an optically thin volume
+        if (psys%src(i)%EmisPrf == -3 .or. &
+            psys%src(i)%EmisPrf == -2 .or. &
+            psys%src(i)%EmisPrf == -1) then 
+           ! if this is true the input luminosity is a number density 
+           ! [photons/cm^3].  we want the flux that would produce this 
+           ! number density in an optically thin volume
 
            write(*,*) 
            write(*,*) "  converting a photon number density to a flux"
            write(*,*) "  n_photon/cm^3                = ", psys%src(i)%L
            
-           Flux = psys%src(i)%L * gconst%c * GV%BoxLensPhys_cm(1)**2 / 6
+           Flux = psys%src(i)%L * gconst%c * GV%BoxLensPhys_cm(1)**2 
            Flux = Flux / GV%Lunit
            psys%src(i)%L = Flux
 
@@ -294,7 +299,7 @@ subroutine readin_snapshot(skewers)
            write(*,*)            
 
         end if
-        
+
      end do
   endif
 
@@ -454,7 +459,7 @@ endif
      write(GV%srcdatalun,*) 
      write(GV%srcdatalun,'(A,ES12.5)') "dt/ray [code] = ", GV%dtray_code
      write(GV%srcdatalun,'(A,ES12.5)') "dt/ray [s]    = ", GV%dtray_s
-     write(GV%srcdatalun,'(A,ES12.5)') "dt/ray [Myr]  = ", GV%dtray_s * gconst%sec_per_megayear
+     write(GV%srcdatalun,'(A,ES12.5)') "dt/ray [Myr]  = ", GV%dtray_s / gconst%sec_per_megayear
      write(GV%srcdatalun,*)
      write(GV%srcdatalun,'(A,ES12.5)') "total photons = ", GV%total_photons
      write(GV%srcdatalun,'(A,ES12.5)') "total atoms   = ", GV%total_atoms

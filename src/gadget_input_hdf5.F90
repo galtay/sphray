@@ -98,6 +98,7 @@ subroutine get_planning_data_gadget_hdf5()
 
         call form_gadget_snapshot_file_name(GV%SnapPath,GV%ParFileBase,i,j,snapfile)
         write(loglun,'(I3,"  ",A)') i,trim(snapfile)
+        write(*,*) 'snapfile = ', trim(snapfile) 
 
         call read_gadget_header_file(snapfile, ghead)
         call gadget_header_to_file(ghead,loglun)
