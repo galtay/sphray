@@ -7,7 +7,7 @@
 !<
 module initialize_mod
 use myf90_mod
-use physical_constants_mod
+!use physical_constants_mod
 use config_mod, only: read_config_file
 use mt19937_mod, only: init_mersenne_twister
 use b2cd_mod, only: read_b2cd_file
@@ -16,7 +16,7 @@ use atomic_rates_mod, only: read_atomic_rates_file, get_atomic_rates
 use atomic_rates_mod, only: write_atomic_rates_to_log_file
 use iliev_comparison_project_mod, only: initialize_iliev_tests
 use main_input_mod, only: get_planning_data
-use global_mod, only: GV, PLAN, rtable, xHII_k, cmbT_k, isoT_k
+use global_mod, only: GV, PLAN, rtable, xHII_k, cmbT_k, isoT_k, gconst
 use ray_mod, only: curface
 implicit none
 
@@ -164,9 +164,9 @@ subroutine do_output_planning()
   ! convert static field sim time to code time if need be
   !-------------------------------------------------------
   if ( trim(GV%StaticSimTimeUnit) == "myr" ) then
-     GV%StaticFieldSimTime = GV%StaticFieldSimTime * Myr2sec     ! [s]
-     GV%StaticFieldSimTime = GV%StaticFieldSimTime * GV%LittleH  ! [s/h]
-     GV%StaticFieldSimTime = GV%StaticFieldSimTime / GV%cgs_time ! [code]
+     GV%StaticFieldSimTime = GV%StaticFieldSimTime * gconst%sec_per_megayear ! [s]
+     GV%StaticFieldSimTime = GV%StaticFieldSimTime * GV%LittleH              ! [s/h]
+     GV%StaticFieldSimTime = GV%StaticFieldSimTime / GV%cgs_time             ! [code]
   end if
   
 
@@ -242,9 +242,9 @@ subroutine do_output_planning()
      ! convert forced output times to code units if need be
      !------------------------------------------------------
      if ( trim(GV%ForcedUnits) == "myr" ) then
-        PLAN%OutputTimes = PLAN%OutputTimes * Myr2sec     ! [s]
-        PLAN%OutputTimes = PLAN%OutputTimes * GV%LittleH  ! [s/h]
-        PLAN%OutputTimes = PLAN%OutputTimes / GV%cgs_time ! [code]
+        PLAN%OutputTimes = PLAN%OutputTimes * gconst%sec_per_megayear  ! [s]
+        PLAN%OutputTimes = PLAN%OutputTimes * GV%LittleH               ! [s/h]
+        PLAN%OutputTimes = PLAN%OutputTimes / GV%cgs_time              ! [code]
      end if
 
   end if   
@@ -259,7 +259,7 @@ subroutine do_output_planning()
   write(lun,*) 
 
   write(lun,*) "start time [code]: ", PLAN%snap(Ni)%StartTime
-  write(lun,*) "start time [Myr]:  ", PLAN%snap(Ni)%StartTime * GV%cgs_time / GV%LittleH / Myr2sec
+  write(lun,*) "start time [Myr]:  ", PLAN%snap(Ni)%StartTime * GV%cgs_time / GV%LittleH / gconst%sec_per_megayear
   write(lun,*)
 
   105 format (T3,A,I3.3,A,T20,ES12.5,T40,ES12.5)    
@@ -267,12 +267,12 @@ subroutine do_output_planning()
   write(lun,110) "(code units)", "(Myrs)"
   do i = GV%OutputIndx,GV%NumTotOuts
      write(lun,105) "output ", i, " : ", PLAN%OutputTimes(i), &
-                                            PLAN%OutputTimes(i) * GV%cgs_time / GV%LittleH / Myr2sec
+                                            PLAN%OutputTimes(i) * GV%cgs_time / GV%LittleH / gconst%sec_per_megayear
   end do
 
   write(lun,*)
   write(lun,*) "total simulation time [code] = ", GV%TotalSimTime
-  write(lun,*) "total simulation time [Myr]  = ", GV%TotalSimTime * GV%cgs_time / GV%LittleH / Myr2sec
+  write(lun,*) "total simulation time [Myr]  = ", GV%TotalSimTime * GV%cgs_time / GV%LittleH / gconst%sec_per_megayear
 
   GV%outplanlun = lun
   close(lun)
@@ -295,7 +295,7 @@ subroutine do_ray_planning()
   call mywrite("  doing raytracing planning",verb) 
 
 
-  code2Myr = GV%cgs_time / GV%LittleH / Myr2sec
+  code2Myr = GV%cgs_time / GV%LittleH / gconst%sec_per_megayear
 
   GV%rayplan_file = trim(GV%OutputDir) // "/" // "raytracing_planning.log"
   call open_formatted_file_w(GV%rayplan_file,lun)
