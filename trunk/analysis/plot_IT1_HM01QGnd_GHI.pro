@@ -9,24 +9,26 @@ makepng=0  ; if ps=0 and makepng=1 then tries a screen capture to png
 
 ; spectra file IO
 ;----------------
-cdf_file = '../data/spectra/thermal1e5.cdf'
-spc_file = '../data/spectra/thermal1e5.spec'
+cdf_file = '../data/spectra/hm01/hm01qg_z0.00.cdf'
+spc_file = '../data/spectra/hm01/hm01qg_z0.00.pdf'
 
 readcol, cdf_file, ryd, cdf, skipline=2
 readcol, spc_file, ryd, Lpdf
 
 
+
+
 ; SPHRAY file IO
 ;----------------
-snapdir  = "../../sphray_output/IT2"
-snapbase = "iliev_test2"
-snapnum = [1,3,5]
+snapdir  = "../../sphray_output/IT1_HM01QGnd"
+snapbase = "iliev_test1_HM01QGnd"
+snapnum = [1,2,3]
 snapnumstr = string(snapnum, format="(I3.3)")
 
 
 sfile  = snapdir + "/" + snapbase + "_" + snapnumstr
-psfile = "T2gHI.eps"
-pngfile = "T2gHI.png"
+psfile = "T1HM01QGgHI.eps"
+pngfile = "T1HM01QGgHI.png"
 
 
 print
@@ -108,24 +110,16 @@ bdata = create_struct( "locs",     dblarr(nbins), $
                        "nHI_001",  dblarr(nbins), $
                        "nHI_003",  dblarr(nbins), $
                        "nHI_005",  dblarr(nbins), $
-                       "tau_001",  dblarr(nbins), $
-                       "tau_003",  dblarr(nbins), $
-                       "tau_005",  dblarr(nbins), $
                        "GHIs_001", dblarr(nbins), $
                        "GHIs_003", dblarr(nbins), $
-                       "GHIs_005", dblarr(nbins), $
-                       "GHIa_001", dblarr(nbins), $
-                       "GHIa_003", dblarr(nbins), $
-                       "GHIa_005", dblarr(nbins)  )                       
+                       "GHIs_005", dblarr(nbins)  )                       
 
 print, "SPHRAY radial bins = ", nbins
 
 hist=histogram(r/6.6,min=0.0,max=1.0-bs,nbins=nbins, $
                  reverse_indices=ri)
 
-bdata.tau_001 = 0.0d0
-bdata.tau_003 = 0.0d0
-bdata.tau_005 = 0.0d0
+
 
 for i = 0,nbins-1 do begin
 
@@ -143,32 +137,11 @@ for i = 0,nbins-1 do begin
     bdata.GHIs_003[i] = mean(gHI.(2)[indx], /double)
     bdata.GHIs_005[i] = mean(gHI.(3)[indx], /double)
 
-    ; analytic photoionization rates using the SPHRAY xHI
-    bdata.flux[i] = 5.0d48 / (4.0d0 * !DPI * bdata.rcen[i]^2)    
 
     bdata.nHI_001[i] = mean( nHI.(1)[indx], /double )
     bdata.nHI_003[i] = mean( nHI.(2)[indx], /double )
     bdata.nHI_005[i] = mean( nHI.(3)[indx], /double )
  
-    bdata.tau_001[i] = bdata.dl[i] * bdata.nHI_001[i] * SIGMA0
-    bdata.tau_003[i] = bdata.dl[i] * bdata.nHI_003[i] * SIGMA0
-    bdata.tau_005[i] = bdata.dl[i] * bdata.nHI_005[i] * SIGMA0
-
-    tau_nu_001  = total( bdata.tau_001[0:i] ) * ryd^(-3)
-    tau_nu_003  = total( bdata.tau_003[0:i] ) * ryd^(-3)
-    tau_nu_005  = total( bdata.tau_005[0:i] ) * ryd^(-3)
-
-    integrand_nu_001 = bdata.flux[i] * Lpdf * SIGMA0 * ryd^(-3) * exp(-tau_nu_001)
-    integrand_nu_003 = bdata.flux[i] * Lpdf * SIGMA0 * ryd^(-3) * exp(-tau_nu_003)
-    integrand_nu_005 = bdata.flux[i] * Lpdf * SIGMA0 * ryd^(-3) * exp(-tau_nu_005)
-
-    bdata.GHIa_001[i] = int_tabulated(ryd, integrand_nu_001)
-    bdata.GHIa_003[i] = int_tabulated(ryd, integrand_nu_003)
-    bdata.GHIa_005[i] = int_tabulated(ryd, integrand_nu_005)
-
-;    bdata.GHIa_001[i] = bdata.flux[i] * SIGMA0 * exp( -total(bdata.tau_001[0:i]) )
-;    bdata.GHIa_003[i] = bdata.flux[i] * SIGMA0 * exp( -total(bdata.tau_003[0:i]) )
-;    bdata.GHIa_005[i] = bdata.flux[i] * SIGMA0 * exp( -total(bdata.tau_005[0:i]) )
 
 endfor
 
@@ -199,7 +172,7 @@ analine=0
 loadct, 39
 plot,      [0], [0],  $
            xstyle=1, xrange=[0.0,0.99], xtitle="r/L!lbox", $
-           ystyle=1, yrange=[-17.5,-12], ytitle=TexToIdl("Log \Gamma_{HI}"), $
+           ystyle=1, yrange=[-13.5,-12.5], ytitle=TexToIdl("Log \Gamma_{HI}"), $
            position=[0.18,0.15,0.95,0.95], /nodata, color=0, $
            background=255, charsize=charsize, charthick=charthick, $
            xthick=mythick, ythick=mythick
@@ -208,14 +181,16 @@ oplot,bdata.locs, alog10(bdata.GHIs_001), linestyle=sphrayline, color=sphraycolo
 oplot,bdata.locs, alog10(bdata.GHIs_003), linestyle=sphrayline, color=sphraycolor, thick=mythick
 oplot,bdata.locs, alog10(bdata.GHIs_005), linestyle=sphrayline, color=sphraycolor, thick=mythick
  
-oplot,bdata.locs, alog10(bdata.GHIa_001), linestyle=analine, color=anacolor, thick=mythick
-oplot,bdata.locs, alog10(bdata.GHIa_003), linestyle=analine, color=anacolor, thick=mythick
-oplot,bdata.locs, alog10(bdata.GHIa_005), linestyle=analine, color=anacolor, thick=mythick
+
+GHIinput= alog10(7.917d-14)
+
+oplot, [0,1], [GHIinput,GHIinput], linestyle=analine, color=anacolor, $
+       thick=mythick
 
 
 legend, ["Analytic", "SPHRAY"], $
   linestyle=[0,2], color=[50,254], textcolor=[0,0], $
-  charsize=2, charthick=2, thick=2, position=[0.4, -12.2], box=0
+  charsize=2, charthick=2, thick=2, position=[0.4, -12.7], box=0
 
 
 
