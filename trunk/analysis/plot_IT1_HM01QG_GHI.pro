@@ -20,7 +20,7 @@ readcol, spc_file, ryd, Lpdf
 
 ; SPHRAY file IO
 ;----------------
-snapdir  = "../../sphray_output/IT1_HM01QG"
+snapdir  = "../../sphray_output/IT1_HM01QG/r6"
 snapbase = "snap"
 snapnum = [1,3,5]
 snapnumstr = string(snapnum, format="(I3.3)")
