@@ -953,8 +953,7 @@ end subroutine itos
 
 
 subroutine drawtext
-  use global_mod, only: GV, PLAN
-  use physical_constants_mod, only:Myr2sec
+  use global_mod, only: GV, PLAN, gconst
   use viewermod
   character*3 rs3
   character*8 rs
@@ -978,7 +977,7 @@ subroutine drawtext
   call glColor4f(0.0_glfloat,.5_glfloat,1.0_glfloat,0.5_glfloat)
   if(yp2-yp1.gt.120) then
      if(xp2-xp1.gt.320) then
-        write(rs,'(f8.3)') GV%time_elapsed_s/Myr2sec
+        write(rs,'(f8.3)') GV%time_elapsed_s / gconst%sec_per_megayear
         call outputtext(xp1+3._gldouble,yp1+3._gldouble,'time elapsed (Myr):'//rs)
         
         write(rs,'(f8.2)') top(1)-bot(1)
