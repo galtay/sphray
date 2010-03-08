@@ -34,6 +34,7 @@ contains
  
   subroutine config_to_ghead(fnum, ghead)
 
+
     integer, intent(in) :: fnum                    !< which snapshot file
     type(gadget_header_type), intent(out) :: ghead !< gadget header
 
@@ -338,13 +339,13 @@ contains
 
      write(*,100) "time:", "code units", "Myrs", "seconds"
      write(*,105) GV%time_code, &
-                  GV%time_s * s2Myr, &
+                  GV%time_s / gconst%sec_per_megayear, &
                   GV%time_s
      write(*,*) 
 
      write(*,100) "time elspsed:", "code units", "Myrs", "seconds"
      write(*,105) GV%time_elapsed_code, &
-                  GV%time_elapsed_s * s2Myr, &
+                  GV%time_elapsed_s / gconst%sec_per_megayear , &
                   GV%time_elapsed_s
      write(*,*) 
 
@@ -365,7 +366,7 @@ contains
 
      150 format (6ES15.5)
      write(GV%ionlun,150) GV%time_elapsed_code, &
-                          GV%time_elapsed_s * s2Myr, &
+                          GV%time_elapsed_s / gconst%sec_per_megayear, &
                           1.0d0-Nionfrac, 1.0d0-Mionfrac, 1.0d0-Vionfrac
 
      write(*,100) "rays cast:", "source", "diffuse", "diffuse/source"

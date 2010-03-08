@@ -17,7 +17,6 @@ module mainloop_mod
   use ion_temperature_update, only: update_raylist, update_no_hits
   use mt19937_mod, only: genrand_real1
   use output_mod, only: output_total_snap, ion_frac_out
-  use physical_constants_mod
   
   ! variables
   use global_mod, only: psys
@@ -25,6 +24,7 @@ module mainloop_mod
   use global_mod, only: tree
   use global_mod, only: GV
   use global_mod, only: PLAN
+  use global_mod, only: gconst
   
   implicit none
   
@@ -159,7 +159,7 @@ contains
              raystats(raystatcnt)%srcn  = srcn
              raystats(raystatcnt)%dir   = globalraylist%ray%dir                                 
              raystats(raystatcnt)%freq  = globalraylist%ray%freq
-             raystats(raystatcnt)%temit = GV%time_elapsed_s * s2Myr
+             raystats(raystatcnt)%temit = GV%time_elapsed_s * gconst%sec_per_megayear
              raystats(raystatcnt)%pini  = globalraylist%ray%pini
              raystats(raystatcnt)%pcnt  = globalraylist%ray%pcnt
              raystats(raystatcnt)%pindx = globalraylist%intersection(globalraylist%lastnnb)%pindx

@@ -7,12 +7,11 @@ use myf90_mod
 use gadget_header_class, only: gadget_header_type
 use gadget_header_class, only: gadget_units_type
 use gadget_header_class, only: gadget_constants_type
-
 use particle_system_mod, only: particle_system_type
 use oct_tree_mod, only: oct_tree_type
 use raylist_mod, only: raylist_type
-use atomic_rates_mod, only: atomic_rates_table_type, atomic_rates_type
-use physical_constants_mod, only: kpc2cm, L_solar, M_solar, Myr2sec
+use atomic_rates_mod, only: atomic_rates_table_type
+use atomic_rates_mod, only: atomic_rates_type
 implicit none
 
 
@@ -39,19 +38,18 @@ end type run_planning_type
 
 ! global variables
 !=====================
-type(particle_system_type) :: psys
-type(raylist_type) :: globalraylist             !< ray/particle intersections
-type(oct_tree_type) :: tree
+type(particle_system_type) :: psys        !< particles + sources + box
+type(raylist_type) :: globalraylist       !< ray/particle intersections
+type(oct_tree_type) :: tree               !< octree
 
 type(atomic_rates_table_type) :: rtable   !< rates read in from file
 type(atomic_rates_type) :: isoT_k         !< static rates for iso-temperature run
 type(atomic_rates_type) :: cmbT_k         !< static rates for cmb-temperature
 type(atomic_rates_type) :: xHII_k         !< static rates for xHII-temperature 
 
+type(run_planning_type) :: PLAN           !< run plan
 
-type(run_planning_type) :: PLAN !< run plan
-
-type(gadget_header_type), allocatable :: saved_gheads(:,:) !< nsnaps,nfiles
+type(gadget_header_type), allocatable :: saved_gheads(:,:) !< all headers (nsnaps,nfiles)
 type(gadget_constants_type) :: gconst                      !< gadget constants
 
  
@@ -84,7 +82,7 @@ type global_variables_type
    character(clen) :: StaticSimTimeUnit   !< [Config File] one of {codetime,myr}
 
 
-   integer(i8b)    :: InputType           !< [Config File] one of {1: Gadget Public 2: Gadget Cooling 3: Gadget HDF5 4: Gadget Bromm}
+   integer(i8b)    :: InputType           !< [Config File] one of Gadget {1: Public 2: Cooling 3: HDF5 4: Bromm}
    character(clen) :: SnapPath            !< [Config File] dir where particle snapshots are
    character(clen) :: SourcePath          !< [Config File] dir where source snapshots are
 
@@ -130,7 +128,7 @@ type global_variables_type
    real(r8b)       :: NeBackGround        !< [Config File] constant background electron number density from metals
 
    integer(i8b)    :: NraysUpdateNoHits   !< [Config File] update all pars not hit by a ray in last NraysUpdateNoHits
-   integer(i8b)    :: RecRaysPerSrcRay    !< [Config File] number of recomb ray for each source ray
+   integer(i8b)    :: RecRaysPerSrcRay    !< [Config File] number of recomb rays for each source ray
 
    real(r8b)       :: H_mf                !< [Config File] hydrogen mass fraction
    real(r8b)       :: He_mf               !< [Config File] helium mass fraction
@@ -138,16 +136,16 @@ type global_variables_type
    character(clen) :: OutputDir           !< [Config File] path to output directory
    character(clen) :: OutputFileBase      !< [Config File] output file base
 
-   integer(i8b)    :: OutputType          !< [Config File] one of {1:Standard Gadget 2:HDF5 Gadget}
+   integer(i8b)    :: OutputType          !< [Config File] one of {1:Standard Binary Gadget 2:HDF5 Gadget}
 
    character(clen) :: OutputTiming        !< [Config File] one of {standard, forced}
-   integer(i8b)    :: NumStdOuts          !< [Config File] if OutputTiming = "standard", # of outputs (plus 1 initial)
+   integer(i8b)    :: NumStdOuts          !< [Config File] if OutputTiming = "standard", # of outputs (maybe +1 initial)
 
    logical         :: DoInitialOutput     !< [Config File] produces output before any raytracing
    integer(i8b)    :: IonFracOutRays      !< [Config File] do mini output every IonFracOutRays src rays
 
    character(clen) :: ForcedOutFile       !< [Config File] file with forced output times
-   character(clen) :: ForcedUnits         !< [Config File] one of {codetime, myr, mwionfrac}
+   character(clen) :: ForcedUnits         !< [Config File] one of {codetime, myr, mwionfrac, vwionfrac}
 
    integer(i8b)    :: PartPerCell         !< [Config File] minimum particles in a tree leaf
 
