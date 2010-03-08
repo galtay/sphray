@@ -172,7 +172,7 @@ contains
     integer, parameter :: verb=1
     logical, parameter :: crash = .true.
 
-    integer(i8b) :: lun,err,i
+    integer(i4b) :: lun,err,i
     logical :: fthere
     character(14) :: tags(25)
     character(14) :: srcs(24)
@@ -654,7 +654,7 @@ contains
     logical, parameter :: crash = .true.
 
     character(clen) :: logfile
-    integer(i8b) :: loglun
+    integer(i4b) :: loglun
     type(atomic_rates_type) :: k
 
     real(r8b) :: Tdum

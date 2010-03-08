@@ -172,10 +172,10 @@ contains
 !> returns a free logical unit number
    function get_free_lun() result(lun)
 
-    integer(i8b) :: lun                        !< free lun
-    integer(i8b) :: i                          !< loop counter
-    integer(i8b), parameter :: minlun = 110    !< min lun to check
-    integer(i8b), parameter :: maxlun = 1000   !< max lun to check
+    integer(i4b) :: lun                        !< free lun
+    integer(i4b) :: i                          !< loop counter
+    integer(i4b), parameter :: minlun = 110    !< min lun to check
+    integer(i4b), parameter :: maxlun = 1000   !< max lun to check
     logical :: badlun                          !< true if lun is already connected
 
     character(clen), parameter :: myname="get_free_lun"
@@ -212,7 +212,7 @@ contains
   subroutine open_formatted_file_r(filename,lun)
   
     character(*), intent(in) :: filename !< name of file to open
-    integer(i8b), intent(out) :: lun     !< lun 
+    integer(i4b), intent(out) :: lun     !< lun 
     logical :: fthere
 
     character(clen), parameter :: myname="open_formatted_file_r"
@@ -235,7 +235,7 @@ contains
   subroutine open_unformatted_file_r(filename,lun)
   
     character(*), intent(in) :: filename  !< name of file to open
-    integer(i8b), intent(out)  :: lun          !< lun
+    integer(i4b), intent(out)  :: lun          !< lun
     logical :: fthere
 
     character(clen), parameter :: myname="open_unformatted_file_r"
@@ -257,7 +257,7 @@ contains
   subroutine open_unformatted_file_sr(filename,lun)
   
     character(*), intent(in) :: filename  !< name of file to open
-    integer(i8b), intent(out)  :: lun          !< lun
+    integer(i4b), intent(out)  :: lun          !< lun
     logical :: fthere
 
     character(clen), parameter :: myname="open_unformatted_file_sr"
@@ -281,7 +281,7 @@ contains
   subroutine open_formatted_file_w(filename,lun)
   
     character(*), intent(in) :: filename !< name of file to open
-    integer(i8b), intent(out) :: lun     !< lun 
+    integer(i4b), intent(out) :: lun     !< lun 
 
     lun = get_free_lun()
     open(unit=lun, file=filename, action="write")
@@ -294,7 +294,7 @@ contains
   subroutine open_unformatted_file_w(filename,lun)
   
     character(*), intent(in) :: filename  !< name of file to open
-    integer(i8b), intent(out)  :: lun             !< lun
+    integer(i4b), intent(out)  :: lun             !< lun
 
     lun = get_free_lun()
     open(unit=lun, file=filename, form='unformatted', &
@@ -307,7 +307,7 @@ contains
   subroutine open_unformatted_file_sw(filename,lun)
   
     character(*), intent(in) :: filename  !< name of file to open
-    integer(i8b), intent(out)  :: lun             !< lun
+    integer(i4b), intent(out)  :: lun             !< lun
 
     lun = get_free_lun()
     open(unit=lun, file=filename, form='unformatted', &
@@ -351,7 +351,7 @@ contains
     character(26) :: tmpfile 
     character(clen) :: cmnd
 
-    integer(i8b) :: lun, Nfound
+    integer(i4b) :: lun, Nfound
     real :: rn
     integer :: i, c
 
@@ -387,7 +387,7 @@ contains
     character(26) :: tmpfile 
     character(clen) :: cmnd
 
-    integer(i8b) :: lun, Nfound
+    integer(i4b) :: lun, Nfound
     
     tmpfile = tmp_file_name(len(tmpfile))
 
@@ -421,7 +421,7 @@ contains
     character(26) :: tmpfile 
     character(clen) :: cmnd
 
-    integer(i8b) :: lun, Nfound
+    integer(i4b) :: lun, Nfound
         
     tmpfile = tmp_file_name(len(tmpfile))
 
@@ -456,7 +456,7 @@ contains
     character(26) :: tmpfile 
     character(clen) :: cmnd
     
-    integer(i8b) :: lun, Nfound
+    integer(i4b) :: lun, Nfound
     
     tmpfile = tmp_file_name(len(tmpfile))
     
@@ -491,7 +491,7 @@ contains
     character(26) :: tmpfile 
     character(clen) :: cmnd
 
-    integer(i8b) :: lun, Nfound    
+    integer(i4b) :: lun, Nfound    
     
     tmpfile = tmp_file_name(len(tmpfile))
 
@@ -526,7 +526,7 @@ contains
     character(26) :: tmpfile 
     character(clen) :: cmnd
 
-    integer(i8b) :: lun, Nfound
+    integer(i4b) :: lun, Nfound
         
     tmpfile = tmp_file_name(len(tmpfile))
 
@@ -559,10 +559,10 @@ contains
     character(*), intent(in) :: awkoutfile
     character(*), intent(in) :: paramfile
     character(*), intent(in) :: keyword
-    integer(i8b) :: N
+    integer(i4b) :: N
     character(27) :: tmpfile 
     character(clen) :: cmnd
-    integer(i8b) :: lun
+    integer(i4b) :: lun
 
     tmpfile = tmp_file_name(len(tmpfile))
  

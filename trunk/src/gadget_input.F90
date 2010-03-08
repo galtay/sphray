@@ -34,12 +34,12 @@ subroutine get_planning_data_gadget()
   type(gadget_header_type) :: ghead
   type(gadget_units_type) :: gunits
 
-  integer(i8b) :: iSnap, fSnap    ! initial and final snapshot numbers
-  integer(i8b) :: pfiles          ! files/snap for particles    
-  integer(i8b) :: i,j             ! counters
+  integer(i4b) :: iSnap, fSnap    ! initial and final snapshot numbers
+  integer(i4b) :: pfiles          ! files/snap for particles    
+  integer(i4b) :: i,j             ! counters
   character(clen) :: snapfile     ! snapshot file name
 
-  integer(i8b) :: loglun
+  integer(i4b) :: loglun
   character(clen) :: logfile
   real(r8b) :: kpc2cm
   real(r8b) :: km2cm
@@ -172,13 +172,14 @@ subroutine read_Gpub_particles()
 
   type(gadget_header_type) :: ghead
   character(clen) :: snapfile
-  integer(i8b) :: lun,i
+  integer(i4b) :: lun
+  integer(i8b) :: i
   integer(i4b) :: err
 
   integer(i8b) :: npar, ngas, nmass
   integer(i8b) :: npar1, ngas1, nmass1
   logical :: varmass(6)
-  integer(i8b) :: fn
+  integer(i4b) :: fn
 
   real(r8b) :: meanweight
   logical :: caseA(2)
@@ -230,7 +231,7 @@ subroutine read_Gpub_particles()
      call form_gadget_snapshot_file_name(GV%SnapPath,GV%ParFileBase,GV%CurSnapNum,fn,snapfile)
      call mywrite("   reading public gadget particle snapshot file "//trim(snapfile), verb,fmt="(A)")
      call open_unformatted_file_r( snapfile, lun )
-     read(lun) ghead
+     call read_gadget_header_lun(lun,ghead)
 
 
      ! read positions
@@ -377,13 +378,13 @@ subroutine read_Gcool_particles()
 
   type(gadget_header_type) :: ghead
   character(clen) :: snapfile
-  integer(i8b) :: lun,i
+  integer(i4b) :: lun,i
   integer(i4b) :: err
 
   integer(i8b) :: npar, ngas, nmass
   integer(i8b) :: npar1, ngas1, nmass1
   logical :: varmass(6)
-  integer(i8b) :: fn
+  integer(i4b) :: fn
 
   real(r8b) :: meanweight
   logical :: caseA(2)
@@ -617,13 +618,13 @@ subroutine read_Gbromm_particles()
 
   type(gadget_header_type) :: ghead
   character(clen) :: snapfile
-  integer(i8b) :: lun,i
+  integer(i4b) :: lun,i
   integer(i4b) :: err
 
   integer(i8b) :: npar, ngas, nmass
   integer(i8b) :: npar1, ngas1, nmass1
   logical :: varmass(6)
-  integer(i8b) :: fn
+  integer(i4b) :: fn
 
   real(r8b) :: meanweight
   real(r8b) :: nH_over_nHe

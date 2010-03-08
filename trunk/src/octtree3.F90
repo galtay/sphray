@@ -85,8 +85,8 @@ end subroutine check
    type(particle_system_type), intent(in) :: psys !< input particle system
    type(oct_tree_type), intent(inout) :: tree !< oct-tree
    real(r8b), intent(out) :: MBalloc !< MB of memory allocated for tree
-   integer(i8b), intent(in), optional :: ppc !< optional minimum particles per leaf
-   integer(i8b) :: err
+   integer(i4b), intent(in), optional :: ppc !< optional minimum particles per leaf
+   integer(i4b) :: err
 
    if (present(ppc)) then
       tree%ppc = ppc
@@ -143,7 +143,7 @@ subroutine maketree(psys,tree,MBalloc)
   type(oct_tree_type), intent(inout)   :: tree !< oct-tree
   real(r8b), intent(out) :: MBalloc !< MB of memory allocated for tree
   
-  integer(i8b) :: err
+  integer(i4b) :: err
   real(r8b) :: MB
 
 
@@ -181,7 +181,7 @@ end subroutine maketree
 !> deallocates the various parts of the oct-tree
  subroutine killtree(tree)
    type(oct_tree_type) :: tree !< oct-tree
-   integer(i8b) :: err !< deallocation error number
+   integer(i4b) :: err !< deallocation error number
    character(clen) :: string  !< error string
      deallocate(tree%partorder, tree%cellorder, tree%cell, stat=err)
      string = "deallocation      "
@@ -257,7 +257,7 @@ end subroutine setPPC
  
    type(oct_tree_type) :: tree          !< oct-tree being built
    type(particle_system_type) :: psys   !< particle system
-   integer(i8b) :: err                       !< error number
+   integer(i4b) :: err                       !< error number
    integer, parameter :: off(24) = &
        (/ 0,0,0, 1,0,0, 0,1,0, 1,1,0, 0,0,1, 1,0,1, 0,1,1, 1,1,1 /)
    integer :: offset_factor(3,8)
@@ -346,6 +346,7 @@ end subroutine setPPC
    type(oct_tree_type) :: tree !< oct-tree being built
    integer ::  ccount,dcell,i,up,pcell
    integer(i8b) :: low
+   integer(i4b) :: err
 
      ccount=tree%ncells
      tree%cellorder(ccount)=1
@@ -370,7 +371,10 @@ end subroutine setPPC
         low=ccount
      enddo
 
-     if(low.NE.1) call error("ordering ",low)
+     if(low.NE.1) then
+        err=low
+        call error("ordering ",err)
+     endif
 
  end subroutine makecellorder
 
@@ -529,7 +533,7 @@ end subroutine setPPC
 !> a simple error handeling routine
  subroutine error(string,i)
    character(*) :: string !< error string
-   integer(i8b), optional :: i !< optional error number
+   integer(i4b), optional :: i !< optional error number
   
     print*,'error detected'
 

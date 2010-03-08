@@ -520,8 +520,8 @@ subroutine calc_bytes_per_particle_and_source(bpp, bps)
   logical, parameter :: crash=.true.
   integer, parameter :: verb=2
 
-  integer(i8b), intent(out) :: bpp !< bytes per particle
-  integer(i8b), intent(out) :: bps !< bytes per source
+  integer(i4b), intent(out) :: bpp !< bytes per particle
+  integer(i4b), intent(out) :: bps !< bytes per source
   character(clen) :: str
 
   bpp = 12       ! positions
@@ -584,8 +584,8 @@ subroutine particle_info_to_screen(psys,str,lun)
 
   type(particle_system_type), intent(in) :: psys     !< particle system
   character(*), optional, intent(in) :: str          !< arbitrary string
-  integer(i8b), optional, intent(in) :: lun          !< if present goes to file
-  integer(i8b) :: outlun
+  integer(i4b), optional, intent(in) :: lun          !< if present goes to file
+  integer(i4b) :: outlun
   
   
   outlun=stdout

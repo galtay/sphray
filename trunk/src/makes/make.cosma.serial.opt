@@ -1,5 +1,5 @@
 FC= f90 
-FFLAGS= -O5 -xtarget=native -libmil -fsimple=2 -xlibmopt -m64
+FFLAGS= -O5 -xtarget=native -libmil -fsimple=2 -xlibmopt -e -m64
 
 ISLIB=  -L
 ISINC=  -I

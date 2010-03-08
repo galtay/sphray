@@ -24,10 +24,12 @@ public :: gadget_constants_type
 public :: form_gadget_snapshot_file_name
 public :: read_gadget_header_file
 public :: read_gadget_header_lun
+public :: write_gadget_header_lun
 
 public :: read_first_header
 public :: read_gadget_units
 public :: read_gadget_constants
+
 
 public :: gadget_header_to_file
 
@@ -35,6 +37,10 @@ public :: gadget_header_to_file
 public :: broadcast_gadget_header
 public :: broadcast_gadget_units
 public :: broadcast_gadget_constants
+
+
+
+
 
 
 !> Gadget particle type names
@@ -63,7 +69,7 @@ type gadget_header_type
    integer(i4b) :: flag_metals     !< flag for metallicity
    integer(i4b) :: npar_hw(6)      !< 64 bit part of npar 
    integer(i4b) :: flag_entr_ics   !< flag for entropic initial conditions
-
+                                  
    real(r8b)    :: OmegaB          !< omega baryon 
    integer(i8b) :: rays_traced     !< number of rays traced
    integer(i4b) :: flag_Hmf        !< output has Hydorgen mass fraction? 
@@ -135,8 +141,8 @@ contains
 subroutine form_gadget_snapshot_file_name(path,base,SnapNum,FileNum,SnapFile)
   character(*), intent(in)     :: path        !< path to snapshot dir
   character(*), intent(in)     :: base        !< base snapshot name
-  integer(i8b), intent(in)     :: SnapNum     !< snapshot number
-  integer(i8b), intent(in)     :: FileNum     !< file number of snapshot
+  integer(i4b), intent(in)     :: SnapNum     !< snapshot number
+  integer(i4b), intent(in)     :: FileNum     !< file number of snapshot
   character(clen), intent(out) :: SnapFile    !< snapshot filename
 
   character(10) :: FileNumChar
@@ -180,7 +186,7 @@ end subroutine form_gadget_snapshot_file_name
 subroutine read_gadget_header_file(snapfile, ghead)
   character(*), intent(in) :: snapfile
   type(gadget_header_type) :: ghead
-  integer(i8b) :: lun    
+  integer(i4b) :: lun    
   integer(i4b) :: fh
 
 #ifdef hdf5
@@ -205,7 +211,14 @@ subroutine read_gadget_header_file(snapfile, ghead)
   call hdf5_close_file( fh )
 #else
   call open_unformatted_file_r( snapfile, lun )
-  read(lun) ghead
+  read(lun) ghead%npar_file(:), ghead%mass(:), ghead%a, ghead%z, &              
+       ghead%flag_sfr, ghead%flag_feedback, ghead%npar_all(:), &    
+       ghead%flag_cooling, ghead%nfiles, ghead%boxlen, ghead%OmegaM, &         
+       ghead%OmegaL, ghead%h, ghead%flag_age, ghead%flag_metals, &    
+       ghead%npar_hw(:), ghead%flag_entr_ics, ghead%OmegaB, &         
+       ghead%rays_traced, ghead%flag_Hmf, ghead%flag_Hemf, &
+       ghead%flag_helium, ghead%flag_gammaHI, ghead%flag_cloudy, &
+       ghead%flag_eos, ghead%unused(:)      
   close(lun)
 #endif
 
@@ -238,10 +251,61 @@ subroutine read_gadget_header_lun(lun, ghead)
   call hdf5_read_attribute(lun,'Header/NumPart_Total_HighWord',ghead%npar_hw)
   call hdf5_read_attribute(lun,'Header/OmegaBaryon',ghead%OmegaB)
 #else
-  read(lun) ghead
+  read(lun) ghead%npar_file(:), ghead%mass(:), ghead%a, ghead%z, &              
+       ghead%flag_sfr, ghead%flag_feedback, ghead%npar_all(:), &    
+       ghead%flag_cooling, ghead%nfiles, ghead%boxlen, ghead%OmegaM, &         
+       ghead%OmegaL, ghead%h, ghead%flag_age, ghead%flag_metals, &    
+       ghead%npar_hw(:), ghead%flag_entr_ics, ghead%OmegaB, &         
+       ghead%rays_traced, ghead%flag_Hmf, ghead%flag_Hemf, &
+       ghead%flag_helium, ghead%flag_gammaHI, ghead%flag_cloudy, &
+       ghead%flag_eos, ghead%unused(:)      
 #endif
 
 end subroutine read_gadget_header_lun
+
+
+
+!> writes a gadget header from an already open file associated with lun 
+!----------------------------------------------------------------------
+subroutine write_gadget_header_lun(lun, ghead)
+  integer(i4b), intent(in) :: lun    
+  type(gadget_header_type) :: ghead
+
+#ifdef hdf5
+  call hdf5_write_attribute(lun,'Header/NumPart_ThisFile',ghead%npar_file)
+  call hdf5_write_attribute(lun,'Header/MassTable',ghead%mass)
+  call hdf5_write_attribute(lun,'Header/ExpansionFactor',ghead%a)
+  call hdf5_write_attribute(lun,'Header/Redshift',ghead%z)
+  call hdf5_write_attribute(lun,'Header/Flag_Sfr',ghead%flag_sfr)
+  call hdf5_write_attribute(lun,'Header/Flag_Feedback',ghead%flag_feedback)
+  call hdf5_write_attribute(lun,'Header/NumPart_Total',ghead%npar_all)
+  call hdf5_write_attribute(lun,'Header/Flag_Cooling',ghead%flag_cooling)
+  call hdf5_write_attribute(lun,'Header/NumFilesPerSnapshot',ghead%nfiles)
+  call hdf5_write_attribute(lun,'Header/BoxSize',ghead%boxlen)
+  call hdf5_write_attribute(lun,'Header/Omega0',ghead%OmegaM)
+  call hdf5_write_attribute(lun,'Header/OmegaLambda',ghead%OmegaL)
+  call hdf5_write_attribute(lun,'Header/HubbleParam',ghead%h)
+  call hdf5_write_attribute(lun,'Header/Flag_StellarAge',ghead%flag_age)
+  call hdf5_write_attribute(lun,'Header/Flag_Metals',ghead%flag_metals)
+  call hdf5_write_attribute(lun,'Header/NumPart_Total_HighWord',ghead%npar_hw)
+  call hdf5_write_attribute(lun,'Header/OmegaBaryon',ghead%OmegaB)
+#else
+  write(lun) ghead%npar_file(:), ghead%mass(:), ghead%a, ghead%z, &              
+       ghead%flag_sfr, ghead%flag_feedback, ghead%npar_all(:), &    
+       ghead%flag_cooling, ghead%nfiles, ghead%boxlen, ghead%OmegaM, &         
+       ghead%OmegaL, ghead%h, ghead%flag_age, ghead%flag_metals, &    
+       ghead%npar_hw(:), ghead%flag_entr_ics, ghead%OmegaB, &         
+       ghead%rays_traced, ghead%flag_Hmf, ghead%flag_Hemf, &
+       ghead%flag_helium, ghead%flag_gammaHI, ghead%flag_cloudy, &
+       ghead%flag_eos, ghead%unused(:)      
+#endif
+
+end subroutine write_gadget_header_lun
+
+
+
+
+
 
 
 
@@ -295,7 +359,7 @@ subroutine read_gadget_units(snapfile, gunits, simname)
   type(gadget_units_type) :: gunits
   character(*), intent(in), optional :: simname
   integer(i4b) :: fh
-  integer(i8b) :: lun
+  integer(i4b) :: lun
 
 
 #ifdef hdf5
@@ -459,8 +523,7 @@ end subroutine set_gadget_owls_gimic_constants
 !-----------------------------------------
 subroutine gadget_header_to_file(ghead,lun)
   type(gadget_header_type), intent(in) :: ghead !< particle header to print
-  integer(i8b), intent(in) :: lun
-
+  integer(i4b), intent(in) :: lun
   integer(i8b) :: i
 
 
@@ -498,7 +561,6 @@ subroutine gadget_header_to_file(ghead,lun)
 
 
 end subroutine gadget_header_to_file
-
 
 
 

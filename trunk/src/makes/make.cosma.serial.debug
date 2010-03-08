@@ -1,0 +1,18 @@
+FC= f90 
+FFLAGS= -g -C -Xlist -xcheck=stkovf -e -m64
+
+
+ISLIB=  -L
+ISINC=  -I
+ISMOD=  -M
+ISRLIB= -R
+
+OPT += $(R64LIB)
+
+DIRHDF= $(HDF64)
+
+
+
+
+
+
