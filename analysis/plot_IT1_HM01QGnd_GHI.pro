@@ -43,9 +43,9 @@ print, 'GHIintegral = ', GHIintegral
 
 ; SPHRAY file IO
 ;----------------
-snapdir  = "../../sphray_output/IT1_HM01QGnd/r7"
+snapdir  = "../../sphray_output/IT1_HM01QGnd/r6"
 snapbase = "snap"
-snapnum = [1]
+snapnum = [1,2,3]
 snapnumstr = string(snapnum, format="(I3.3)")
 
 
@@ -142,13 +142,13 @@ for i = 0,nbins-1 do begin
 
     ; photoionization rates from SPHRAY
     bdata.GHIs_001[i] = mean(gHI.(1)[indx], /double)
-;    bdata.GHIs_003[i] = mean(gHI.(2)[indx], /double)
-;    bdata.GHIs_005[i] = mean(gHI.(3)[indx], /double)
+    bdata.GHIs_003[i] = mean(gHI.(2)[indx], /double)
+    bdata.GHIs_005[i] = mean(gHI.(3)[indx], /double)
 
 
     bdata.nHI_001[i] = mean( nHI.(1)[indx], /double )
- ;   bdata.nHI_003[i] = mean( nHI.(2)[indx], /double )
- ;   bdata.nHI_005[i] = mean( nHI.(3)[indx], /double )
+    bdata.nHI_003[i] = mean( nHI.(2)[indx], /double )
+    bdata.nHI_005[i] = mean( nHI.(3)[indx], /double )
  
 
 endfor
@@ -188,10 +188,10 @@ plot,      [0], [0],  $
 
 oplot,bdata.locs, alog10(bdata.GHIs_001), linestyle=sphrayline, $
       color=sphraycolor, thick=mythick
-;oplot,bdata.locs, alog10(bdata.GHIs_003), linestyle=sphrayline, $
-;      color=sphraycolor, thick=mythick
-;oplot,bdata.locs, alog10(bdata.GHIs_005), linestyle=sphrayline, $
-;      color=sphraycolor, thick=mythick
+oplot,bdata.locs, alog10(bdata.GHIs_003), linestyle=sphrayline, $
+      color=sphraycolor, thick=mythick
+oplot,bdata.locs, alog10(bdata.GHIs_005), linestyle=sphrayline, $
+      color=sphraycolor, thick=mythick
  
 
 
