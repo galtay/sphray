@@ -28,7 +28,7 @@ subroutine read_source_header(snapfile, shead, lun, closefile)
 
   character(*), intent(in) :: snapfile  !< file containing source header
   type(source_header_type), intent(inout) :: shead  !< source header to read
-  integer(i8b), intent(out) :: lun  !< output lun assigned to snapfile
+  integer(i4b), intent(out) :: lun  !< output lun assigned to snapfile
   logical, optional, intent(in) :: closefile      !< close file when done?
 
   logical :: closef
@@ -54,14 +54,14 @@ end subroutine read_source_header
 
 
 subroutine get_planning_data_sources()
-  integer(i8b) :: loglun
+  integer(i4b) :: loglun
   type(source_header_type) :: shead
   character(clen) :: snapfile ! snapshot file name
   character(clen) :: logfile
 
-  integer(i8b) :: iSnap, fSnap    ! initial and final snapshot numbers
-  integer(i8b) :: sfiles          ! files/snap for sources   
-  integer(i8b) :: i,j,lun
+  integer(i4b) :: iSnap, fSnap    ! initial and final snapshot numbers
+  integer(i4b) :: sfiles          ! files/snap for sources   
+  integer(i4b) :: i,j,lun
 
 
   ! these global variables are read from the config file
@@ -80,7 +80,7 @@ subroutine get_planning_data_sources()
   ! read all source headers and write to log file
   !===================================================
   write(loglun,*) 
-  write(loglun,'(A)') "reading all Gadget source header(s) ... "
+  write(loglun,'(A)') "reading all source header(s) ... "
   do i = iSnap,fSnap
      do j = 1,sfiles
         call form_snapshot_file_name(GV%SourcePath,GV%SourceFileBase,i,j,snapfile)
@@ -112,10 +112,10 @@ subroutine read_src_snapshot()
   character(clen) :: snapfile  
   character(clen) :: str
   type(source_header_type) :: shead
-  integer(i8b) :: lun, err
-  integer(i8b) :: i, N, Nall
+  integer(i4b) :: lun, err
+  integer(i4b) :: i, N, Nall
   logical :: closefile
-  integer(i8b) :: fn
+  integer(i4b) :: fn
   real(r4b) :: vel(3)
   real(r8b) :: MB
 
@@ -256,8 +256,8 @@ end subroutine order_sources_lum
 subroutine form_snapshot_file_name(Path,FileBase,SnapNum,FileNum,SnapFile)
   character(*), intent(in) :: Path       !< path to snapshot dir
   character(*), intent(in) :: FileBase   !< file base names
-  integer(i8b), intent(in) :: SnapNum      !< snapshot number
-  integer(i8b), intent(in) :: FileNum      !< file number in snapshot
+  integer(i4b), intent(in) :: SnapNum      !< snapshot number
+  integer(i4b), intent(in) :: FileNum      !< file number in snapshot
   character(*), intent(out) :: SnapFile  !< file name to return
   
   character(10) :: FileNumChar
@@ -303,7 +303,7 @@ end subroutine source_header_to_screen
 !-----------------------------------------------
 subroutine source_header_to_file(shead,lun)
   type(source_header_type), intent(in) :: shead !< source header to print
-  integer(i8b), intent(in) :: lun
+  integer(i4b), intent(in) :: lun
 
 97 format(T2,"=",T58,"=")
 98 format(T2,"= ",A,T58,"=")
@@ -333,8 +333,8 @@ subroutine source_info_to_screen(psys,str,lun)
 
   type(particle_system_type), intent(in) :: psys     !< particle system
   character(*), optional, intent(in) :: str          !< arbitrary string
-  integer(i8b), optional, intent(in) :: lun          !< if present goes to file
-  integer(i8b) :: outlun
+  integer(i4b), optional, intent(in) :: lun          !< if present goes to file
+  integer(i4b) :: outlun
 
   integer(i8b), parameter :: srclimit = 20     !< max number of sources to screen
   integer(i8b) :: i

@@ -139,7 +139,7 @@ subroutine do_output_planning()
   integer(i8b) :: i
   integer(i8b) :: Ni, Nf
   logical :: fthere
-  integer(i8b) :: lun
+  integer(i4b) :: lun
 
   call mywrite("  doing output planning",verb) 
   
@@ -289,7 +289,7 @@ subroutine do_ray_planning()
 
   integer(i8b) :: i
   real(r8b) :: code2Myr
-  integer(i8b) :: lun
+  integer(i4b) :: lun
 
 
   call mywrite("  doing raytracing planning",verb) 

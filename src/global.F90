@@ -61,7 +61,7 @@ type global_variables_type
   ! these are read in directly from the config file
   !-------------------------------------------------
 
-   integer(i8b)    :: Verbosity           !< [Config File] 0=silent, 1=whisper, 2=talk, 3=debug
+   integer(i4b)    :: Verbosity           !< [Config File] 0=silent, 1=whisper, 2=talk, 3=debug
 
    logical         :: DoTestScenario      !< [Config File] set true if performing a test problem
    character(clen) :: TestScenario        !< [Config File] one of {iliev_test1, iliev_test2, iliev_test3, iliev_test4}
@@ -82,7 +82,7 @@ type global_variables_type
    character(clen) :: StaticSimTimeUnit   !< [Config File] one of {codetime,myr}
 
 
-   integer(i8b)    :: InputType           !< [Config File] one of Gadget {1: Public 2: Cooling 3: HDF5 4: Bromm}
+   integer(i4b)    :: InputType           !< [Config File] one of Gadget {1: Public 2: Cooling 3: HDF5 4: Bromm}
    character(clen) :: SnapPath            !< [Config File] dir where particle snapshots are
    character(clen) :: SourcePath          !< [Config File] dir where source snapshots are
 
@@ -94,18 +94,18 @@ type global_variables_type
    character(clen) :: ParFileBase         !< [Config File] particle snapshot file base
    character(clen) :: SourceFileBase      !< [Config File] source snapshot file base
 
-   integer(i8b)    :: StartSnapNum        !< [Config File] snapshot to start with
-   integer(i8b)    :: EndSnapNum          !< [Config File] snapshot to end with
+   integer(i4b)    :: StartSnapNum        !< [Config File] snapshot to start with
+   integer(i4b)    :: EndSnapNum          !< [Config File] snapshot to end with
 
-   integer(i8b)    :: ParFilesPerSnap     !< [Config File] files per particle snapshot
-   integer(i8b)    :: SourceFilesPerSnap  !< [Config File] files per source snapshot
+   integer(i4b)    :: ParFilesPerSnap     !< [Config File] files per particle snapshot
+   integer(i4b)    :: SourceFilesPerSnap  !< [Config File] files per source snapshot
 
 
    character(clen) :: RayScheme           !< [Config File] one of {raynum, header}
    real(r8b)       :: ForcedRayNumber     !< [Config File] number of rays to trace if RayScheme = raynum
 
    logical         :: RayStats            !< [Config File] T = massive output file on ray statistics in raystats.dat
-   integer(i8b)    :: BndryCond           !< [Config File] one of {-1:reflecting 0:vacuum 1:periodic}
+   integer(i4b)    :: BndryCond           !< [Config File] one of {-1:reflecting 0:vacuum 1:periodic}
 
    real(r8b)       :: RecRayTol           !< [Config File] minimum recombination fraction to make a recomb ray
    real(r8b)       :: RayPhotonTol        !< [Config File] fractional ray depletion to stop ray
@@ -117,7 +117,7 @@ type global_variables_type
    logical         :: HydrogenCaseA       !< [Config File] T = use case A for Hydrogen OTS (ignored if not using OTS)
    logical         :: HeliumCaseA         !< [Config File] T = use case A for Helium OTS (ignored if not using OTS)
 
-   integer(i8b)    :: IonTempSolver       !< [Config File] one of {1:euler, 2:bdf}
+   integer(i4b)    :: IonTempSolver       !< [Config File] one of {1:euler, 2:bdf}
 
    real(r8b)       :: Tfloor              !< [Config File] minimum allowed temperature
    real(r8b)       :: Tceiling            !< [Config File] maximum allowed temperature
@@ -136,10 +136,10 @@ type global_variables_type
    character(clen) :: OutputDir           !< [Config File] path to output directory
    character(clen) :: OutputFileBase      !< [Config File] output file base
 
-   integer(i8b)    :: OutputType          !< [Config File] one of {1:Standard Binary Gadget 2:HDF5 Gadget}
+   integer(i4b)    :: OutputType          !< [Config File] one of {1:Standard Binary Gadget 2:HDF5 Gadget}
 
    character(clen) :: OutputTiming        !< [Config File] one of {standard, forced}
-   integer(i8b)    :: NumStdOuts          !< [Config File] if OutputTiming = "standard", # of outputs (maybe +1 initial)
+   integer(i4b)    :: NumStdOuts          !< [Config File] if OutputTiming = "standard", # of outputs (maybe +1 initial)
 
    logical         :: DoInitialOutput     !< [Config File] produces output before any raytracing
    integer(i8b)    :: IonFracOutRays      !< [Config File] do mini output every IonFracOutRays src rays
@@ -147,21 +147,21 @@ type global_variables_type
    character(clen) :: ForcedOutFile       !< [Config File] file with forced output times
    character(clen) :: ForcedUnits         !< [Config File] one of {codetime, myr, mwionfrac, vwionfrac}
 
-   integer(i8b)    :: PartPerCell         !< [Config File] minimum particles in a tree leaf
+   integer(i4b)    :: PartPerCell         !< [Config File] minimum particles in a tree leaf
 
    character(clen) :: config_file         !< name of the config file
 
 
    ! particle and source sizes
    !-----------------------------------------------------------
-   integer(i8b) :: bytesperpar  !< bytes per particle
-   integer(i8b) :: bytespersrc  !< bytes per source
+   integer(i4b) :: bytesperpar  !< bytes per particle
+   integer(i4b) :: bytespersrc  !< bytes per source
    real(r8b) :: MB              !< tracks memory consumption
 
 
    ! these are all set in get_planning_data in main_input.f90
    !-----------------------------------------------------------
-   integer(i8b) :: Nsnaps !< snap count (particle=source)
+   integer(i4b) :: Nsnaps !< snap count (particle=source)
 
    real(r8b) :: cgs_len   !< code length [cm/h]
    real(r8b) :: cgs_mass  !< code mass [g/h]
@@ -184,9 +184,9 @@ type global_variables_type
 
    ! these are set in do_output_planning and do_ray_planning in intialize.f90
    !--------------------------------------------------------------------------
-   integer(i8b) :: OutputIndx                     !< keeps track of outputs   
+   integer(i4b) :: OutputIndx                     !< keeps track of outputs   
    real(r8b)    :: TotalSimTime                   !< total time to ray trace
-   integer(i8b) :: NumTotOuts                     !< total outputs to do
+   integer(i4b) :: NumTotOuts                     !< total outputs to do
  
    ! these should be reset each time a new snapshot is read in
    !------------------------------------------------------------
@@ -247,24 +247,24 @@ type global_variables_type
    ! and most are initialized in initialize.f90
    !----------------------------------------------------
    character(clen) :: ionfrac_file !< file where mini outputs are put 
-   integer(i8b) :: ionlun          !< lun for ionfrac log file
+   integer(i4b) :: ionlun          !< lun for ionfrac log file
 
    character(clen) :: raystat_file !< file where ray stats are put
-   integer(i8b) :: raystatlun      !< lun for ray stat log file
+   integer(i4b) :: raystatlun      !< lun for ray stat log file
 
    character(clen) :: pardata_file !< file with particle data summaries
-   integer(i8b) :: pardatalun      !< lun for particle data log file
+   integer(i4b) :: pardatalun      !< lun for particle data log file
    
    character(clen) :: srcdata_file !< file with source data summaries
-   integer(i8b) :: srcdatalun      !< lun for source data log file
+   integer(i4b) :: srcdatalun      !< lun for source data log file
 
    character(clen) :: rayplan_file  !< file for ray planning
-   integer(i8b) :: rayplanlun      !< lun for ray planning file
+   integer(i4b) :: rayplanlun      !< lun for ray planning file
 
    character(clen) :: outplan_file  !< file for out planning
-   integer(i8b) :: outplanlun      !< lun for out planning file
+   integer(i4b) :: outplanlun      !< lun for out planning file
 
-   integer(i8b) :: CurSnapNum      !< current snapshot number
+   integer(i4b) :: CurSnapNum      !< current snapshot number
    integer(i8b) :: rayn            !< current ray number (src + recomb)
    integer(i8b) :: src_rayn        !< current source ray number
 

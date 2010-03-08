@@ -27,7 +27,7 @@ subroutine read_b2cd_file(b2cd_file)
 
   integer, parameter :: verb = 1
   character(clen) :: str
-  integer(i8b) :: lun, err, i
+  integer(i4b) :: lun, err, i
   logical :: fthere
 
   character(clen), parameter :: myname = 'read_b2cd_file'

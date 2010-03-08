@@ -6,6 +6,7 @@
 module output_mod
 use myf90_mod
 use gadget_header_class, only: gadget_header_type 
+use gadget_header_class, only: write_gadget_header_lun
 use gadget_input_hdf5_mod
 use particle_system_mod, only: particle_system_type
 use particle_system_mod, only: particle_type
@@ -135,7 +136,8 @@ contains
      character(3) :: label
      character(4) :: ext
      character(clen) :: filename
-     integer(i8b) :: lun, Nread, Nfile
+     integer(i4b) :: lun
+     integer(i8b) :: Nread, Nfile
      integer(i4b) :: ipar, ifile
 
      integer(i8b) :: i,j
@@ -190,7 +192,7 @@ contains
 
            Nfile = ghead%npar_file(1)
 
-           write(lun) ghead     
+           call write_gadget_header_lun(lun, ghead) 
 
            allocate( rblock3(3,Nfile) )
            rblock3(1,:) = pars(Nread+1:Nread+Nfile)%pos(1) 

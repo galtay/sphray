@@ -33,7 +33,7 @@ contains
     character(clen) :: str
 
     real(r8b) :: Numin, Numax
-    integer(i8b) :: lun, err, i, j
+    integer(i4b) :: lun, err, i, j
     logical :: fthere
 
 

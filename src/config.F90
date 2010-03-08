@@ -415,7 +415,7 @@ end subroutine dummy_check_config_variables
 subroutine config_info_to_file()
 
   character(200) :: config_log_file
-  integer(i8b) :: lun
+  integer(i4b) :: lun
 
   config_log_file = trim(GV%OutputDir) // "/config_values_used.log"
   
