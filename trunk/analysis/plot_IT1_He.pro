@@ -5,7 +5,7 @@
 ; set plot to screen/file option and input files
 ;====================================================================
 ps=0       ; ps=0 directs output to screen, ps=1 directs output to psfile
-makepng=1  ; if ps=0 and makepng=1 then tries a screen capture to png
+makepng=0  ; if ps=0 and makepng=1 then tries a screen capture to png
 
 ; SPHRAY file IO
 ;----------------
@@ -18,10 +18,8 @@ snapnumstr = string(snapnum, format="(I3.3)")
 sfile  = snapdir + "/" + snapbase + "_" + snapnumstr
 psfile = "T1x_He" + snapnumstr + ".eps"
 pngfile = "T1x_He" + snapnumstr + ".png"
-cmpfile= "CmpData/CmpT1_" + snapnumstr + "x.txt"
 
 print
-print, "comparison project file:", cmpfile
 print, "sphray output file:", sfile
 print, "eps file if doing post script output:", psfile
 print
@@ -98,13 +96,11 @@ endfor
 ;====================================================================
 if (ps EQ 1) then begin
    altay_set_ps, psfile
-    cmpthick=5.0     ; line thickness
     mythick=7.0
     charsize = 2.0   ; characters
     charthick = 4.0
 endif else begin
    altay_set_x
-    cmpthick=2.0     ; line thickness
     mythick=3.0
     charsize = 2.0   ; characters
     charthick = 2.0

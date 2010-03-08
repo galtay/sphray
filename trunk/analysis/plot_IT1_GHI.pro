@@ -10,7 +10,7 @@ makepng=0  ; if ps=0 and makepng=1 then tries a screen capture to png
 ; SPHRAY file IO
 ;----------------
 snapdir  = "../../sphray_output/IT1"
-snapbase = "iliev_test1"
+snapbase = "snap"
 snapnum = [1,3,5]
 snapnumstr = string(snapnum, format="(I3.3)")
 
@@ -178,7 +178,7 @@ analine=0
 loadct, 39
 plot,      [0], [0],  $
            xstyle=1, xrange=[0.0,0.99], xtitle="r/L!lbox", $
-           ystyle=1, yrange=[-18,-10], ytitle=TexToIdl("Log \Gamma_{HI}"), $
+           ystyle=1, yrange=[-16,-10], ytitle=TexToIdl("Log \Gamma_{HI}"), $
            position=[0.18,0.15,0.95,0.95], /nodata, color=0, $
            background=255, charsize=charsize, charthick=charthick, $
            xthick=mythick, ythick=mythick

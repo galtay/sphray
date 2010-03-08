@@ -21,7 +21,7 @@ readcol, spc_file, ryd, Lpdf
 ; SPHRAY file IO
 ;----------------
 snapdir  = "../../sphray_output/IT1_HM01QG"
-snapbase = "iliev_test1_HM01QG"
+snapbase = "snap"
 snapnum = [1,3,5]
 snapnumstr = string(snapnum, format="(I3.3)")
 
@@ -163,7 +163,9 @@ endif else begin
 endelse
 
 sphrayline=2
-sphraycolor=254
+sphraycolor1=50
+sphraycolor3=150
+sphraycolor5=250
 
 anacolor=50
 analine=0
@@ -177,9 +179,9 @@ plot,      [0], [0],  $
            background=255, charsize=charsize, charthick=charthick, $
            xthick=mythick, ythick=mythick
 
-oplot,bdata.locs, alog10(bdata.GHIs_001), linestyle=sphrayline, color=sphraycolor, thick=mythick
-oplot,bdata.locs, alog10(bdata.GHIs_003), linestyle=sphrayline, color=sphraycolor, thick=mythick
-oplot,bdata.locs, alog10(bdata.GHIs_005), linestyle=sphrayline, color=sphraycolor, thick=mythick
+oplot,bdata.locs, alog10(bdata.GHIs_001), linestyle=sphrayline, color=sphraycolor1, thick=mythick
+oplot,bdata.locs, alog10(bdata.GHIs_003), linestyle=sphrayline, color=sphraycolor3, thick=mythick
+oplot,bdata.locs, alog10(bdata.GHIs_005), linestyle=sphrayline, color=sphraycolor5, thick=mythick
  
 
 GHIinput= alog10(7.917d-14)

@@ -1,6 +1,24 @@
 ; SPHRAY readin and plot for IT2 photoionization rates
 ;========================================================
 
+; define some physical constants
+;----------------------------------
+
+PROTONMASS = 1.6726d-24 ; proton mass [g]
+KPC2CM = 3.08568025d21  ; cm per kpc
+SIGMA0 = 6.3d-18        ; HI photo-absorption cross-section at 1 Rydberg
+LIGHT  = 2.99792458d10  ; c in cm/s
+
+GLEN   = 3.085678d21   ; [cm h^-1]
+GMASS  = 1.989d43      ; [g h^-1]
+GVEL   = 1.0d5         ; [cm s^-1]
+
+GTIME  = GLEN / GVEL               ; [s h^-1]
+GRHO   = GMASS / GLEN^3            ; [g cm^-3 h^2]
+GPRS   = GMASS / GLEN / GTIME^2    ; [g cm^-1 s^-2 h^2]
+GENRG  = GMASS * GLEN^2 / GTIME^2  ; [erg h^-1]
+GLUM   = GENRG / GTIME             ; [erg/s]
+
 ;====================================================================
 ; set plot to screen/file option and input files
 ;====================================================================
@@ -11,18 +29,23 @@ makepng=0  ; if ps=0 and makepng=1 then tries a screen capture to png
 ;----------------
 cdf_file = '../data/spectra/hm01/hm01qg_z0.00.cdf'
 spc_file = '../data/spectra/hm01/hm01qg_z0.00.pdf'
+src_file = '../../rtcp_snapshots/test1_HM01QG_sources_001.1'
 
 readcol, cdf_file, ryd, cdf, skipline=2
 readcol, spc_file, ryd, Lpdf
+readcol, src_file, px,py,pz,vx,vy,vz,ngamma_arr, skipline=7
+ngamma = ngamma_arr[0]
 
-
+GHIintegral = int_tabulated( ryd, LIGHT * ngamma * Lpdf * SIGMA0 * ryd^(-3) )
+GHIintegral = alog10( GHIintegral )
+print, 'GHIintegral = ', GHIintegral
 
 
 ; SPHRAY file IO
 ;----------------
-snapdir  = "../../sphray_output/IT1_HM01QGnd"
-snapbase = "iliev_test1_HM01QGnd"
-snapnum = [1,2,3]
+snapdir  = "../../sphray_output/IT1_HM01QGnd/r7"
+snapbase = "snap"
+snapnum = [1]
 snapnumstr = string(snapnum, format="(I3.3)")
 
 
@@ -39,22 +62,7 @@ print
 
 
 
-; define some physical constants
-;----------------------------------
 
-PROTONMASS = 1.6726d-24 ; proton mass [g]
-KPC2CM = 3.08568025d21  ; cm per kpc
-SIGMA0 = 6.3d-18        ; HI photo-absorption cross-section at 1 Rydberg
-
-GLEN   = 3.085678d21   ; [cm h^-1]
-GMASS  = 1.989d43               ; [g h^-1]
-GVEL   = 1.0d5         ; [cm s^-1]
-
-GTIME  = GLEN / GVEL               ; [s h^-1]
-GRHO   = GMASS / GLEN^3            ; [g cm^-3 h^2]
-GPRS   = GMASS / GLEN / GTIME^2    ; [g cm^-1 s^-2 h^2]
-GENRG  = GMASS * GLEN^2 / GTIME^2  ; [erg h^-1]
-GLUM   = GENRG / GTIME             ; [erg/s]
 
 
 
@@ -134,13 +142,13 @@ for i = 0,nbins-1 do begin
 
     ; photoionization rates from SPHRAY
     bdata.GHIs_001[i] = mean(gHI.(1)[indx], /double)
-    bdata.GHIs_003[i] = mean(gHI.(2)[indx], /double)
-    bdata.GHIs_005[i] = mean(gHI.(3)[indx], /double)
+;    bdata.GHIs_003[i] = mean(gHI.(2)[indx], /double)
+;    bdata.GHIs_005[i] = mean(gHI.(3)[indx], /double)
 
 
     bdata.nHI_001[i] = mean( nHI.(1)[indx], /double )
-    bdata.nHI_003[i] = mean( nHI.(2)[indx], /double )
-    bdata.nHI_005[i] = mean( nHI.(3)[indx], /double )
+ ;   bdata.nHI_003[i] = mean( nHI.(2)[indx], /double )
+ ;   bdata.nHI_005[i] = mean( nHI.(3)[indx], /double )
  
 
 endfor
@@ -166,31 +174,33 @@ sphrayline=2
 sphraycolor=254
 
 anacolor=50
+intcolor=150
 analine=0
  
       
 loadct, 39
 plot,      [0], [0],  $
            xstyle=1, xrange=[0.0,0.99], xtitle="r/L!lbox", $
-           ystyle=1, yrange=[-13.5,-12.5], ytitle=TexToIdl("Log \Gamma_{HI}"), $
+           ystyle=1, yrange=[-16.0,-10.0], ytitle=TexToIdl("Log \Gamma_{HI}"), $
            position=[0.18,0.15,0.95,0.95], /nodata, color=0, $
            background=255, charsize=charsize, charthick=charthick, $
            xthick=mythick, ythick=mythick
 
-oplot,bdata.locs, alog10(bdata.GHIs_001), linestyle=sphrayline, color=sphraycolor, thick=mythick
-oplot,bdata.locs, alog10(bdata.GHIs_003), linestyle=sphrayline, color=sphraycolor, thick=mythick
-oplot,bdata.locs, alog10(bdata.GHIs_005), linestyle=sphrayline, color=sphraycolor, thick=mythick
+oplot,bdata.locs, alog10(bdata.GHIs_001), linestyle=sphrayline, $
+      color=sphraycolor, thick=mythick
+;oplot,bdata.locs, alog10(bdata.GHIs_003), linestyle=sphrayline, $
+;      color=sphraycolor, thick=mythick
+;oplot,bdata.locs, alog10(bdata.GHIs_005), linestyle=sphrayline, $
+;      color=sphraycolor, thick=mythick
  
 
-GHIinput= alog10(7.917d-14)
 
-oplot, [0,1], [GHIinput,GHIinput], linestyle=analine, color=anacolor, $
+oplot, [0,1], [GHIintegral,GHIintegral], linestyle=analine, color=intcolor, $
        thick=mythick
 
-
 legend, ["Analytic", "SPHRAY"], $
-  linestyle=[0,2], color=[50,254], textcolor=[0,0], $
-  charsize=2, charthick=2, thick=2, position=[0.4, -12.7], box=0
+  linestyle=[0,2], color=[150,254], textcolor=[0,0], $
+  charsize=2, charthick=2, thick=2, position=[0.4, -10.5], box=0
 
 
 
