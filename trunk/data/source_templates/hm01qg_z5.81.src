@@ -5,4 +5,4 @@
 1.0d50    ! luminosity unit in photons/s
 
 ! pos     | vel    | lum    |   spec    |  emis
-0.0 0.0 0.0    0.0 0.0 0.0     5.4933207e-06    1    -3
+0.0 0.0 0.0    0.0 0.0 0.0     5.4933206e-06    1    -3
