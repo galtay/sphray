@@ -32,7 +32,7 @@ makepng=0  ; if ps=0 and makepng=1 then tries a screen capture to png
 ;----------------
 snapdir  = "../../sphray_output/IT1_HM01QGnd/r6"
 snapbase = "snap"
-snapnum = [1,3,5]
+snapnum = [1,3,4]
 snapnumstr = string(snapnum, format="(I3.3)")
 
 
@@ -48,7 +48,23 @@ print, "png file if doing png output:", pngfile
 print
 
 
+; spectra file IO
+;----------------
+cdf_file = '../data/spectra/hm01/hm01qg_z0.00.cdf'
+spc_file = '../data/spectra/hm01/hm01qg_z0.00.pdf'
+src_file = '../../rtcp_snapshots/test1_HM01QG_sources_001.1'
 
+readcol, cdf_file, ryd, cdf, skipline=2
+readcol, spc_file, ryd, Lpdf
+readcol, src_file, px,py,pz,vx,vy,vz,ngamma_arr, skipline=7
+ngamma = ngamma_arr[0]
+
+xx= ryd
+yy= LIGHT * ngamma * Lpdf * hi_photox_verner(ryd * 13.6d0)
+GHIintegral = int_tabulated(xx, yy, /double)
+GHIintegral = alog10( GHIintegral )
+print
+print, 'GHIintegral = ', GHIintegral
 
 
 
@@ -200,21 +216,7 @@ set_plot, "x"
 
 
 
-; spectra file IO
-;----------------
-cdf_file = '../data/spectra/hm01/hm01qg_z0.00.cdf'
-spc_file = '../data/spectra/hm01/hm01qg_z0.00.pdf'
-src_file = '../../rtcp_snapshots/test1_HM01QG_sources_001.1'
 
-readcol, cdf_file, ryd, cdf, skipline=2
-readcol, spc_file, ryd, Lpdf
-readcol, src_file, px,py,pz,vx,vy,vz,ngamma_arr, skipline=7
-ngamma = ngamma_arr[0]
-
-GHIintegral = int_tabulated( ryd, LIGHT * ngamma * Lpdf * SIGMA0 * ryd^(-3) )
-GHIintegral = alog10( GHIintegral )
-print
-print, 'GHIintegral = ', GHIintegral
   
 
 end
