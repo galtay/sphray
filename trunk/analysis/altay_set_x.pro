@@ -24,7 +24,7 @@ if n_elements(windownum) eq 0 then windownum=0
 
 set_plot, 'X', /copy
 device, decomposed=0, /true_color, retain=2 
-window, windownum, xsize=ysize, ysize=xsize
+window, windownum, xsize=xsize, ysize=ysize
 
 return
 

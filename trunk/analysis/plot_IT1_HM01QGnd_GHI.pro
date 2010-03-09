@@ -30,9 +30,9 @@ makepng=0  ; if ps=0 and makepng=1 then tries a screen capture to png
 
 ; SPHRAY file IO
 ;----------------
-snapdir  = "../../sphray_output/IT1_HM01QGnd/r6"
+snapdir  = "../../sphray_output/IT1_HM01QGnd/r7"
 snapbase = "snap"
-snapnum = [1,3,4]
+snapnum = [1,2,3]
 snapnumstr = string(snapnum, format="(I3.3)")
 
 
@@ -64,8 +64,14 @@ yy= LIGHT * ngamma * Lpdf * hi_photox_verner(ryd * 13.6d0)
 GHIintegral = int_tabulated(xx, yy, /double)
 GHIintegral = alog10( GHIintegral )
 print
-print, 'GHIintegral = ', GHIintegral
+print, 'GHIintegral verner = ', GHIintegral
 
+
+yy= LIGHT * ngamma * Lpdf * SIGMA0 * ryd^(-3.d0)
+GHIintegral_s = int_tabulated(xx, yy, /double)
+GHIintegral_s = alog10( GHIintegral_s )
+print
+print, 'GHIintegral sphray = ', GHIintegral_s
 
 
 
@@ -173,39 +179,58 @@ endif else begin
     charthick = 2.0
 endelse
 
-sphrayline=2
+sphrayline=0
 sphraycolor=254
 
 anacolor=50
 intcolor=150
-analine=0
- 
+analine=2
+
+altay_set_x, xsize=1000, ysize=600
+!P.multi=[0,2,1] 
       
 loadct, 39
 plot,      [0], [0],  $
            xstyle=1, xrange=[0.0,0.99], xtitle="r/L!lbox", $
            ystyle=1, yrange=[-16.0,-10.0], ytitle=TexToIdl("Log \Gamma_{HI}"), $
-           position=[0.18,0.15,0.95,0.95], /nodata, color=0, $
-           background=255, charsize=charsize, charthick=charthick, $
+           /nodata, color=0, background=255, $
+           charsize=charsize, charthick=charthick, $
            xthick=mythick, ythick=mythick
 
 oplot,bdata.locs, alog10(bdata.GHIs_001), linestyle=sphrayline, $
-      color=sphraycolor, thick=mythick
+      color=50, thick=mythick
 oplot,bdata.locs, alog10(bdata.GHIs_003), linestyle=sphrayline, $
-      color=sphraycolor, thick=mythick
+      color=150, thick=mythick
 oplot,bdata.locs, alog10(bdata.GHIs_005), linestyle=sphrayline, $
-      color=sphraycolor, thick=mythick
+      color=254, thick=mythick
  
 
-
-oplot, [0,1], [GHIintegral,GHIintegral], linestyle=analine, color=intcolor, $
+oplot, [0,1], [GHIintegral,GHIintegral], linestyle=analine, color=100, $
        thick=mythick
 
-legend, ["Analytic", "SPHRAY"], $
-  linestyle=[0,2], color=[150,254], textcolor=[0,0], $
-  charsize=2, charthick=2, thick=2, position=[0.4, -10.5], box=0
+oplot, [0,1], [GHIintegral_s,GHIintegral_s], linestyle=analine, color=0, $
+       thick=mythick
+
+legend, ["Input V", "Input S", "SPHRAY"], $
+  linestyle=[2,2,0], color=[100,0,254], textcolor=[0,0,0], $
+  charsize=2, charthick=2, thick=2, position=[0.1, -10.5], box=0
 
 
+altay_plothist, alog10( GHI.(3) ), bin=0.005, color=254, $
+                xrange=[GHIintegral_s-0.1,GHIintegral_s+0.1], xticks=4, $
+                xtickformat='(F7.3)', $
+                xtitle=TexToIdl('Log \Gamma_{HI}'), $
+                charsize=2
+
+altay_plothist, alog10( GHI.(2) ), bin=0.005, color=150, /overplot
+altay_plothist, alog10( GHI.(1) ), bin=0.005, color=50, /overplot
+altay_oplot, [GHIintegral,GHIintegral], [0,1.0e8], color=100, thick=2, $
+             linestyle=2
+
+altay_oplot, [GHIintegral_s,GHIintegral_s], [0,1.0e8], color=0, thick=2, $
+             linestyle=2
+
+!P.multi=0
 
 if ps then begin
    device, /close
