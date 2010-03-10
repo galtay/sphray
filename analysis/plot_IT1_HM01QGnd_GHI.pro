@@ -23,7 +23,7 @@ GLUM   = GENRG / GTIME             ; [erg/s]
 ; set plot to screen/file option and input files
 ;====================================================================
 ps=0       ; ps=0 directs output to screen, ps=1 directs output to psfile
-makepng=0  ; if ps=0 and makepng=1 then tries a screen capture to png
+makepng=1  ; if ps=0 and makepng=1 then tries a screen capture to png
 
 
 
@@ -32,7 +32,7 @@ makepng=0  ; if ps=0 and makepng=1 then tries a screen capture to png
 ;----------------
 snapdir  = "../../sphray_output/IT1_HM01QGnd/r7"
 snapbase = "snap"
-snapnum = [1,2,3]
+snapnum = [1,3,5]
 snapnumstr = string(snapnum, format="(I3.3)")
 
 
@@ -229,6 +229,9 @@ altay_oplot, [GHIintegral,GHIintegral], [0,1.0e8], color=100, thick=2, $
 
 altay_oplot, [GHIintegral_s,GHIintegral_s], [0,1.0e8], color=0, thick=2, $
              linestyle=2
+
+
+
 
 !P.multi=0
 

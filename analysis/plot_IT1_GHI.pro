@@ -5,7 +5,7 @@
 ; set plot to screen/file option and input files
 ;====================================================================
 ps=0       ; ps=0 directs output to screen, ps=1 directs output to psfile
-makepng=0  ; if ps=0 and makepng=1 then tries a screen capture to png
+makepng=1  ; if ps=0 and makepng=1 then tries a screen capture to png
 
 ; SPHRAY file IO
 ;----------------
