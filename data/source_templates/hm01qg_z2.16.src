@@ -1,8 +1,8 @@
-1         ! number of sources in this file
-1         ! number of sources in this source snapshot
-1         ! number of files in the source snapshot
-1.0d7     ! number of rays to trace [depends on config file]
-1.0d50    ! luminosity unit in photons/s
+1       ! number of sources in this file
+1       ! number of sources in this source snapshot
+1       ! number of files in the source snapshot
+1.0d7   ! number of rays to trace [depends on config file]
+1.0d50  ! luminosity unit in photons/s
 
 ! pos     | vel    | lum    |   spec    |  emis
 0.0 0.0 0.0    0.0 0.0 0.0     1.9749712e-05    1    -3
