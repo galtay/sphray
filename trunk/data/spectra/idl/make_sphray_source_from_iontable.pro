@@ -20,6 +20,8 @@ if n_params() lt 4 then begin
       print,'       z      : red shift'
       print,'       numin  : min frequency for spectra [Rydbergs]'
       print,'       numax  : max frequency for spectra [Rydbergs]'
+      print,'       doplot : make plots along the way? '
+      print,'       dofile : make output .pdf, .cdf, and .src files?'
       print
       print,' Output:'
       print,'       creates the files *.cdf, *.pdf, and *.src '
@@ -57,9 +59,8 @@ HIth_ry = 1.0
 HeIth_ry = HeIth / HIth
 HeIIth_ry = HeIIth / HIth
 
-Ryd2erg = 2.17896d-11
 HIth_nu = 3.2899d15  ; Hz
-SIGMA0 = 6.3d-18
+
 
 
 
