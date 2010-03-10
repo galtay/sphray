@@ -5,7 +5,7 @@
 ; set plot to screen/file option and input files
 ;====================================================================
 ps=0       ; ps=0 directs output to screen, ps=1 directs output to psfile
-makepng=0  ; if ps=0 and makepng=1 then tries a screen capture to png
+makepng=1  ; if ps=0 and makepng=1 then tries a screen capture to png
 
 ; spectra file IO
 ;----------------
@@ -18,8 +18,8 @@ readcol, spc_file, ryd, Lpdf
 
 ; SPHRAY file IO
 ;----------------
-snapdir  = "../../sphray_output/IT2"
-snapbase = "iliev_test2"
+snapdir  = "../../sphray_output/IT2/r7"
+snapbase = "snap"
 snapnum = [1,3,5]
 snapnumstr = string(snapnum, format="(I3.3)")
 
@@ -199,7 +199,7 @@ analine=0
 loadct, 39
 plot,      [0], [0],  $
            xstyle=1, xrange=[0.0,0.99], xtitle="r/L!lbox", $
-           ystyle=1, yrange=[-17.5,-12], ytitle=TexToIdl("Log \Gamma_{HI}"), $
+           ystyle=1, yrange=[-17.0,-11], ytitle=TexToIdl("Log \Gamma_{HI}"), $
            position=[0.18,0.15,0.95,0.95], /nodata, color=0, $
            background=255, charsize=charsize, charthick=charthick, $
            xthick=mythick, ythick=mythick
