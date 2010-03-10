@@ -145,6 +145,7 @@ subroutine form_gadget_snapshot_file_name(path,base,SnapNum,FileNum,SnapFile)
   integer(i4b), intent(in)     :: FileNum     !< file number of snapshot
   character(clen), intent(out) :: SnapFile    !< snapshot filename
 
+  character(clen) :: SnapFileTmp
   character(10) :: FileNumChar
   character(clen) :: fmt
   logical :: Fthere
@@ -154,11 +155,15 @@ subroutine form_gadget_snapshot_file_name(path,base,SnapNum,FileNum,SnapFile)
 
   ! first write a file with no extension
   !--------------------------------------
-  write(SnapFile,fmt) trim(path), trim(base), SnapNum
+  write(SnapFileTmp,fmt) trim(path), trim(base), SnapNum
+  SnapFile = trim(SnapFileTmp)
 #ifdef hdf5
   SnapFile = trim(SnapFile) // ".hdf5"
 #endif
   inquire( file=SnapFile, exist=Fthere )
+
+
+
 
   ! if the file number is 0 and a file with no extension exists then return
   ! otherwise append the FileNum to the file name
@@ -166,14 +171,12 @@ subroutine form_gadget_snapshot_file_name(path,base,SnapNum,FileNum,SnapFile)
   if (FileNum == 0 .and. Fthere) then
      return
   else
-     SnapFile = trim(SnapFile) // "." // trim(adjustl(FileNumChar))
+     SnapFile = trim(SnapFileTmp) // "." // trim(adjustl(FileNumChar))
+#ifdef hdf5
+     SnapFile = trim(SnapFile) // ".hdf5"
+#endif
   end if
 
-  ! if we are using the hdf5 lib then also append .hdf5
-  !------------------------------------------------------
-#ifdef hdf5
-  SnapFile = trim(SnapFile) // ".hdf5"
-#endif
 
 
 end subroutine form_gadget_snapshot_file_name
