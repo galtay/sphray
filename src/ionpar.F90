@@ -216,7 +216,7 @@ subroutine par2ionpar(par,ipar,index)
 #endif
 
 #ifdef incHemf
-  ipar%He_mf  = GV%He_mf
+  ipar%He_mf  = par%Hemf
 #else
   ipar%He_mf  = GV%He_mf
 #endif

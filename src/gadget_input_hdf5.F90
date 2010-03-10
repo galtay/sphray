@@ -59,16 +59,16 @@ subroutine get_planning_data_gadget_hdf5()
   type(gadget_units_type) :: gunits
 
   integer(i4b) :: fh      !< hdf5 file handle
-  integer(i8b) :: iSnap   !< first snap number
-  integer(i8b) :: fSnap   !< last snap number
-  integer(i8b) :: pfiles  !< nfiles for particle snapshots
-  integer(i8b) :: i,j     !< counters
+  integer(i4b) :: iSnap   !< first snap number
+  integer(i4b) :: fSnap   !< last snap number
+  integer(i4b) :: pfiles  !< nfiles for particle snapshots
+  integer(i4b) :: i,j     !< counters
 
   character(clen) :: snapfile
 
   real(r8b) :: Time_GYR
-  integer(i8b) :: lun
-  integer(i8b) :: loglun
+  integer(i4b) :: lun
+  integer(i4b) :: loglun
   character(clen) :: logfile
   real(r8b) :: kpc2cm
   real(r8b) :: km2cm
@@ -218,7 +218,7 @@ subroutine read_Ghdf5_particles()
   integer(i8b) :: npar, ngas, nmass
   integer(i8b) :: npar1, ngas1, nmass1
   logical :: varmass(6)
-  integer(i8b) :: fn
+  integer(i4b) :: fn
 
   real(r8b) :: meanweight
   logical :: caseA(2)
