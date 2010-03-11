@@ -366,19 +366,19 @@ subroutine readin_snapshot(skewers)
 
   ! set all particles initially neutral for OWLS runs 
   !=======================================================
-#ifdef OWLS
-  if (first) then
-     do i = 1, size(psys%par(:))
-        if (psys%par(i)%eos == 1.0) then
-           psys%par(i)%xHI = 1.0d0
-           psys%par(i)%xHII = 0.0d0
-        else
-           psys%par(i)%xHI = 1.0d0
-           psys%par(i)%xHII = 0.0d0
-        endif
-     end do
-  endif
-#endif
+!!$#ifdef OWLS
+!!$  if (first) then
+!!$     do i = 1, size(psys%par(:))
+!!$        if (psys%par(i)%eos == 1.0) then
+!!$           psys%par(i)%xHI = 1.0d0
+!!$           psys%par(i)%xHII = 0.0d0
+!!$        else
+!!$           psys%par(i)%xHI = 1.0d0
+!!$           psys%par(i)%xHII = 0.0d0
+!!$        endif
+!!$     end do
+!!$  endif
+!!$#endif
 
 
   ! set neutral or ionized if we need to
