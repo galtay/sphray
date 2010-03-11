@@ -371,8 +371,10 @@ subroutine readin_snapshot(skewers)
      do i = 1, size(psys%par(:))
         if (psys%par(i)%eos == 1.0) then
            psys%par(i)%xHI = 1.0d0
+           psys%par(i)%xHII = 0.0d0
         else
            psys%par(i)%xHI = 1.0d0
+           psys%par(i)%xHII = 0.0d0
         endif
      end do
   endif

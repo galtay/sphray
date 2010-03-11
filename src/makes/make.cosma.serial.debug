@@ -1,4 +1,4 @@
-FC= f90 
+FC= f95
 FFLAGS= -g -C -Xlist -xcheck=stkovf -e -m64
 FFLAGS= -g -C -xcheck=stkovf -e -m64
 
