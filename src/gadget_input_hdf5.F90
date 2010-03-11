@@ -72,6 +72,11 @@ subroutine get_planning_data_gadget_hdf5()
   character(clen) :: logfile
   real(r8b) :: kpc2cm
   real(r8b) :: km2cm
+  logical :: hdf5bool
+
+  ! set hdf5 boolean
+  !======================================================
+  hdf5bool = .true.
  
   ! open up the planning data log file
   !======================================================
@@ -96,11 +101,11 @@ subroutine get_planning_data_gadget_hdf5()
      do j = 0,pfiles-1
 
 
-        call form_gadget_snapshot_file_name(GV%SnapPath,GV%ParFileBase,i,j,snapfile)
+        call form_gadget_snapshot_file_name(GV%SnapPath,GV%ParFileBase,i,j,snapfile,hdf5bool)
         write(loglun,'(I3,"  ",A)') i,trim(snapfile)
         write(*,*) 'snapfile = ', trim(snapfile) 
 
-        call read_gadget_header_file(snapfile, ghead)
+        call read_gadget_header_file_hdf5(snapfile, ghead)
         call gadget_header_to_file(ghead,loglun)
         saved_gheads(i,j) = ghead
 
@@ -123,8 +128,8 @@ subroutine get_planning_data_gadget_hdf5()
         GV%OmegaB = ghead%OmegaB
         GV%LittleH = ghead%h
 
-        call read_gadget_units( snapfile, gunits )
-        call read_gadget_constants( snapfile, gconst )
+        call read_gadget_units( snapfile, gunits, hdf5bool )
+        call read_gadget_constants( snapfile, gconst, hdf5bool )
 
         GV%cgs_len  = gunits%len
         GV%cgs_mass = gunits%mass
@@ -232,7 +237,11 @@ subroutine read_Ghdf5_particles()
   type(ion_table_type) :: itab
   real :: redshift
 
+  logical :: hdf5bool
 
+  ! set hdf5 boolean
+  !======================================================
+  hdf5bool = .true.
 
   ! set local particle numbers
   !============================
@@ -278,7 +287,7 @@ subroutine read_Ghdf5_particles()
 
      ! begin read
      !-----------------------------------------------------------!  
-     call form_gadget_snapshot_file_name(GV%SnapPath,GV%ParFileBase,GV%CurSnapNum,fn,snapfile)
+     call form_gadget_snapshot_file_name(GV%SnapPath,GV%ParFileBase,GV%CurSnapNum,fn,snapfile,hdf5bool)
      call mywrite("   reading particle snapshot file: "//trim(snapfile), verb, fmt="(A)")
      call hdf5_open_file(fh, snapfile, readonly=.true.)
 
