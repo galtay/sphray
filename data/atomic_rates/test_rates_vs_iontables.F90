@@ -34,7 +34,7 @@ call read_atomic_rates_file(rtable, rates_file)
 call read_ion_table_file(ion_file, itable)
 
 files(1) = "rate_comp_D1n5.txt"
-files(2) = "rate_comp_D1p2.txt"
+files(2) = "rate_comp_D1n1.txt"
 
 y=0.00
 GHI = itable%ihead%ispec%gammaHI(24)
@@ -44,11 +44,11 @@ write(*,*) "z(24) = ", itable%z(24)
 write(*,*) "G(24) = ", GHI
 
 
-logD = (/ -5.0, 2.0 /)
+logD = (/ -5.0, -1.0 /)
 D = 10**(logD)
 
 
-logTmin=3.0
+logTmin=1.0
 logTmax=6.0
 nsteps=100
 dlogT= (logTmax - logTmin)/(nsteps-1)
