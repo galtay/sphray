@@ -8,6 +8,7 @@ use myf90_mod
 use gadget_header_class
 use ion_table_class
 use particle_system_mod, only: set_ye
+use atomic_rates_mod, only: calc_colion_eq_fits
 use global_mod, only: psys, PLAN, GV
 use global_mod, only: saved_gheads, gconst
 
@@ -232,7 +233,9 @@ subroutine read_Ghdf5_particles()
   real(r8b) :: Hmf
   real(r8b) :: nH8
   real(r4b) :: nH4
-  real(r4b) :: temp
+  real(r8b) :: T8
+  real(r4b) :: T4
+  real(r8b) :: xvec(5)
 
   type(ion_table_type) :: itab
   real :: redshift
@@ -415,6 +418,12 @@ subroutine read_Ghdf5_particles()
   end do files
 
 
+  ! set caseA true or false for collisional equilibrium
+  !-----------------------------------------------------
+  caseA = .false.
+  if (.not. GV%OnTheSpotH  .or. GV%HydrogenCaseA) caseA(1) = .true.
+  if (.not. GV%OnTheSpotHe .or. GV%HeliumCaseA)   caseA(2) = .true.
+
 
   ! calculate xHI from CLOUDY iontables
   !-----------------------------------------------------------!  
@@ -440,18 +449,29 @@ subroutine read_Ghdf5_particles()
            Hmf / gconst%PROTONMASS
      nH4 = nH8
 
-     temp = psys%par(i)%T
+     T4 = psys%par(i)%T
 
 #ifdef incEOS
-     if (GV%EOStemp > 0.0) then
-        if (psys%par(i)%eos == 1.0) then
-           temp = GV%EOStemp
+     if (psys%par(i)%eos == 1.0) then
+        if (GV%EOStemp > 0.0) then
+           T4 = GV%EOStemp
+           psys%par(i)%T = T4
         endif
+        T8 = T4
+        call calc_colion_eq_fits('hui', T8, caseA, xvec)
+        psys%par(i)%xHI = xvec(1)
+
+     else
+        psys%par(i)%xHI = &
+             interpolate_ion_table( itab, redshift, log10(T4), log10(nH4) )
      endif
-#endif
+#else
 
      psys%par(i)%xHI = &
-          interpolate_ion_table( itab, redshift, log10(temp), log10(nH4) )
+          interpolate_ion_table( itab, redshift, log10(T4), log10(nH4) )
+
+#endif
+
   end do
 
 
@@ -470,11 +490,7 @@ subroutine read_Ghdf5_particles()
   psys%par%xHII = 1.0d0 - psys%par%xHI
 
 
-  ! set caseA true or false for collisional equilibrium
-  !-----------------------------------------------------
-  caseA = .false.
-  if (.not. GV%OnTheSpotH  .or. GV%HydrogenCaseA) caseA(1) = .true.
-  if (.not. GV%OnTheSpotHe .or. GV%HeliumCaseA)   caseA(2) = .true.
+
 
 
   ! if Helium, initialize ionization fractions to collisional equilibrium
