@@ -1,4 +1,4 @@
-files=["../rate_comp_D1n5.txt","../rate_comp_D1p2.txt"]
+files=["../rate_comp_D1n5.txt","../rate_comp_D1n1.txt"]
 
 logT = fltarr(100,2)
 x_h  = fltarr(100,2)
@@ -18,7 +18,7 @@ endfor
 
 altay_set_x
 
-altay_plot, [0], [0], xrange=[2.9,6.1], yrange=[-8.0,0.0], $
+altay_plot, [0], [0], xrange=[0.9,6.1], yrange=[-8.0,0.0], $
   xtitle="Log T", ytitle=TexToIdl("Equilibrium Log x_{HI}"), charsize=2
 
 ;altay_oplot, logT[*,0], alog10(x_c[*,0]), color=50
@@ -35,12 +35,12 @@ altay_oplot, logT[*,1], alog10(x_i[*,1]), color=254
 
 
 xyouts, 3.5, -7., "nH = 1.0e-5", color=1, charsize=2, charthick=2
-xyouts, 5.0, -4., "nH = 1.0e+2", color=1, charsize=2, charthick=2
+xyouts, 4.0, -1., "nH = 1.0e-1", color=1, charsize=2, charthick=2
 
 legend, ["Hui97-A", "Hui97-B", "Cloudy"], $
   linestyle=[0,0,0], color=[50,100,254], textcolor=[0,0,0], $
-  charsize=2, charthick=2, thick=2, position=[4.3, -0.2], box=0
+  charsize=2, charthick=2, thick=2, position=[1.2, -2.], box=0
 
-
+screen_to_png, "rate_compare.png"
 
 end
