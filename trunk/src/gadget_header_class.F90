@@ -5,15 +5,12 @@
 
 module gadget_header_class
 use myf90_mod
-
 #ifdef hdf5
   use hdf5_wrapper
 #endif
-
 #ifdef usempi
   use mpi
 #endif
-
 implicit none
 private
 
@@ -22,6 +19,11 @@ public :: gadget_units_type
 public :: gadget_constants_type
 
 public :: form_gadget_snapshot_file_name
+
+public :: read_gadget_header_file_hdf5
+public :: read_gadget_header_lun_hdf5
+public :: write_gadget_header_lun_hdf5
+
 public :: read_gadget_header_file
 public :: read_gadget_header_lun
 public :: write_gadget_header_lun
@@ -29,10 +31,7 @@ public :: write_gadget_header_lun
 public :: read_first_header
 public :: read_gadget_units
 public :: read_gadget_constants
-
-
 public :: gadget_header_to_file
-
 
 public :: broadcast_gadget_header
 public :: broadcast_gadget_units
@@ -138,12 +137,13 @@ contains
 !!  The above choices would return,
 !!  "/home/galtay/data/snapshots/snap_002.15
 !------------------------------------------------------------------------
-subroutine form_gadget_snapshot_file_name(path,base,SnapNum,FileNum,SnapFile)
+subroutine form_gadget_snapshot_file_name(path, base, SnapNum, FileNum, SnapFile, hdf5bool)
   character(*), intent(in)     :: path        !< path to snapshot dir
   character(*), intent(in)     :: base        !< base snapshot name
   integer(i4b), intent(in)     :: SnapNum     !< snapshot number
   integer(i4b), intent(in)     :: FileNum     !< file number of snapshot
   character(clen), intent(out) :: SnapFile    !< snapshot filename
+  logical, intent(in)          :: hdf5bool    !< hdf5 file? 
 
   character(clen) :: SnapFileTmp
   character(10) :: FileNumChar
@@ -157,12 +157,8 @@ subroutine form_gadget_snapshot_file_name(path,base,SnapNum,FileNum,SnapFile)
   !--------------------------------------
   write(SnapFileTmp,fmt) trim(path), trim(base), SnapNum
   SnapFile = trim(SnapFileTmp)
-#ifdef hdf5
-  SnapFile = trim(SnapFile) // ".hdf5"
-#endif
+  if (hdf5bool) SnapFile = trim(SnapFile) // ".hdf5"
   inquire( file=SnapFile, exist=Fthere )
-
-
 
 
   ! if the file number is 0 and a file with no extension exists then return
@@ -172,24 +168,20 @@ subroutine form_gadget_snapshot_file_name(path,base,SnapNum,FileNum,SnapFile)
      return
   else
      SnapFile = trim(SnapFileTmp) // "." // trim(adjustl(FileNumChar))
-#ifdef hdf5
-     SnapFile = trim(SnapFile) // ".hdf5"
-#endif
+     if (hdf5bool) SnapFile = trim(SnapFile) // ".hdf5"
   end if
-
 
 
 end subroutine form_gadget_snapshot_file_name
 
 
 
-
-!> reads a gadget header from snapfile and closes it afterwards
-!--------------------------------------------------------------
-subroutine read_gadget_header_file(snapfile, ghead)
+ 
+!> reads a gadget header from hdf5 snapfile and closes it afterwards
+!---------------------------------------------------------------------
+subroutine read_gadget_header_file_hdf5(snapfile, ghead)
   character(*), intent(in) :: snapfile
   type(gadget_header_type) :: ghead
-  integer(i4b) :: lun    
   integer(i4b) :: fh
 
 #ifdef hdf5
@@ -213,25 +205,17 @@ subroutine read_gadget_header_file(snapfile, ghead)
   call hdf5_read_attribute(fh,'Header/OmegaBaryon',ghead%OmegaB)
   call hdf5_close_file( fh )
 #else
-  call open_unformatted_file_r( snapfile, lun )
-  read(lun) ghead%npar_file(:), ghead%mass(:), ghead%a, ghead%z, &              
-       ghead%flag_sfr, ghead%flag_feedback, ghead%npar_all(:), &    
-       ghead%flag_cooling, ghead%nfiles, ghead%boxlen, ghead%OmegaM, &         
-       ghead%OmegaL, ghead%h, ghead%flag_age, ghead%flag_metals, &    
-       ghead%npar_hw(:), ghead%flag_entr_ics, ghead%OmegaB, &         
-       ghead%rays_traced, ghead%flag_Hmf, ghead%flag_Hemf, &
-       ghead%flag_helium, ghead%flag_gammaHI, ghead%flag_cloudy, &
-       ghead%flag_eos, ghead%unused(:)      
-  close(lun)
+  write(*,*) 'cant call read_gadget_header_file_hdf5 w/o defining hdf5 macro'
+  stop
 #endif
 
-end subroutine read_gadget_header_file
+end subroutine read_gadget_header_file_hdf5
 
 
 
 !> reads a gadget header from an already open file associated with lun 
 !----------------------------------------------------------------------
-subroutine read_gadget_header_lun(lun, ghead)
+subroutine read_gadget_header_lun_hdf5(lun, ghead)
   integer(i4b), intent(in) :: lun    
   type(gadget_header_type) :: ghead
 
@@ -254,23 +238,17 @@ subroutine read_gadget_header_lun(lun, ghead)
   call hdf5_read_attribute(lun,'Header/NumPart_Total_HighWord',ghead%npar_hw)
   call hdf5_read_attribute(lun,'Header/OmegaBaryon',ghead%OmegaB)
 #else
-  read(lun) ghead%npar_file(:), ghead%mass(:), ghead%a, ghead%z, &              
-       ghead%flag_sfr, ghead%flag_feedback, ghead%npar_all(:), &    
-       ghead%flag_cooling, ghead%nfiles, ghead%boxlen, ghead%OmegaM, &         
-       ghead%OmegaL, ghead%h, ghead%flag_age, ghead%flag_metals, &    
-       ghead%npar_hw(:), ghead%flag_entr_ics, ghead%OmegaB, &         
-       ghead%rays_traced, ghead%flag_Hmf, ghead%flag_Hemf, &
-       ghead%flag_helium, ghead%flag_gammaHI, ghead%flag_cloudy, &
-       ghead%flag_eos, ghead%unused(:)      
+  write(*,*) 'cant call read_gadget_header_lun_hdf5 w/o defining hdf5 macro'
+  stop
 #endif
 
-end subroutine read_gadget_header_lun
+end subroutine read_gadget_header_lun_hdf5
 
 
 
 !> writes a gadget header from an already open file associated with lun 
 !----------------------------------------------------------------------
-subroutine write_gadget_header_lun(lun, ghead)
+subroutine write_gadget_header_lun_hdf5(lun, ghead)
   integer(i4b), intent(in) :: lun    
   type(gadget_header_type) :: ghead
 
@@ -293,6 +271,63 @@ subroutine write_gadget_header_lun(lun, ghead)
   call hdf5_write_attribute(lun,'Header/NumPart_Total_HighWord',ghead%npar_hw)
   call hdf5_write_attribute(lun,'Header/OmegaBaryon',ghead%OmegaB)
 #else
+  write(*,*) 'cant call write_gadget_header_lun_hdf5 w/o defining hdf5 macro'
+  stop
+#endif
+
+end subroutine write_gadget_header_lun_hdf5
+
+
+
+!> reads a gadget header from snapfile and closes it afterwards
+!--------------------------------------------------------------
+subroutine read_gadget_header_file(snapfile, ghead)
+  character(*), intent(in) :: snapfile
+  type(gadget_header_type) :: ghead
+  integer(i4b) :: lun    
+
+  call open_unformatted_file_r( snapfile, lun )
+  read(lun) ghead%npar_file(:), ghead%mass(:), ghead%a, ghead%z, &              
+       ghead%flag_sfr, ghead%flag_feedback, ghead%npar_all(:), &    
+       ghead%flag_cooling, ghead%nfiles, ghead%boxlen, ghead%OmegaM, &         
+       ghead%OmegaL, ghead%h, ghead%flag_age, ghead%flag_metals, &    
+       ghead%npar_hw(:), ghead%flag_entr_ics, ghead%OmegaB, &         
+       ghead%rays_traced, ghead%flag_Hmf, ghead%flag_Hemf, &
+       ghead%flag_helium, ghead%flag_gammaHI, ghead%flag_cloudy, &
+       ghead%flag_eos, ghead%unused(:)      
+  close(lun)
+
+
+end subroutine read_gadget_header_file
+
+
+
+!> reads a gadget header from an already open file associated with lun 
+!----------------------------------------------------------------------
+subroutine read_gadget_header_lun(lun, ghead)
+  integer(i4b), intent(in) :: lun    
+  type(gadget_header_type) :: ghead
+
+  read(lun) ghead%npar_file(:), ghead%mass(:), ghead%a, ghead%z, &              
+       ghead%flag_sfr, ghead%flag_feedback, ghead%npar_all(:), &    
+       ghead%flag_cooling, ghead%nfiles, ghead%boxlen, ghead%OmegaM, &         
+       ghead%OmegaL, ghead%h, ghead%flag_age, ghead%flag_metals, &    
+       ghead%npar_hw(:), ghead%flag_entr_ics, ghead%OmegaB, &         
+       ghead%rays_traced, ghead%flag_Hmf, ghead%flag_Hemf, &
+       ghead%flag_helium, ghead%flag_gammaHI, ghead%flag_cloudy, &
+       ghead%flag_eos, ghead%unused(:)      
+
+end subroutine read_gadget_header_lun
+
+
+
+
+!> writes a gadget header from an already open file associated with lun 
+!----------------------------------------------------------------------
+subroutine write_gadget_header_lun(lun, ghead)
+  integer(i4b), intent(in) :: lun    
+  type(gadget_header_type) :: ghead
+
   write(lun) ghead%npar_file(:), ghead%mass(:), ghead%a, ghead%z, &              
        ghead%flag_sfr, ghead%flag_feedback, ghead%npar_all(:), &    
        ghead%flag_cooling, ghead%nfiles, ghead%boxlen, ghead%OmegaM, &         
@@ -301,7 +336,7 @@ subroutine write_gadget_header_lun(lun, ghead)
        ghead%rays_traced, ghead%flag_Hmf, ghead%flag_Hemf, &
        ghead%flag_helium, ghead%flag_gammaHI, ghead%flag_cloudy, &
        ghead%flag_eos, ghead%unused(:)      
-#endif
+
 
 end subroutine write_gadget_header_lun
 
@@ -312,39 +347,46 @@ end subroutine write_gadget_header_lun
 
 
 
-!> reads the first header in a snapshot
-!-----------------------------------------
-subroutine read_first_header( snapbase, ghead, gunits, gconst, simname )
-  character(*) :: snapbase
+
+
+
+
+!> reads the first header in a snapshot. snapbase is everything up until the 
+!! snapshot number so that for /data/snapshot_009/snap_009[.0][.hdf5], 
+!! snapbase = /data/snapshot_009/snap
+!---------------------------------------------------------------------------
+subroutine read_first_header( snapbase, ghead, gunits, gconst, hdf5bool, simname  )
+  character(*), intent(in) :: snapbase
   type(gadget_header_type) :: ghead
   type(gadget_units_type) :: gunits
   type(gadget_constants_type) :: gconst
+  logical, intent(in) :: hdf5bool
   character(*), intent(in), optional :: simname
+
   character(len(snapbase)+10) :: snapfile
   logical :: fthere
 
-#ifdef hdf5
-  snapfile = trim(snapbase) // ".hdf5"
-  inquire(file=snapfile, exist=fthere)
-  if (.not. fthere) then
-     snapfile = trim(snapbase) // ".0.hdf5"
-  endif
-#else
-  snapfile = trim(snapbase)
-  inquire(file=snapfile, exist=fthere)
-  if (.not. fthere) then
-     snapfile = trim(snapbase) // ".0"
-  endif
-#endif
-
-  call read_gadget_header_file(snapfile, ghead)
-  if (present(simname)) then
-     call read_gadget_units(snapfile, gunits, simname) 
-     call read_gadget_constants(snapfile, gconst, simname)
+  if (hdf5bool) then
+     snapfile = trim(snapbase) // ".hdf5"
+     inquire(file=snapfile, exist=fthere)
+     if (.not. fthere) then
+        snapfile = trim(snapbase) // ".0.hdf5"
+     endif
+     call read_gadget_header_file_hdf5(snapfile, ghead)
+     call read_gadget_units(snapfile, gunits, hdf5bool) 
+     call read_gadget_constants(snapfile, gconst, hdf5bool)
   else
-     call read_gadget_units(snapfile, gunits) 
-     call read_gadget_constants(snapfile, gconst)
+     snapfile = trim(snapbase)
+     inquire(file=snapfile, exist=fthere)
+     if (.not. fthere) then
+        snapfile = trim(snapbase) // ".0"
+     endif
+     call read_gadget_header_file(snapfile, ghead)
+     call read_gadget_units(snapfile, gunits, hdf5bool, simname ) 
+     call read_gadget_constants(snapfile, gconst, hdf5bool, simname )
   endif
+
+
   call gadget_header_to_file(ghead,stdout) 
  
 
@@ -357,42 +399,44 @@ end subroutine read_first_header
 
 !> reads an hdf5 gadget units
 !-----------------------------------------
-subroutine read_gadget_units(snapfile, gunits, simname)
+subroutine read_gadget_units(snapfile, gunits, hdf5bool, simname )
   character(*), intent(in) :: snapfile
   type(gadget_units_type) :: gunits
+  logical, intent(in) :: hdf5bool
   character(*), intent(in), optional :: simname
+
   integer(i4b) :: fh
-  integer(i4b) :: lun
-
-
+  
+  if (hdf5bool) then 
 #ifdef hdf5
-  call hdf5_open_file( fh, snapfile, readonly=.true. )
-  call hdf5_read_attribute(fh,'Units/UnitLength_in_cm',gunits%len)
-  call hdf5_read_attribute(fh,'Units/UnitMass_in_g',gunits%mass)
-  call hdf5_read_attribute(fh,'Units/UnitVelocity_in_cm_per_s',gunits%vel)
-  call hdf5_read_attribute(fh,'Units/UnitDensity_in_cgs',gunits%rho)
-  call hdf5_read_attribute(fh,'Units/UnitEnergy_in_cgs',gunits%energy)
-  call hdf5_read_attribute(fh,'Units/UnitPressure_in_cgs',gunits%prs)
-  call hdf5_read_attribute(fh,'Units/UnitTime_in_s',gunits%time)
-  call hdf5_close_file( fh )
-#else
-  if ( .not. present(simname) ) then
-     write(*,*) " if not using hdf5 must supply simname [e.g. 'gimic']"
-     stop
-  else
-     select case (trim(simname))
-     case("gimic")
-        call set_gadget_owls_gimic_units(gunits)
-     case("owls")
-        call set_gadget_owls_gimic_units(gunits)
-     case("default")
-        call set_gadget_default_units(gunits)
-     case default
-        write(*,*) "  sim name: ", trim(simname), " not recognized"
-        stop
-     end select
-  endif
+     call hdf5_open_file( fh, snapfile, readonly=.true. )
+     call hdf5_read_attribute(fh,'Units/UnitLength_in_cm',gunits%len)
+     call hdf5_read_attribute(fh,'Units/UnitMass_in_g',gunits%mass)
+     call hdf5_read_attribute(fh,'Units/UnitVelocity_in_cm_per_s',gunits%vel)
+     call hdf5_read_attribute(fh,'Units/UnitDensity_in_cgs',gunits%rho)
+     call hdf5_read_attribute(fh,'Units/UnitEnergy_in_cgs',gunits%energy)
+     call hdf5_read_attribute(fh,'Units/UnitPressure_in_cgs',gunits%prs)
+     call hdf5_read_attribute(fh,'Units/UnitTime_in_s',gunits%time)
+     call hdf5_close_file( fh )
 #endif
+  else
+     if ( .not. present(simname) ) then
+        write(*,*) " if not using hdf5 must supply simname [e.g. 'gimic']"
+        stop
+     else
+        select case (trim(simname))
+        case("gimic")
+           call set_gadget_owls_gimic_units(gunits)
+        case("owls")
+           call set_gadget_owls_gimic_units(gunits)
+        case("default")
+           call set_gadget_default_units(gunits)
+        case default
+           write(*,*) "  sim name: ", trim(simname), " not recognized"
+           stop
+        end select
+     endif
+  endif
 
 end subroutine read_gadget_units
 
@@ -432,59 +476,62 @@ end subroutine set_gadget_default_units
 
 !> reads an hdf5 gadget constants
 !-----------------------------------------
-subroutine read_gadget_constants(snapfile, gconst, simname)
+subroutine read_gadget_constants(snapfile, gconst, hdf5bool, simname)
   character(*), intent(in) :: snapfile
   type(gadget_constants_type) :: gconst
+  logical, intent(in) :: hdf5bool
   character(*), intent(in), optional :: simname
+
   integer(i4b) :: fh
   integer(i8b) :: lun
 
-
+  if (hdf5bool) then 
 #ifdef hdf5
-  call hdf5_open_file( fh, snapfile, readonly=.true. )
-  call hdf5_read_attribute(fh,'Constants/PI',gconst%pi)
-  call hdf5_read_attribute(fh,'Constants/GAMMA',gconst%gamma)
-  call hdf5_read_attribute(fh,'Constants/GRAVITY',gconst%gravity)
-  call hdf5_read_attribute(fh,'Constants/SOLAR_MASS',gconst%solar_mass)
-  call hdf5_read_attribute(fh,'Constants/SOLAR_LUM',gconst%solar_lum)
-  call hdf5_read_attribute(fh,'Constants/RAD_CONST',gconst%rad_const)
-  call hdf5_read_attribute(fh,'Constants/AVOGADRO',gconst%avogadro)
-  call hdf5_read_attribute(fh,'Constants/BOLTZMANN',gconst%boltzmann)
-  call hdf5_read_attribute(fh,'Constants/GAS_CONST',gconst%gas_const)
-  call hdf5_read_attribute(fh,'Constants/C',gconst%c)
-  call hdf5_read_attribute(fh,'Constants/PLANCK',gconst%planck)
-  call hdf5_read_attribute(fh,'Constants/CM_PER_MPC',gconst%cm_per_mpc)
-  call hdf5_read_attribute(fh,'Constants/PROTONMASS',gconst%protonmass)
-  call hdf5_read_attribute(fh,'Constants/ELECTRONMASS',gconst%electronmass)
-  call hdf5_read_attribute(fh,'Constants/ELECTRONCHARGE',gconst%electroncharge)
-  call hdf5_read_attribute(fh,'Constants/HUBBLE',gconst%hubble)
-  call hdf5_read_attribute(fh,'Constants/T_CMB0',gconst%t_cmb0)
-  call hdf5_read_attribute(fh,'Constants/SEC_PER_MEGAYEAR',gconst%sec_per_megayear)
-  call hdf5_read_attribute(fh,'Constants/SEC_PER_YEAR',gconst%sec_per_year)
-  call hdf5_read_attribute(fh,'Constants/STEFAN',gconst%stefan)
-  call hdf5_read_attribute(fh,'Constants/THOMPSON',gconst%thompson)
-  call hdf5_read_attribute(fh,'Constants/EV_TO_ERG',gconst%ev_to_erg)
-  call hdf5_read_attribute(fh,'Constants/Z_Solar',gconst%z_solar)
-  call hdf5_close_file( fh )
-#else
-  if ( .not. present(simname) ) then
-     write(*,*) " if not using hdf5 must supply simname [e.g. 'gimic']"
-     stop
-  else
-     select case (trim(simname))
-     case("gimic")
-        call set_gadget_owls_gimic_constants(gconst)
-     case("owls")
-        call set_gadget_owls_gimic_constants(gconst)
-     case("default")
-        call set_gadget_owls_gimic_constants(gconst)
-     case default
-        write(*,*) "  sim name: ", trim(simname), " not recognized"
-        stop
-     end select
-  endif
+     call hdf5_open_file( fh, snapfile, readonly=.true. )
+     call hdf5_read_attribute(fh,'Constants/PI',gconst%pi)
+     call hdf5_read_attribute(fh,'Constants/GAMMA',gconst%gamma)
+     call hdf5_read_attribute(fh,'Constants/GRAVITY',gconst%gravity)
+     call hdf5_read_attribute(fh,'Constants/SOLAR_MASS',gconst%solar_mass)
+     call hdf5_read_attribute(fh,'Constants/SOLAR_LUM',gconst%solar_lum)
+     call hdf5_read_attribute(fh,'Constants/RAD_CONST',gconst%rad_const)
+     call hdf5_read_attribute(fh,'Constants/AVOGADRO',gconst%avogadro)
+     call hdf5_read_attribute(fh,'Constants/BOLTZMANN',gconst%boltzmann)
+     call hdf5_read_attribute(fh,'Constants/GAS_CONST',gconst%gas_const)
+     call hdf5_read_attribute(fh,'Constants/C',gconst%c)
+     call hdf5_read_attribute(fh,'Constants/PLANCK',gconst%planck)
+     call hdf5_read_attribute(fh,'Constants/CM_PER_MPC',gconst%cm_per_mpc)
+     call hdf5_read_attribute(fh,'Constants/PROTONMASS',gconst%protonmass)
+     call hdf5_read_attribute(fh,'Constants/ELECTRONMASS',gconst%electronmass)
+     call hdf5_read_attribute(fh,'Constants/ELECTRONCHARGE',gconst%electroncharge)
+     call hdf5_read_attribute(fh,'Constants/HUBBLE',gconst%hubble)
+     call hdf5_read_attribute(fh,'Constants/T_CMB0',gconst%t_cmb0)
+     call hdf5_read_attribute(fh,'Constants/SEC_PER_MEGAYEAR',gconst%sec_per_megayear)
+     call hdf5_read_attribute(fh,'Constants/SEC_PER_YEAR',gconst%sec_per_year)
+     call hdf5_read_attribute(fh,'Constants/STEFAN',gconst%stefan)
+     call hdf5_read_attribute(fh,'Constants/THOMPSON',gconst%thompson)
+     call hdf5_read_attribute(fh,'Constants/EV_TO_ERG',gconst%ev_to_erg)
+     call hdf5_read_attribute(fh,'Constants/Z_Solar',gconst%z_solar)
+     call hdf5_close_file( fh )
 #endif
-
+  else
+     if ( .not. present(simname) ) then
+        write(*,*) " if not using hdf5 must supply simname [e.g. 'gimic']"
+        stop
+     else
+        select case (trim(simname))
+        case("gimic")
+           call set_gadget_owls_gimic_constants(gconst)
+        case("owls")
+           call set_gadget_owls_gimic_constants(gconst)
+        case("default")
+           call set_gadget_owls_gimic_constants(gconst)
+        case default
+           write(*,*) "  sim name: ", trim(simname), " not recognized"
+           stop
+        end select
+     endif
+  endif
+  
 end subroutine read_gadget_constants
 
 

@@ -44,6 +44,12 @@ subroutine get_planning_data_gadget()
   real(r8b) :: kpc2cm
   real(r8b) :: km2cm
 
+  logical :: hdf5bool
+
+  ! set hdf5 boolean
+  !======================================================
+  hdf5bool = .false.
+
   ! open up the planning data log file
   !======================================================
   logfile = trim(GV%OutputDir) // "/" // "particle_headers.log"
@@ -59,8 +65,8 @@ subroutine get_planning_data_gadget()
   if ( allocated(saved_gheads) ) deallocate(saved_gheads)
   allocate( saved_gheads(iSnap:fSnap, 0:pfiles-1) )
  
-  call read_gadget_constants( "", gconst, "default" ) 
-  call read_gadget_units( "", gunits, "default" )  
+  call read_gadget_constants( "dummysnapname", gconst, hdf5bool, "default" ) 
+  call read_gadget_units( "dummysnapname", gunits, hdf5bool, "default" )  
 
   ! read all particle headers and write to log file
   !===================================================
@@ -69,7 +75,7 @@ subroutine get_planning_data_gadget()
      do j = 0,pfiles-1
 
 
-        call form_gadget_snapshot_file_name(GV%SnapPath, GV%ParFileBase, i, j, snapfile)
+        call form_gadget_snapshot_file_name(GV%SnapPath, GV%ParFileBase, i, j, snapfile, hdf5bool)
         write(loglun,'(I3,"  ",A)') i, trim(snapfile)
 
         call read_gadget_header_file(snapfile,ghead)
@@ -185,7 +191,11 @@ subroutine read_Gpub_particles()
   logical :: caseA(2)
   real(r8b) :: MB 
 
+  logical :: hdf5bool
 
+  ! set hdf5 boolean
+  !======================================================
+  hdf5bool = .false.
 
   ! set local particle numbers
   !============================
@@ -228,7 +238,7 @@ subroutine read_Gpub_particles()
 
      ! begin read
      !-----------------------------------------------------------!  
-     call form_gadget_snapshot_file_name(GV%SnapPath,GV%ParFileBase,GV%CurSnapNum,fn,snapfile)
+     call form_gadget_snapshot_file_name(GV%SnapPath,GV%ParFileBase,GV%CurSnapNum,fn,snapfile,hdf5bool)
      call mywrite("   reading public gadget particle snapshot file "//trim(snapfile), verb,fmt="(A)")
      call open_unformatted_file_r( snapfile, lun )
      call read_gadget_header_lun(lun,ghead)
@@ -392,6 +402,11 @@ subroutine read_Gcool_particles()
   real(r8b) :: Tdum
   real(r8b) :: MB 
 
+  logical :: hdf5bool
+
+  ! set hdf5 boolean
+  !======================================================
+  hdf5bool = .false.
 
   ! set local particle numbers
   !============================
@@ -435,7 +450,7 @@ subroutine read_Gcool_particles()
 
      ! begin read
      !-----------------------------------------------------------!  
-     call form_gadget_snapshot_file_name(GV%SnapPath,GV%ParFileBase,GV%CurSnapNum,fn,snapfile)
+     call form_gadget_snapshot_file_name(GV%SnapPath,GV%ParFileBase,GV%CurSnapNum,fn,snapfile,hdf5bool)
      call mywrite("reading gadget w/ cooling snapshot file "//trim(snapfile), verb)
      call open_unformatted_file_r( snapfile, lun )
      read(lun) ghead
@@ -633,6 +648,11 @@ subroutine read_Gbromm_particles()
   real(r8b) :: Tdum
   real(r8b) :: MB 
 
+  logical :: hdf5bool
+
+  ! set hdf5 boolean
+  !======================================================
+  hdf5bool = .false.
 
   ! set local particle numbers
   !============================
@@ -676,7 +696,7 @@ subroutine read_Gbromm_particles()
 
      ! begin read
      !-----------------------------------------------------------!  
-     call form_gadget_snapshot_file_name(GV%SnapPath,GV%ParFileBase,GV%CurSnapNum,fn,snapfile)
+     call form_gadget_snapshot_file_name(GV%SnapPath,GV%ParFileBase,GV%CurSnapNum,fn,snapfile,hdf5bool)
      call mywrite("reading bromm gadget snapshot file "//trim(snapfile), verb)
      call open_unformatted_file_r( snapfile, lun )
      read(lun) ghead
