@@ -1,5 +1,6 @@
 FC= f90 
 FFLAGS= -g -C -Xlist -xcheck=stkovf -e -m64
+FFLAGS= -g -C -xcheck=stkovf -e -m64
 
 
 ISLIB=  -L

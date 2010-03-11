@@ -643,11 +643,14 @@ subroutine particle_info_to_screen(psys,str,lun)
   write(outlun,100) "xHI",    minval(psys%par%xHI), maxval(psys%par%xHI), &
        meanval_real(psys%par%xHI)
 
+
 #ifdef cloudy
   write(outlun,100) "xHI_cld",    minval(psys%par%xHI_cloudy), maxval(psys%par%xHI_cloudy), &
        meanval_real(psys%par%xHI_cloudy)
 #endif
   
+
+
   write(outlun,100) "xHII",   minval(psys%par%xHII), maxval(psys%par%xHII), &
        meanval_real(psys%par%xHII)
 
@@ -685,10 +688,12 @@ subroutine particle_info_to_screen(psys,str,lun)
        meanval_real(psys%par%time)
 #endif
 
+
 #ifdef incEOS
   write(outlun,100) "eos",   minval(psys%par%eos), maxval(psys%par%eos), &
        meanval_real(psys%par%eos)  
 #endif
+
 
 
   write(outlun,101) "lasthit", minval(psys%par%lasthit), maxval(psys%par%lasthit)

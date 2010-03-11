@@ -61,6 +61,9 @@ subroutine get_planning_data(skewers)
      call get_planning_data_sources()
   endif
 
+
+
+
 end subroutine get_planning_data
 
 
@@ -205,12 +208,23 @@ subroutine readin_snapshot(skewers)
   endif
 
 
+
+  ! these quantities track the photoionization rate.  they are 
+  ! rezeroed at inputs (because new source files are loaded) and 
+  ! outputs (for time dependence)
+  !===============================================================
+#ifdef outGammaHI
+  psys%par(:)%gammaHI = 0.0
+  psys%par(:)%time = 0.0
+#endif
+
+
   ! set par and src file bases for output to logfiles
   !====================================================
   fmt = "(A,'/',A,'_',I3.3)"
   write(snpbase,fmt) trim(GV%SnapPath),   trim(GV%ParFileBase),    GV%CurSnapNum
   write(srcbase,fmt) trim(GV%SourcePath), trim(GV%SourceFileBase), GV%CurSnapNum
- 
+
 
   ! write fresh reads to the particle_data.log and source_data.log files
   !========================================================================  
@@ -219,6 +233,7 @@ subroutine readin_snapshot(skewers)
   call particle_info_to_screen(psys,str,GV%pardatalun)
   write(GV%pardatalun,*)
   write(GV%pardatalun,*)
+
 
   if (.not. skew) then
 #ifdef hdf5
@@ -233,6 +248,8 @@ subroutine readin_snapshot(skewers)
      write(GV%srcdatalun,*)
      write(GV%srcdatalun,*)
   endif
+
+
 
   ! take care of all the box variables
   !===============================================================
@@ -331,6 +348,7 @@ subroutine readin_snapshot(skewers)
   end if
 
 
+
   ! set EOS particles to EOS temp if you want
   !=======================================================
 #ifdef incEOS
@@ -345,6 +363,20 @@ subroutine readin_snapshot(skewers)
   endif
 #endif
 
+
+  ! set all particles initially neutral for OWLS runs 
+  !=======================================================
+#ifdef OWLS
+  if (first) then
+     do i = 1, size(psys%par(:))
+        if (psys%par(i)%eos == 1.0) then
+           psys%par(i)%xHI = 1.0d0
+        else
+           psys%par(i)%xHI = 1.0d0
+        endif
+     end do
+  endif
+#endif
 
 
   ! set neutral or ionized if we need to
@@ -366,14 +398,7 @@ endif
   if (GV%IsoTemp /= 0.0) psys%par(:)%T = GV%IsoTemp
 
 
-  ! these quantities track the photoionization rate.  they are 
-  ! rezeroed at inputs (because new source files are loaded) and 
-  ! outputs (for time dependence)
-  !===============================================================
-#ifdef outGammaHI
-  psys%par(:)%gammaHI = 0.0
-  psys%par(:)%time = 0.0
-#endif
+
 
   ! cap the ionization fractions and temperatures if we have to
   !================================================================
@@ -469,6 +494,8 @@ endif
   endif
 
   call mywrite("",verb)
+
+  write(*,*) 'finished read snapshot data'
  
 
 end subroutine readin_snapshot
