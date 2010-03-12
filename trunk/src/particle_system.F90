@@ -138,7 +138,7 @@ contains
 !===========================================================================
 subroutine orderparticles(pars,order)
   type(particle_type), intent(inout) :: pars(:) !< input particles
-  integer(i8b), intent(inout) :: order(:)       !< desired order
+  integer(i4b), intent(inout) :: order(:)       !< desired order
 
   type(particle_type) :: par
   integer(i8b) :: i
@@ -170,7 +170,7 @@ end subroutine orderparticles
 !> reorders the particles in a particle system
     subroutine orderpsys(psys,order)
       type(particle_system_type), intent(inout) :: psys  !< inout particle sys
-      integer(i8b), intent(inout) :: order(1:size(psys%par))  !< desired order
+      integer(i4b), intent(inout) :: order(1:size(psys%par))  !< desired order
 
       type(particle_type) :: par
       integer(i8b) :: i

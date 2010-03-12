@@ -12,7 +12,7 @@ use particle_system_mod, only: adjustbox
 implicit none
  
  integer, private, parameter :: nsubcell = 2**3  !< number of daughter cells 
- integer, private, parameter :: bytespercell = 3 * 8 + 4 * 12 !< bytes per cell
+ integer, private, parameter :: bytespercell = 3 * 4 + 4 * 12 !< bytes per cell
  integer, private, parameter :: PartInCell = 12 !< dflt min particles in a leaf
  real, private :: tree_storage_factor !< guess at storage space for tree
 
@@ -20,9 +20,9 @@ implicit none
 
 !> oct-tree cell type
  type cell_type
-    integer(i8b) :: start  !< index of head particle in the cell 
-    integer(i8b) :: next   !< index of next cell on current or higher lvl  
-    integer(i8b) :: daughter !< index of first daughter cell
+    integer(i4b) :: start  !< index of head particle in the cell 
+    integer(i4b) :: next   !< index of next cell on current or higher lvl  
+    integer(i4b) :: daughter !< index of first daughter cell
     real(r4b) :: bot(1:3) !< oct-tree lower boundaries (fit particle positions)
     real(r4b) :: top(1:3) !< oct-tree upper boundaries (fit particle positions)
     real(r4b) :: botrange(1:3) !< AABB lower boundaries (fit smoothing lengths)
@@ -36,8 +36,8 @@ implicit none
     integer(i8b) :: ncells     !< number of cells rezero if theres a problem
     integer(i8b) :: maxcells   !< maximum number of cells allowed
     integer(i8b) :: nplastcell !< work variable used to construct tree 
-    integer(i8b), allocatable    :: partorder(:) !< ordered list of the pars
-    integer(i8b), allocatable    :: cellorder(:) !< ordered list of the cells
+    integer(i4b), allocatable    :: partorder(:) !< ordered list of the pars
+    integer(i4b), allocatable    :: cellorder(:) !< ordered list of the cells
     type(cell_type), allocatable :: cell(:)      !< the array of tree cells
  end type oct_tree_type
 
@@ -153,13 +153,13 @@ subroutine maketree(psys,tree,MBalloc)
   if (tree%maxcells == 0) call myerr(" maxcells=0",myname,crash)
   tree%np = size(psys%par)
     
-  MB = tree%np * 8 / 2**20
+  MB = tree%np * 4 / 2**20
   str = "cant allocate oct-tree%partorder [npar]"
   allocate(tree%partorder(1:tree%np),stat=err)
   if(err.ne.0) call myerr(str,myname,crash)     
   MBalloc = MBalloc + MB
 
-  MB = max(tree%np,tree%maxcells) * 8 / 2**20
+  MB = max(tree%np,tree%maxcells) * 4 / 2**20
   str = "cant allocate oct-tree%cellorder max[npar,maxcells]"
   allocate(tree%cellorder(1:max(tree%np,tree%maxcells)),stat=err)
   if(err.ne.0) call myerr(str,myname,crash)
