@@ -17,7 +17,7 @@ use atomic_rates_mod, only: write_atomic_rates_to_log_file
 use iliev_comparison_project_mod, only: initialize_iliev_tests
 use main_input_mod, only: get_planning_data
 use global_mod, only: GV, PLAN, rtable, xHII_k, cmbT_k, isoT_k, gconst
-use ray_mod, only: curface
+use ray_mod, only: curface, sobol_seed
 implicit none
 
   contains
@@ -453,7 +453,7 @@ subroutine initialize_global_variables()
   ! only important for runs with a background source (src%EmisPrf=-3)
   !-------------------------------------------------------------------
   curface = 0
-
+  sobol_seed=0
 
   call mywrite("",verb) 
 

@@ -110,6 +110,8 @@ contains
        
        ! begin ray tracing 
        !------------------------- 
+       open(unit=349,file='raystats.dat')
+
        src_rays: do rayn = one, PLAN%snap(snapn)%SrcRays
 
           
@@ -137,6 +139,8 @@ contains
           
           !  create a source ray and calc the impacts
           call make_source_ray(psys%src(srcn), GV%rayn, GV%dtray_s, GV%Lunit, psys%box, ray)
+
+          write(349,*) ray%start
 
 !          ray%dir = (/1.,0.,0./)
 !          write(*,"(A,3F6.3)") "ray start: ", ray%start
@@ -292,6 +296,8 @@ contains
           
           
        end do src_rays
+
+       close(349)
        
        ! free up the memory from the globalraylist.
        call kill_raylist(globalraylist)
