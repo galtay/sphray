@@ -9,9 +9,29 @@ use myf90_mod
 use particle_system_mod
 use oct_tree_mod
 use mt19937_mod, only: genrand_real1
+use sobol_mod, only: i8_sobol
 implicit none
 
+  private
+  public :: raystatbuffsize
+  public :: curface
+  public :: sobol_seed
+  public :: ray_type
+  public :: raystat_type
+  public :: set_ray
+  public :: cell_intersection
+  public :: part_intersection
+  public :: transform_ray
+  public :: dist2ray
+  public :: make_source_ray
+  public :: make_probe_ray
+  public :: make_recomb_ray
+  public :: make_skewer_ray
+
 integer, parameter :: raystatbuffsize = 5000
+real(r8b), parameter :: one_sixth = 1.0d0/6.0d0
+real(r8b), parameter :: one = 1.0d0
+real(r8b), parameter :: zero = 0.0d0
 
 !> a ray to be traced through the density field while depositing photons
 !-----------------------------------------------------------------------
@@ -38,23 +58,11 @@ integer, parameter :: raystatbuffsize = 5000
      real(r4b) :: d
   end type raystat_type
 
-  private
-  public :: raystatbuffsize
-  public :: curface
-  public :: ray_type
-  public :: raystat_type
-  public :: set_ray
-  public :: cell_intersection
-  public :: part_intersection
-  public :: transform_ray
-  public :: dist2ray
-  public :: make_source_ray
-  public :: make_probe_ray
-  public :: make_recomb_ray
-  public :: make_skewer_ray
-
 
   integer :: curface  !< used to track rays emitted from box faces
+  integer(i8b) :: sobol_seed !< used to track position in sobol sequence
+
+  ! note the routine i8_sobol auto increments sobol_seed
 
 contains
 
@@ -76,7 +84,7 @@ contains
     real(r8b) :: rn, rn1, rn2
     real(r8b) :: prate
     integer :: i
-
+    real(r8b), save :: quasi(2)
 
   
 !  set the direction of the ray from the emmission profile (src%EmisPrf)
@@ -95,6 +103,7 @@ contains
 !  density, n,  in an optically thin volume.
 
 
+
     select case (src%EmisPrf)
 
 
@@ -105,50 +114,80 @@ contains
           curface = curface + 1
           if (curface > 6) curface = 1
 
-          rn1 = genrand_real1()
-          rn2 = genrand_real1()
+!          rn1 = genrand_real1()
+!          rn2 = genrand_real1()
 
           ray%dir = 0.0
 
           select case (curface)
              
              case(1)
+                call i8_sobol( 2, sobol_seed, quasi(1:2) )                
                 ray%dir(1) = 1.0            
                 ray%start(1) = box%bot(1)
-                ray%start(2) = box%bot(2) + rn1 * (box%top(2)-box%bot(2))
-                ray%start(3) = box%bot(3) + rn2 * (box%top(3)-box%bot(3))
+                ray%start(2) = box%bot(2) + quasi(1) * (box%top(2)-box%bot(2))
+                ray%start(3) = box%bot(3) + quasi(2) * (box%top(3)-box%bot(3))
              case(2)
+                quasi = quasi + one_sixth
+                do i = 1,2
+                   if (quasi(i) >= one) quasi(i) = quasi(i) - one
+                   if (quasi(i) < zero) quasi(i) = one + quasi(i)
+                end do
                 ray%dir(2) = 1.0             
                 ray%start(2) = box%bot(2)
-                ray%start(3) = box%bot(3) + rn1 * (box%top(3)-box%bot(3))
-                ray%start(1) = box%bot(1) + rn2 * (box%top(1)-box%bot(1))
+                ray%start(3) = box%bot(3) + quasi(1) * (box%top(3)-box%bot(3))
+                ray%start(1) = box%bot(1) + quasi(2) * (box%top(1)-box%bot(1))
              case(3)
+                quasi = quasi + one_sixth
+                do i = 1,2
+                   if (quasi(i) >= one) quasi(i) = quasi(i) - one
+                   if (quasi(i) < zero) quasi(i) = one + quasi(i)
+                end do
                 ray%dir(3) = 1.0             
                 ray%start(3) = box%bot(3)
-                ray%start(1) = box%bot(1) + rn1 * (box%top(1)-box%bot(1))
-                ray%start(2) = box%bot(2) + rn2 * (box%top(2)-box%bot(2))     
+                ray%start(1) = box%bot(1) + quasi(1) * (box%top(1)-box%bot(1))
+                ray%start(2) = box%bot(2) + quasi(2) * (box%top(2)-box%bot(2)) 
              case(4)
+                quasi = quasi + one_sixth
+                do i = 1,2
+                   if (quasi(i) >= one) quasi(i) = quasi(i) - one
+                   if (quasi(i) < zero) quasi(i) = one + quasi(i)
+                end do
                 ray%dir(1) = -1.0             
                 ray%start(1) = box%top(1)
-                ray%start(2) = box%bot(2) + rn1 * (box%top(2)-box%bot(2))
-                ray%start(3) = box%bot(3) + rn2 * (box%top(3)-box%bot(3))
+                ray%start(2) = box%bot(2) + quasi(2) * (box%top(2)-box%bot(2))
+                ray%start(3) = box%bot(3) + quasi(1) * (box%top(3)-box%bot(3))
              case(5)
+                quasi = quasi + one_sixth
+                do i = 1,2
+                   if (quasi(i) >= one) quasi(i) = quasi(i) - one
+                   if (quasi(i) < zero) quasi(i) = one + quasi(i)
+                end do
                 ray%dir(2) = -1.0
                 ray%start(2) = box%top(2)
-                ray%start(3) = box%bot(3) + rn1 * (box%top(3)-box%bot(3))
-                ray%start(1) = box%bot(1) + rn2 * (box%top(1)-box%bot(1))
+                ray%start(3) = box%bot(3) + quasi(2) * (box%top(3)-box%bot(3))
+                ray%start(1) = box%bot(1) + quasi(1) * (box%top(1)-box%bot(1))
              case(6)
+                quasi = quasi + one_sixth
+                do i = 1,2
+                   if (quasi(i) >= one) quasi(i) = quasi(i) - one
+                   if (quasi(i) < zero) quasi(i) = one + quasi(i)
+                end do
                 ray%dir(3) = -1.0
                 ray%start(3) = box%top(3)
-                ray%start(1) = box%bot(1) + rn1 * (box%top(1)-box%bot(1))
-                ray%start(2) = box%bot(2) + rn2 * (box%top(2)-box%bot(2))
+                ray%start(1) = box%bot(1) + quasi(2) * (box%top(1)-box%bot(1))
+                ray%start(2) = box%bot(2) + quasi(1) * (box%top(2)-box%bot(2))
              case default 
                 stop "curface out of bounds"
           end select
 
 
+
+
        ! this makes the z=boxlen plane a source rays go in -z direction  
        case(-2)
+
+          call i8_sobol( 2, sobol_seed, ray%start(1:2) )
 
           ray%dir(1) = 0.0
           ray%dir(2) = 0.0
@@ -156,25 +195,27 @@ contains
           
           ray%start(3) = box%top(3)
           
-          rn = genrand_real1()
-          ray%start(2) = box%bot(2) + rn * (box%top(2)-box%bot(2))
-          rn = genrand_real1()
-          ray%start(1) = box%bot(1) + rn * (box%top(1)-box%bot(1))
+!          rn = genrand_real1()
+          ray%start(2) = box%bot(2) + ray%start(2) * (box%top(2)-box%bot(2))
+!          rn = genrand_real1()
+          ray%start(1) = box%bot(1) + ray%start(1) * (box%top(1)-box%bot(1))
 
 
        ! this makes the bottom z=0 plane a source rays go in +z direction 
        case(-1)
        
+          call i8_sobol( 2, sobol_seed, ray%start(1:2) )
+
           ray%dir(1) = 0.0
           ray%dir(2) = 0.0
           ray%dir(3) = 1.0
           
           ray%start(3) = box%bot(3)
           
-          rn = genrand_real1()
-          ray%start(2) = box%bot(2) + rn * (box%top(2)-box%bot(2))
-          rn = genrand_real1()
-          ray%start(1) = box%bot(1) + rn * (box%top(1)-box%bot(1))
+!          rn = genrand_real1()
+          ray%start(2) = box%bot(2) + ray%start(2) * (box%top(2)-box%bot(2))
+!          rn = genrand_real1()
+          ray%start(1) = box%bot(1) + ray%start(1) * (box%top(1)-box%bot(1))
 
 
        ! random direction on the unit sphere
