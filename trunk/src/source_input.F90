@@ -267,6 +267,8 @@ subroutine form_snapshot_file_name(Path,FileBase,SnapNum,FileNum,SnapFile)
   100 format(A,"/",A,"_",I3.3,".",A)
   write(SnapFile,100) trim(Path), trim(FileBase), SnapNum, &
                       trim(adjustl(FileNumChar))
+
+  write(*,*) "SnapFile: ", trim(SnapFile)
   
 end subroutine form_snapshot_file_name
 

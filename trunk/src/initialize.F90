@@ -453,7 +453,7 @@ subroutine initialize_global_variables()
   ! only important for runs with a background source (src%EmisPrf=-3)
   !-------------------------------------------------------------------
   curface = 0
-  sobol_seed=0
+  sobol_seed=1
 
   call mywrite("",verb) 
 

@@ -84,7 +84,7 @@ contains
     real(r8b) :: rn, rn1, rn2
     real(r8b) :: prate
     integer :: i
-    real(r8b), save :: quasi(2)
+    real(r8b), save :: quasi(3)
 
   
 !  set the direction of the ray from the emmission profile (src%EmisPrf)
@@ -122,60 +122,35 @@ contains
           select case (curface)
              
              case(1)
-                call i8_sobol( 2, sobol_seed, quasi(1:2) )                
+                call i8_sobol( 3, sobol_seed, quasi )
                 ray%dir(1) = 1.0            
                 ray%start(1) = box%bot(1)
-                ray%start(2) = box%bot(2) + quasi(1) * (box%top(2)-box%bot(2))
-                ray%start(3) = box%bot(3) + quasi(2) * (box%top(3)-box%bot(3))
+                ray%start(2) = box%bot(2) + quasi(2) * (box%top(2)-box%bot(2))
+                ray%start(3) = box%bot(3) + quasi(3) * (box%top(3)-box%bot(3))
              case(2)
-                quasi = quasi + one_sixth
-                do i = 1,2
-                   if (quasi(i) >= one) quasi(i) = quasi(i) - one
-                   if (quasi(i) < zero) quasi(i) = one + quasi(i)
-                end do
                 ray%dir(2) = 1.0             
                 ray%start(2) = box%bot(2)
-                ray%start(3) = box%bot(3) + quasi(1) * (box%top(3)-box%bot(3))
-                ray%start(1) = box%bot(1) + quasi(2) * (box%top(1)-box%bot(1))
+                ray%start(3) = box%bot(3) + quasi(3) * (box%top(3)-box%bot(3))
+                ray%start(1) = box%bot(1) + quasi(1) * (box%top(1)-box%bot(1))
              case(3)
-                quasi = quasi + one_sixth
-                do i = 1,2
-                   if (quasi(i) >= one) quasi(i) = quasi(i) - one
-                   if (quasi(i) < zero) quasi(i) = one + quasi(i)
-                end do
                 ray%dir(3) = 1.0             
                 ray%start(3) = box%bot(3)
                 ray%start(1) = box%bot(1) + quasi(1) * (box%top(1)-box%bot(1))
                 ray%start(2) = box%bot(2) + quasi(2) * (box%top(2)-box%bot(2)) 
              case(4)
-                quasi = quasi + one_sixth
-                do i = 1,2
-                   if (quasi(i) >= one) quasi(i) = quasi(i) - one
-                   if (quasi(i) < zero) quasi(i) = one + quasi(i)
-                end do
                 ray%dir(1) = -1.0             
                 ray%start(1) = box%top(1)
-                ray%start(2) = box%bot(2) + quasi(2) * (box%top(2)-box%bot(2))
-                ray%start(3) = box%bot(3) + quasi(1) * (box%top(3)-box%bot(3))
+                ray%start(2) = box%bot(2) + quasi(1) * (box%top(2)-box%bot(2))
+                ray%start(3) = box%bot(3) + quasi(2) * (box%top(3)-box%bot(3))
              case(5)
-                quasi = quasi + one_sixth
-                do i = 1,2
-                   if (quasi(i) >= one) quasi(i) = quasi(i) - one
-                   if (quasi(i) < zero) quasi(i) = one + quasi(i)
-                end do
                 ray%dir(2) = -1.0
                 ray%start(2) = box%top(2)
                 ray%start(3) = box%bot(3) + quasi(2) * (box%top(3)-box%bot(3))
-                ray%start(1) = box%bot(1) + quasi(1) * (box%top(1)-box%bot(1))
+                ray%start(1) = box%bot(1) + quasi(3) * (box%top(1)-box%bot(1))
              case(6)
-                quasi = quasi + one_sixth
-                do i = 1,2
-                   if (quasi(i) >= one) quasi(i) = quasi(i) - one
-                   if (quasi(i) < zero) quasi(i) = one + quasi(i)
-                end do
                 ray%dir(3) = -1.0
                 ray%start(3) = box%top(3)
-                ray%start(1) = box%bot(1) + quasi(2) * (box%top(1)-box%bot(1))
+                ray%start(1) = box%bot(1) + quasi(3) * (box%top(1)-box%bot(1))
                 ray%start(2) = box%bot(2) + quasi(1) * (box%top(2)-box%bot(2))
              case default 
                 stop "curface out of bounds"
