@@ -85,7 +85,7 @@ contains
     real(r8b) :: prate
     integer :: i
     real(r8b), save :: quasi(3)
-
+    integer(i8b) :: sobol_dim
   
 !  set the direction of the ray from the emmission profile (src%EmisPrf)
 !     0  = isotropic
@@ -116,13 +116,13 @@ contains
 
 !          rn1 = genrand_real1()
 !          rn2 = genrand_real1()
-
+          sobol_dim = 3
           ray%dir = 0.0
 
           select case (curface)
              
              case(1)
-                call i8_sobol( 3, sobol_seed, quasi )
+                call i8_sobol( sobol_dim, sobol_seed, quasi )
                 ray%dir(1) = 1.0            
                 ray%start(1) = box%bot(1)
                 ray%start(2) = box%bot(2) + quasi(2) * (box%top(2)-box%bot(2))
@@ -162,7 +162,8 @@ contains
        ! this makes the z=boxlen plane a source rays go in -z direction  
        case(-2)
 
-          call i8_sobol( 2, sobol_seed, ray%start(1:2) )
+          sobol_dim = 2
+          call i8_sobol( sobol_dim, sobol_seed, ray%start(1:2) )
 
           ray%dir(1) = 0.0
           ray%dir(2) = 0.0
@@ -179,7 +180,8 @@ contains
        ! this makes the bottom z=0 plane a source rays go in +z direction 
        case(-1)
        
-          call i8_sobol( 2, sobol_seed, ray%start(1:2) )
+          sobol_dim = 2
+          call i8_sobol( sobol_dim, sobol_seed, ray%start(1:2) )
 
           ray%dir(1) = 0.0
           ray%dir(2) = 0.0
