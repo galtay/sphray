@@ -322,6 +322,7 @@ contains
     integer :: lun
     integer :: count
 
+    ierr=0
     count=0
     keylen = len(adjustl(trim(keyword)))
     call open_formatted_file_r(filename,lun)
@@ -364,6 +365,7 @@ contains
     integer :: lun
     integer :: count
 
+    ierr=0
     count=0
     keylen = len(adjustl(trim(keyword)))
     call open_formatted_file_r(filename,lun)
@@ -406,6 +408,7 @@ contains
     integer :: lun
     integer :: count
 
+    ierr=0
     count=0
     keylen = len(adjustl(trim(keyword)))
     call open_formatted_file_r(filename,lun)
@@ -449,6 +452,7 @@ contains
     integer :: lun
     integer :: count
 
+    ierr=0
     count=0
     keylen = len(adjustl(trim(keyword)))
     call open_formatted_file_r(filename,lun)
@@ -492,6 +496,7 @@ contains
     integer :: lun
     integer :: count
 
+    ierr=0
     count=0
     keylen = len(adjustl(trim(keyword)))
     call open_formatted_file_r(filename,lun)
@@ -535,6 +540,7 @@ contains
     integer :: lun
     integer :: count
 
+    ierr=0
     count=0
     keylen = len(adjustl(trim(keyword)))
     call open_formatted_file_r(filename,lun)
