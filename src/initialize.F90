@@ -17,7 +17,7 @@ use atomic_rates_mod, only: write_atomic_rates_to_log_file
 use iliev_comparison_project_mod, only: initialize_iliev_tests
 use main_input_mod, only: get_planning_data
 use global_mod, only: GV, PLAN, rtable, xHII_k, cmbT_k, isoT_k, gconst
-use ray_mod, only: curface, sobol_seed
+use ray_mod, only: init_background_source_variables
 implicit none
 
   contains
@@ -393,8 +393,19 @@ subroutine initialize_global_variables()
   integer, parameter :: verb=2
 
   real, parameter :: zero = 0.0d0
+  integer(i8b) :: nrays
+  integer(i8b) :: i
 
   call mywrite("  initializing global variables",verb) 
+
+
+  ! calculate total number of rays to be traced
+  !----------------------------------------------------------------------
+  nrays=0_i8b
+  do i = GV%StartSnapNum, GV%EndSnapNum
+     nrays = nrays + PLAN%snap(i)%SrcRays
+  end do
+
 
   ! report ionization solver being used and particle/source mem footprint
   !----------------------------------------------------------------------
@@ -420,7 +431,7 @@ subroutine initialize_global_variables()
   GV%raystat_file = trim(GV%OutputDir) // "/raystats.dat"
   if (GV%raystats) then
      call open_unformatted_file_w(GV%raystat_file, GV%raystatlun)
-     write(GV%raystatlun) sum(PLAN%snap(:)%SrcRays), raystatbuffsize 
+     write(GV%raystatlun) nrays, raystatbuffsize 
   end if
 
   
@@ -452,8 +463,8 @@ subroutine initialize_global_variables()
   
   ! only important for runs with a background source (src%EmisPrf=-3)
   !-------------------------------------------------------------------
-  curface = 0
-  sobol_seed=1
+  call init_background_source_variables(nrays)
+
 
   call mywrite("",verb) 
 

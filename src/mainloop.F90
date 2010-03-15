@@ -158,7 +158,7 @@ contains
              raystatcnt = raystatcnt + 1
              
              raystats(raystatcnt)%srcn  = srcn
-             raystats(raystatcnt)%start = globalraylist%ray%start                                 
+             raystats(raystatcnt)%start = globalraylist%ray%start  
              raystats(raystatcnt)%ryd   = globalraylist%ray%freq
              
              if (raystatcnt == raystatbuffsize) then

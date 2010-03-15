@@ -10,14 +10,15 @@ use particle_system_mod
 use oct_tree_mod
 use mt19937_mod, only: genrand_real1
 use sobol_mod, only: i8_sobol
+use spectra_mod, only: rn2freq
+use physical_constants_mod, only: HI_th_erg, M_H, M_He
 implicit none
 
   private
   public :: raystatbuffsize
-  public :: curface
-  public :: sobol_seed
   public :: ray_type
   public :: raystat_type
+  public :: init_background_source_variables
   public :: set_ray
   public :: cell_intersection
   public :: part_intersection
@@ -28,10 +29,23 @@ implicit none
   public :: make_recomb_ray
   public :: make_skewer_ray
 
-integer, parameter :: raystatbuffsize = 10000
-real(r8b), parameter :: one_sixth = 1.0d0/6.0d0
-real(r8b), parameter :: one = 1.0d0
-real(r8b), parameter :: zero = 0.0d0
+  integer(i8b), parameter :: raystatbuffsize = 10000
+  integer(i8b), parameter :: sobol_buff_size = 6 * 1000
+  integer(i8b), parameter :: sobol_istart = 0
+  integer(i4b), parameter :: type_of_random = 3 ! 1=twister, 2=3D sobol, 3=2Dsobol
+  real(r8b), parameter :: one = 1.0d0
+  real(r8b), parameter :: zero = 0.0d0
+  
+  integer(i8b) :: total_rays
+  integer(i8b) :: ray6
+  integer(i8b) :: raycnt
+  real(r8b) :: sobol_ray_starts( 2, raystatbuffsize, 6 )
+
+  integer(i4b) :: curface    !< used to track rays emitted from box faces
+  integer(i8b) :: sobol_seed !< used to track position in sobol sequence
+
+  ! note the routine i8_sobol auto increments sobol_seed
+
 
 !> a ray to be traced through the density field while depositing photons
 !-----------------------------------------------------------------------
@@ -53,19 +67,124 @@ real(r8b), parameter :: zero = 0.0d0
   end type raystat_type
 
 
-  integer :: curface         !< used to track rays emitted from box faces
-  integer(i8b) :: sobol_seed !< used to track position in sobol sequence
 
-  ! note the routine i8_sobol auto increments sobol_seed
 
 contains
+
+
+!> initialize variables for tracking the background flux
+!-----------------------------------------------------------------------  
+  subroutine init_background_source_variables(nrays)    
+    integer(i8b), intent(in) :: nrays
+
+    total_rays = nrays
+    ray6 = total_rays / 6_i8b + 10
+    raycnt = 0_i8b
+    curface = 0_i8b
+    sobol_seed = sobol_istart
+
+
+  end subroutine init_background_source_variables
+
+
+!> returns a pair of numbers between 0.0 and 1.0 for ray
+!! starting positions
+!-----------------------------------------------------------------------
+subroutine return_next_wall_coord(rayn, qrn1, qrn2)
+  integer(i8b) :: rayn
+  real(r8b) :: qrn1
+  real(r8b) :: qrn2
+
+  integer(i8b) :: sobol_dim
+  integer(i8b) :: j,k
+  real(r8b), save :: quasi(3)
+
+
+  select case ( type_of_random )
+
+     ! mersenne twister random number
+     !--------------------------------
+     case(1)
+        qrn1 = genrand_real1()
+        qrn2 = genrand_real1()
+
+
+     ! projection of a 3-d sobol sequence
+     !------------------------------------
+     case(2)
+
+        select case (curface)
+        case(1)
+           sobol_dim = 3    
+           call i8_sobol( sobol_dim, sobol_seed, quasi )        
+           qrn1 = quasi(2) 
+           qrn2 = quasi(3) 
+        case(2)
+           qrn1 = quasi(3) 
+           qrn2 = quasi(1) 
+        case(3)
+           qrn1 = quasi(1) 
+           qrn2 = quasi(2)  
+        case(4)
+           qrn1 = quasi(1) 
+           qrn2 = quasi(2) 
+        case(5)
+           qrn1 = quasi(2) 
+           qrn2 = quasi(3) 
+        case(6)
+           qrn1 = quasi(3) 
+           qrn2 = quasi(1) 
+        end select
+
+
+     ! different stretches of a 2-d sobol sequence for each wall
+     !------------------------------------------------------------
+     case(3)
+
+        if (rayn == 1) then
+           if (curface /= 1) stop 'cur face needs to be equal 1 here'
+           raycnt = 0
+           sobol_dim=2
+           do j = 0,5
+              sobol_seed = j * ray6 
+              do k = 1, raystatbuffsize          
+                 call i8_sobol( sobol_dim, sobol_seed, sobol_ray_starts(1:2, k, j+1)  )        
+              end do
+           end do           
+        endif
+
+
+        if (curface==1) raycnt = raycnt + 1
+        qrn1 = sobol_ray_starts( 1, raycnt, curface )
+        qrn2 = sobol_ray_starts( 2, raycnt, curface )
+
+
+        if (raycnt == sobol_buff_size .and. curface==6) then
+           raycnt = 0
+           sobol_dim=2
+           do j = 0,5
+              sobol_seed = j * ray6 + rayn/6_i8b
+              do k = 1, raystatbuffsize          
+                 call i8_sobol( sobol_dim, sobol_seed, sobol_ray_starts(1:2, k, j+1)  )        
+              end do
+           end do           
+        endif
+
+
+
+     case default
+        stop 'dont recognize type of random in ray.F90'
+
+     end select
+
+
+
+end subroutine return_next_wall_coord
+
 
 !> creates a source ray (as opposed to recombination)
 !-----------------------------------------------------------------------  
   subroutine make_source_ray(src,rayn,dtray,LumFac,box,ray)
-  use particle_system_mod, only: source_type, box_type
-  use spectra_mod, only: rn2freq
-  use physical_constants_mod, only: HI_th_erg
 
     type(source_type), intent(inout) :: src !< the source
     integer(i8b), intent(in) :: rayn        !< the ray indx
@@ -75,10 +194,10 @@ contains
     type(ray_type), intent(out) :: ray      !< output ray
   
     real(r8b) :: xx,yy,zz,r
-    real(r8b) :: rn, rn1, rn2
+    real(r8b) :: rn1, rn2
     real(r8b) :: prate
     integer :: i
-    real(r8b), save :: quasi(3)
+
     integer(i8b) :: sobol_dim
   
 !  set the direction of the ray from the emmission profile (src%EmisPrf)
@@ -102,50 +221,45 @@ contains
 
 
        ! this cycles through all planes and casts into the box
-       ! the position coordinate is used to track which face is next
        case(-3)
 
           curface = curface + 1
           if (curface > 6) curface = 1
 
-!          rn1 = genrand_real1()
-!          rn2 = genrand_real1()
-          sobol_dim = 3
-          ray%dir = 0.0
+          call return_next_wall_coord( rayn, rn1, rn2 )
 
-          select case (curface)
-             
+          ray%dir = 0.0
+          select case (curface)             
              case(1)
-                call i8_sobol( sobol_dim, sobol_seed, quasi )
                 ray%dir(1) = 1.0            
                 ray%start(1) = box%bot(1)
-                ray%start(2) = box%bot(2) + quasi(2) * (box%top(2)-box%bot(2))
-                ray%start(3) = box%bot(3) + quasi(3) * (box%top(3)-box%bot(3))
+                ray%start(2) = box%bot(2) + rn1 * (box%top(2)-box%bot(2))
+                ray%start(3) = box%bot(3) + rn2 * (box%top(3)-box%bot(3))
              case(2)
-                ray%dir(2) = 1.0             
+                ray%dir(2) = 1.0            
                 ray%start(2) = box%bot(2)
-                ray%start(3) = box%bot(3) + quasi(3) * (box%top(3)-box%bot(3))
-                ray%start(1) = box%bot(1) + quasi(1) * (box%top(1)-box%bot(1))
+                ray%start(3) = box%bot(3) + rn1 * (box%top(3)-box%bot(3))
+                ray%start(1) = box%bot(1) + rn2 * (box%top(1)-box%bot(1))
              case(3)
-                ray%dir(3) = 1.0             
+                ray%dir(3) = 1.0            
                 ray%start(3) = box%bot(3)
-                ray%start(1) = box%bot(1) + quasi(1) * (box%top(1)-box%bot(1))
-                ray%start(2) = box%bot(2) + quasi(2) * (box%top(2)-box%bot(2)) 
+                ray%start(1) = box%bot(1) + rn1 * (box%top(1)-box%bot(1))
+                ray%start(2) = box%bot(2) + rn2 * (box%top(2)-box%bot(2)) 
              case(4)
-                ray%dir(1) = -1.0             
+                ray%dir(1) = -1.0           
                 ray%start(1) = box%top(1)
-                ray%start(2) = box%bot(2) + quasi(1) * (box%top(2)-box%bot(2))
-                ray%start(3) = box%bot(3) + quasi(2) * (box%top(3)-box%bot(3))
+                ray%start(2) = box%bot(2) + rn1 * (box%top(2)-box%bot(2))
+                ray%start(3) = box%bot(3) + rn2 * (box%top(3)-box%bot(3))
              case(5)
                 ray%dir(2) = -1.0
                 ray%start(2) = box%top(2)
-                ray%start(3) = box%bot(3) + quasi(2) * (box%top(3)-box%bot(3))
-                ray%start(1) = box%bot(1) + quasi(3) * (box%top(1)-box%bot(1))
+                ray%start(3) = box%bot(3) + rn1 * (box%top(3)-box%bot(3))
+                ray%start(1) = box%bot(1) + rn2 * (box%top(1)-box%bot(1))
              case(6)
                 ray%dir(3) = -1.0
                 ray%start(3) = box%top(3)
-                ray%start(1) = box%bot(1) + quasi(3) * (box%top(1)-box%bot(1))
-                ray%start(2) = box%bot(2) + quasi(1) * (box%top(2)-box%bot(2))
+                ray%start(1) = box%bot(1) + rn1 * (box%top(1)-box%bot(1))
+                ray%start(2) = box%bot(2) + rn2 * (box%top(2)-box%bot(2))
              case default 
                 stop "curface out of bounds"
           end select
@@ -163,11 +277,8 @@ contains
           ray%dir(2) = 0.0
           ray%dir(3) = -1.0
           
-          ray%start(3) = box%top(3)
-          
-!          rn = genrand_real1()
+          ray%start(3) = box%top(3)         
           ray%start(2) = box%bot(2) + ray%start(2) * (box%top(2)-box%bot(2))
-!          rn = genrand_real1()
           ray%start(1) = box%bot(1) + ray%start(1) * (box%top(1)-box%bot(1))
 
 
@@ -181,11 +292,8 @@ contains
           ray%dir(2) = 0.0
           ray%dir(3) = 1.0
           
-          ray%start(3) = box%bot(3)
-          
-!          rn = genrand_real1()
+          ray%start(3) = box%bot(3)          
           ray%start(2) = box%bot(2) + ray%start(2) * (box%top(2)-box%bot(2))
-!          rn = genrand_real1()
           ray%start(1) = box%bot(1) + ray%start(1) * (box%top(1)-box%bot(1))
 
 
@@ -251,7 +359,6 @@ contains
 !> creates a recombination ray (as opposed to source)
 !-----------------------------------------------------------------------  
   subroutine make_recomb_ray(par, Dflt_Mass, Munit, Dflt_Hmf, Dflt_Hemf, ray)
-  use physical_constants_mod, only: HI_th_erg, M_H, M_He
 
     type(particle_type), intent(in) :: par  !< recombining particle
     real(r8b), intent(in) :: Dflt_Mass      !< default mass
@@ -354,7 +461,6 @@ contains
 !> creates a source ray (as opposed to recombination)
 !-----------------------------------------------------------------------  
   subroutine make_skewer_ray(box,ray)
-  use particle_system_mod, only: source_type, box_type
 
     type(box_type), intent(in) :: box       !< simulation box
     type(ray_type), intent(out) :: ray      !< output ray
