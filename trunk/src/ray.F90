@@ -28,7 +28,7 @@ implicit none
   public :: make_recomb_ray
   public :: make_skewer_ray
 
-integer, parameter :: raystatbuffsize = 5000
+integer, parameter :: raystatbuffsize = 10000
 real(r8b), parameter :: one_sixth = 1.0d0/6.0d0
 real(r8b), parameter :: one = 1.0d0
 real(r8b), parameter :: zero = 0.0d0
@@ -48,18 +48,12 @@ real(r8b), parameter :: zero = 0.0d0
 
   type raystat_type
      integer(i4b) :: srcn
-     real(r4b) :: dir(3)
-     real(r4b) :: freq
-     real(r4b) :: temit
-     real(r8b) :: pini
-     real(r8b) :: pcnt
-     integer(i8b) :: pindx
-     real(r4b) :: b
-     real(r4b) :: d
+     real(r4b) :: start(3)
+     real(r4b) :: ryd
   end type raystat_type
 
 
-  integer :: curface  !< used to track rays emitted from box faces
+  integer :: curface         !< used to track rays emitted from box faces
   integer(i8b) :: sobol_seed !< used to track position in sobol sequence
 
   ! note the routine i8_sobol auto increments sobol_seed

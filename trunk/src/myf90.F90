@@ -330,7 +330,7 @@ contains
        read(lun,'(A)',iostat=ierr) string
        strlen = len(adjustl(trim(string)))
        keypos = index( string, adjustl(trim(keyword)) )
-       if (keypos == 1) then
+       if (keypos == 1 .and. ierr==0) then
           count = count + 1
           read(string(keypos+keylen:strlen),*) var
        endif
@@ -344,7 +344,7 @@ contains
           write(*,*) ' *** keyword not found in file'
           stop
        else if (count>1) then
-          write(*,*) ' *** keyword fount ', count, ' times'
+          write(*,*) ' *** keyword found ', count, ' times'
           stop
        endif
     endif
@@ -373,7 +373,7 @@ contains
        read(lun,'(A)',iostat=ierr) string
        strlen = len(adjustl(trim(string)))
        keypos = index( string, adjustl(trim(keyword)) )
-       if (keypos == 1) then
+       if (keypos == 1 .and. ierr==0) then
           count = count + 1
           read(string(keypos+keylen:strlen),*) var
        endif
@@ -387,7 +387,7 @@ contains
           write(*,*) ' *** keyword not found in file'
           stop
        else if (count>1) then
-          write(*,*) ' *** keyword fount ', count, ' times'
+          write(*,*) ' *** keyword found ', count, ' times'
           stop
        endif
     endif
@@ -416,7 +416,7 @@ contains
        read(lun,'(A)',iostat=ierr) string
        strlen = len(adjustl(trim(string)))
        keypos = index( string, adjustl(trim(keyword)) )
-       if (keypos == 1) then
+       if (keypos == 1 .and. ierr==0) then
           count = count + 1
           read(string(keypos+keylen:strlen),*) var
        endif
@@ -430,7 +430,7 @@ contains
           write(*,*) ' *** keyword not found in file'
           stop
        else if (count>1) then
-          write(*,*) ' *** keyword fount ', count, ' times'
+          write(*,*) ' *** keyword found ', count, ' times'
           stop
        endif
     endif
@@ -460,7 +460,7 @@ contains
        read(lun,'(A)',iostat=ierr) string
        strlen = len(adjustl(trim(string)))
        keypos = index( string, adjustl(trim(keyword)) )
-       if (keypos == 1) then
+       if (keypos == 1 .and. ierr==0) then
           count = count + 1
           read(string(keypos+keylen:strlen),*) var
        endif
@@ -474,7 +474,7 @@ contains
           write(*,*) ' *** keyword not found in file'
           stop
        else if (count>1) then
-          write(*,*) ' *** keyword fount ', count, ' times'
+          write(*,*) ' *** keyword found ', count, ' times'
           stop
        endif
     endif
@@ -504,7 +504,7 @@ contains
        read(lun,'(A)',iostat=ierr) string
        strlen = len(adjustl(trim(string)))
        keypos = index( string, adjustl(trim(keyword)) )
-       if (keypos == 1) then
+       if (keypos == 1 .and. ierr==0) then
           count = count + 1
           read(string(keypos+keylen:strlen),'(A)') var
           var = adjustl(trim(var))
@@ -519,7 +519,7 @@ contains
           write(*,*) ' *** keyword not found in file'
           stop
        else if (count>1) then
-          write(*,*) ' *** keyword fount ', count, ' times'
+          write(*,*) ' *** keyword found ', count, ' times'
           stop
        endif
     endif
@@ -548,7 +548,7 @@ contains
        read(lun,'(A)',iostat=ierr) string
        strlen = len(adjustl(trim(string)))
        keypos = index( string, adjustl(trim(keyword)) )
-       if (keypos == 1) then
+       if (keypos == 1 .and. ierr==0) then
           count = count + 1
           read(string(keypos+keylen:strlen),*) var
        endif
@@ -562,7 +562,7 @@ contains
           write(*,*) ' *** keyword not found in file'
           stop
        else if (count>1) then
-          write(*,*) ' *** keyword fount ', count, ' times'
+          write(*,*) ' *** keyword found ', count, ' times'
           stop
        endif
     endif
