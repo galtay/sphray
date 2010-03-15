@@ -158,21 +158,15 @@ contains
              raystatcnt = raystatcnt + 1
              
              raystats(raystatcnt)%srcn  = srcn
-             raystats(raystatcnt)%dir   = globalraylist%ray%dir                                 
-             raystats(raystatcnt)%freq  = globalraylist%ray%freq
-             raystats(raystatcnt)%temit = GV%time_elapsed_s * gconst%sec_per_megayear
-             raystats(raystatcnt)%pini  = globalraylist%ray%pini
-             raystats(raystatcnt)%pcnt  = globalraylist%ray%pcnt
-             raystats(raystatcnt)%pindx = globalraylist%intersection(globalraylist%lastnnb)%pindx
-             raystats(raystatcnt)%b     = globalraylist%intersection(globalraylist%lastnnb)%b
-             raystats(raystatcnt)%d     = globalraylist%intersection(globalraylist%lastnnb)%d
+             raystats(raystatcnt)%start = globalraylist%ray%start                                 
+             raystats(raystatcnt)%ryd   = globalraylist%ray%freq
              
              if (raystatcnt == raystatbuffsize) then
                 write(GV%raystatlun) raystats
+                flush(GV%raystatlun)
                 raystatcnt = 0
              end if
-             
-             
+                          
           end if
           
           
