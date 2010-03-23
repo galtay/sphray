@@ -9,6 +9,7 @@ use gadget_header_class, only: gadget_units_type
 use gadget_header_class, only: gadget_constants_type
 use particle_system_mod, only: particle_system_type
 use oct_tree_mod, only: oct_tree_type
+use ndtree_mod, only: ndtree_type
 use raylist_mod, only: raylist_type
 use atomic_rates_mod, only: atomic_rates_table_type
 use atomic_rates_mod, only: atomic_rates_type
@@ -110,6 +111,7 @@ type global_variables_type
    real(r8b)       :: RecRayTol           !< [Config File] minimum recombination fraction to make a recomb ray
    real(r8b)       :: RayPhotonTol        !< [Config File] fractional ray depletion to stop ray
 
+   integer(i4b)    :: WallSampling        !< [Config File] 1=Twister, 2=Sobol3D, 3=Sobol2D, 4=QuadTree
 
    logical         :: OnTheSpotH          !< [Config File] T = on the spot approximation for Hydrogen
    logical         :: OnTheSpotHe         !< [Config File] T = on the spot approximation for Helium
@@ -125,7 +127,7 @@ type global_variables_type
    real(r8b)       :: xfloor              !< [Config File] minimum allowed ionization fraction
    real(r8b)       :: xceiling            !< [Config File] maximum allowed ionization fraction
 
-   real(r8b)       :: NeBackGround        !< [Config File] constant background electron number density from metals
+   real(r8b)       :: NeBackground        !< [Config File] constant background electron number density from metals
 
    integer(i8b)    :: NraysUpdateNoHits   !< [Config File] update all pars not hit by a ray in last NraysUpdateNoHits
    integer(i8b)    :: RecRaysPerSrcRay    !< [Config File] number of recomb rays for each source ray
@@ -188,10 +190,28 @@ type global_variables_type
    real(r8b)    :: TotalSimTime                   !< total time to ray trace
    integer(i4b) :: NumTotOuts                     !< total outputs to do
  
+
    ! these should be reset each time a new snapshot is read in
    !------------------------------------------------------------
-   real(r8b) :: dtray_code        !< time between each ray (code units)
-   real(r8b) :: dtray_s           !< time between each ray (seconds)
+   integer(i8b) :: itime          !< integer time. measures ticks from start time
+
+   real(r8b) :: start_time_code   !< starting time in code units
+   real(r8b) :: start_time_s      !< starting time in seconds
+   real(r8b) :: start_time_myr    !< starting time in Myr
+
+   real(r8b) :: time_elapsed_code !< elapsed time in code units
+   real(r8b) :: time_elapsed_s    !< elapsed time in seconds
+   real(r8b) :: time_elapsed_myr  !< elapsed time in Myr
+
+   real(r8b) :: dt_code           !< one tick in code units
+   real(r8b) :: dt_s              !< one tick in seconds
+   real(r8b) :: dt_myr            !< one tick in Myr
+
+
+!   real(r8b) :: dtray_code        !< time between each ray (code units)
+!   real(r8b) :: dtray_s           !< time between each ray (seconds)
+
+
 
    real(r8b) :: BoxLwrsComoh(3)   !< comoving h-mangled input coords of lower x,y,z corner
    real(r8b) :: BoxLwrsComo(3)    !< comoving non h-mangled input coords of lower x,y,z corner
@@ -268,12 +288,6 @@ type global_variables_type
    integer(i8b) :: rayn            !< current ray number (src + recomb)
    integer(i8b) :: src_rayn        !< current source ray number
 
-   real(r8b) :: time_code          !< current time in code units
-   real(r8b) :: time_s             !< current time in seconds
-
-   real(r8b) :: time_elapsed_code  !< elapsed time in code units
-   real(r8b) :: time_elapsed_s     !< elapsed time in seconds
-
    real(r8b) :: nwionfrac          !< number weighted ionization fraction
    real(r8b) :: mwionfrac          !< mass weighted ionization fraction
    real(r8b) :: vwionfrac          !< volume weighted ionization fraction
@@ -299,9 +313,27 @@ type(global_variables_type) :: GV           !< global variables
 
 
 
+contains
+
+
+subroutine set_dt_from_dtcode( GV )
+  type(global_variables_type), intent(inout) :: GV
+
+  GV%dt_s    = GV%dt_code * GV%cgs_time / GV%LittleH 
+  GV%dt_myr  = GV%dt_s / gconst%sec_per_megayear
+
+end subroutine set_dt_from_dtcode
 
 
 
+subroutine set_time_elapsed_from_itime( GV )
+  type(global_variables_type), intent(inout) :: GV
+
+  GV%time_elapsed_code = GV%itime * GV%dt_code
+  GV%time_elapsed_s    = GV%itime * GV%dt_s
+  GV%time_elapsed_myr  = GV%itime * GV%dt_myr
+
+end subroutine set_time_elapsed_from_itime
 
 
 

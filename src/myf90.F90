@@ -40,7 +40,7 @@ implicit none
 
   integer, parameter :: clen  = 500 !< default character variable length
 
-  integer :: myf90_verbosity  !< global verbosity threshold
+  integer :: myf90_verbosity        !< global verbosity threshold
 
 !> command line type. 
 !=========================
@@ -56,10 +56,58 @@ implicit none
 contains
 
 
-!-----------------------------------------------
-!> fills in the command line variable
+!> tests selected precision kinds for correct bit sizes
+!---------------------------------------------------------
+function myf90_test_var_sizes() result( err )
+  integer :: err
+  
+  integer(i1b) :: i_one_byte
+  integer(i2b) :: i_two_byte
+  integer(i4b) :: i_four_byte
+  integer(i8b) :: i_eight_byte
 
-  function initialize_command_line(verb) result(cmnd)
+  real(r4b)  :: r_four_byte
+  real(r8b)  :: r_eight_byte
+  real(r16b) :: r_sixteen_byte
+
+
+  err = 0     
+
+
+  if ( bit_size(i_one_byte)     /= 8   .or. &
+       bit_size(i_two_byte)     /= 16  .or. &
+       bit_size(i_four_byte)    /= 32  .or. &
+       bit_size(i_eight_byte)   /= 64       ) then
+
+     write(*,*) 'bytes i1b:    ', bit_size(i_one_byte)
+     write(*,*) 'bytes i2b:    ', bit_size(i_two_byte)
+     write(*,*) 'bytes i4b:    ', bit_size(i_four_byte)
+     write(*,*) 'bytes i8b:    ', bit_size(i_eight_byte)
+
+     err = -1
+
+  endif
+
+
+  if ( digits(r_four_byte)    /= 24  .or. &
+       digits(r_eight_byte)   /= 53  .or. &
+       digits(r_sixteen_byte) /= 113      ) then
+
+     write(*,*) 'digits r4b: ',  digits(r_four_byte)
+     write(*,*) 'digits r8b: ',  digits(r_eight_byte)
+     write(*,*) 'digits r16b: ', digits(r_sixteen_byte)
+
+     err = -1
+     
+  endif
+
+
+end function myf90_test_var_sizes
+
+
+!> fills in the command line variable
+!-----------------------------------------------
+  function myf90_initialize_command_line(verb) result(cmnd)
     type(command_line_type) :: cmnd
     integer :: verb 
     integer :: stat
@@ -97,7 +145,7 @@ contains
        call mywrite('', verb)
     end do
     
-  end function initialize_command_line
+  end function myf90_initialize_command_line
 
 
 !-----------------------------------------------
@@ -119,13 +167,13 @@ contains
 
 !-----------------------------------------------
 !> verbosity dependent write
-   subroutine mywrite( str, verb, lun, fmt, adv )
+   subroutine mywrite( str, verb, lun, adv )
      character(*), intent(in) :: str
      integer, intent(in) :: verb
      integer, optional, intent(in) :: lun
-     character(*), optional, intent(in) :: fmt
      logical, optional, intent(in) :: adv
      character(3) :: sadv
+     character(10) :: fmt
 
      character(clen), parameter :: myname='mywrite'
      logical, parameter :: crash=.true.
@@ -140,20 +188,13 @@ contains
         sadv = "yes"
      end if
 
-     if (present(adv) .and. .not. present(fmt) ) then
-        call myerr('advance can only be used w/ formatted output', &
-             myname, crash)
-     end if
+     fmt='(A)'
 
-     if ( .not. present(lun) .and. .not. present(fmt) ) then
-        if (verb <= myf90_verbosity) write(*,*) trim(str)
-     else if ( present(lun) .and. .not. present(fmt) ) then 
-        if (verb <= myf90_verbosity) write(lun,*) trim(str)
-     else if ( .not. present(lun) .and. present(fmt) ) then 
-        if (verb <= myf90_verbosity) write(*,fmt,advance=sadv) trim(str)
-     else if ( present(lun) .and. present(fmt) ) then 
-        if (verb <= myf90_verbosity) write(lun,fmt,advance=sadv) trim(str)
-     end if
+     if (present(lun)) then
+        if (verb <= myf90_verbosity) write(lun,fmt,advance=sadv) trim(str)        
+     else
+        if (verb <= myf90_verbosity) write(stdout,fmt,advance=sadv) trim(str)        
+     endif
 
    end subroutine mywrite
 

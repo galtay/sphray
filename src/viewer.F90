@@ -977,7 +977,7 @@ subroutine drawtext
   call glColor4f(0.0_glfloat,.5_glfloat,1.0_glfloat,0.5_glfloat)
   if(yp2-yp1.gt.120) then
      if(xp2-xp1.gt.320) then
-        write(rs,'(f8.3)') GV%time_elapsed_s / gconst%sec_per_megayear
+        write(rs,'(f8.3)') GV%time_elapsed_myr
         call outputtext(xp1+3._gldouble,yp1+3._gldouble,'time elapsed (Myr):'//rs)
         
         write(rs,'(f8.2)') top(1)-bot(1)

@@ -53,7 +53,7 @@ contains
        ghead%a = PLAN%snap(GV%CurSnapNum)%ScalefacAt
        ghead%z = 1.0d0 / ghead%a - 1.0d0
     else
-       ghead%a = GV%time_elapsed_s / gconst%sec_per_megayear
+       ghead%a = GV%time_elapsed_myr
        ghead%z = saved_gheads(GV%CurSnapNum,fnum)%z
     end if
 
@@ -157,7 +157,7 @@ contains
      write(*,*) 'output type:   ', GV%OutputType
      write(*,*) "writing total state of system"
      write(*,*) "time (elapsed code) ", GV%time_elapsed_code
-     write(*,*) "time (elapsed myr)  ", GV%time_elapsed_s / gconst%sec_per_megayear
+     write(*,*) "time (elapsed myr)  ", GV%time_elapsed_myr
 
      if (GV%Comoving) call scale_physical_to_comoving(PLAN%snap(GV%CurSnapNum)%ScalefacAt, pars, hub=GV%LittleH)
 
@@ -165,7 +165,7 @@ contains
      write(label,100) GV%OutputIndx
 
 
-     call set_ye_pars( pars, GV%H_mf, GV%He_mf, GV%NeBackGround )
+     call set_ye_pars( pars, GV%H_mf, GV%He_mf, GV%NeBackground )
 
 
      !================================================================
@@ -340,14 +340,14 @@ contains
      110 format(T21,I15,T43,I15,T63,ES11.5)
 
      write(*,100) "time:", "code units", "Myrs", "seconds"
-     write(*,105) GV%time_code, &
-                  GV%time_s / gconst%sec_per_megayear, &
-                  GV%time_s
+     write(*,105) GV%start_time_code + GV%itime * GV%dt_code, &
+                  GV%start_time_myr  + GV%itime * GV%dt_myr, &
+                  GV%start_time_s    + GV%itime * GV%dt_s
      write(*,*) 
 
-     write(*,100) "time elspsed:", "code units", "Myrs", "seconds"
+     write(*,100) "time elapsed:", "code units", "Myrs", "seconds"
      write(*,105) GV%time_elapsed_code, &
-                  GV%time_elapsed_s / gconst%sec_per_megayear , &
+                  GV%time_elapsed_myr, &
                   GV%time_elapsed_s
      write(*,*) 
 
@@ -367,8 +367,8 @@ contains
      write(*,*) 
 
      150 format (6ES15.5)
-     write(GV%ionlun,150) GV%time_elapsed_code, &
-                          GV%time_elapsed_s / gconst%sec_per_megayear, &
+     write(GV%ionlun,150) GV%start_time_myr, &
+                          GV%time_elapsed_myr, &
                           1.0d0-Nionfrac, 1.0d0-Mionfrac, 1.0d0-Vionfrac
 
      write(*,100) "rays cast:", "source", "diffuse", "diffuse/source"

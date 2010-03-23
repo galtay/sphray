@@ -87,7 +87,7 @@ contains
     integer :: i,pindx
     
 !   compute analytic Stromgren radius
-    time_ratio = GV%time_s / rtcpRecTime_s
+    time_ratio = GV%time_elapsed_s / rtcpRecTime_s
     ionRa = rtcpStromRad_kpc * (1.0d0 - exp(-time_ratio) )**(1.0/3.0)
  
 !   compute numerical Stromgren radius (Volume method)
@@ -153,7 +153,7 @@ contains
     integer :: i,pindx
 
 !   compute analytic Stromgren radius
-    time_ratio = GV%time_s / rtcpRecTime_s
+    time_ratio = GV%time_elapsed_s / rtcpRecTime_s
     ionRa = rtcpStromRad_kpc * (1.0d0 - exp(-time_ratio) )**(1.0/3.0)
  
 !   compute numerical Stromgren radius

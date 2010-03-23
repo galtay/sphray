@@ -23,7 +23,7 @@ subroutine read_config_file(config_file)
   logical, parameter :: crash = .true.
 
     write(str,'(A,A)') ' using configuration file: ', trim(config_file)
-    call mywrite(str,verb=0,fmt='(A,T29,A)') 
+    call mywrite(str,verb=0) 
 
     inquire( file=config_file, exist=file_exists )
     if (.not. file_exists) then
@@ -131,6 +131,9 @@ subroutine read_config_file(config_file)
     keyword = "RayPhotonTol:"
     call scanfile(config_file,keyword,GV%RayPhotonTol)
 
+    keyword = "WallSampling:"
+    call scanfile(config_file,keyword,GV%WallSampling)
+
 
     !   ion/temp solving
     !----------------------------
@@ -161,8 +164,8 @@ subroutine read_config_file(config_file)
     keyword = "xceiling:"
     call scanfile(config_file,keyword,GV%xceiling)
 
-    keyword = "NeBackGround:"
-    call scanfile(config_file,keyword,GV%NeBackGround)
+    keyword = "NeBackground:"
+    call scanfile(config_file,keyword,GV%NeBackground)
 
     keyword = "NraysUpdateNoHits:"
     call scanfile(config_file,keyword,GV%NraysUpdateNoHits)
@@ -242,6 +245,11 @@ subroutine dummy_check_config_variables()
      config_good = .false. 
   end if
 
+  if (GV%WallSampling /= 1 .and. GV%WallSampling /= 2 .and. GV%WallSampling /= 3 .and. GV%WallSampling /= 4) then
+     write(*,*) "Wall Sampling ", GV%WallSampling, " not recognized"
+     write(*,*) "must be 1 (Twister), 2 (Sobol3D), 3 (Sobol2D), or 4 (QuadTree)"
+     config_good = .false. 
+  end if
 
   if (GV%Tfloor < 0.0 .or. GV%Tceiling < 0.0) then
      write(*,*) "Tfloor and Tceiling must be greater than or equal to 0.0"
@@ -502,6 +510,8 @@ subroutine config_info_to_file()
   write(lun,*)  "Rec Ray Frac Tol   : ", GV%RecRayTol
   write(lun,*)  "Ray Photon Tol     : ", GV%RayPhotonTol
 
+  write(lun,*)  "Wall Sampling [1=Twister, 2=Sobol3D, 3=Sobol2D, 4=QuadTree]: ", GV%WallSampling
+
   write(lun,*)  "Use On The Spot for Hydrogen? : ", GV%OnTheSpotH
   write(lun,*)  "Use On The Spot for Helium?   : ", GV%OnTheSpotHe
 
@@ -516,7 +526,7 @@ subroutine config_info_to_file()
   write(lun,*)  "Ionization ceiling  : ", GV%xceiling
 
 
-  write(lun,*)  "ne background      : ", GV%NeBackGround
+  write(lun,*)  "ne background      : ", GV%NeBackground
   write(lun,*)  "Rays between all particle update:  ", GV%NraysUpdateNoHits
   write(lun,*)  "Recomb ray / src ray: ", GV%RecRaysPerSrcRay
 

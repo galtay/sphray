@@ -56,6 +56,10 @@ end subroutine gadget_output_hdf5
 !===============================================
 subroutine get_planning_data_gadget_hdf5()
 
+  character(clen), parameter :: myname = 'get_planning_data_gadget_hdf5'
+  logical, parameter :: crash = .true.
+  integer, parameter :: verb = 2
+
   type(gadget_header_type) :: ghead
   type(gadget_units_type) :: gunits
 
@@ -104,7 +108,7 @@ subroutine get_planning_data_gadget_hdf5()
 
         call form_gadget_snapshot_file_name(GV%SnapPath,GV%ParFileBase,i,j,snapfile,hdf5bool)
         write(loglun,'(I3,"  ",A)') i,trim(snapfile)
-        write(*,*) 'snapfile = ', trim(snapfile) 
+        call mywrite('   snapfile = '//trim(snapfile) , verb)
 
         call read_gadget_header_file_hdf5(snapfile, ghead)
         call gadget_header_to_file(ghead,loglun)
@@ -264,7 +268,7 @@ subroutine read_Ghdf5_particles()
   GV%MB = GV%MB + MB
 
   fmt="(A,F10.4,A,I10,A)"
-  write(str,fmt) "  allocating ", MB, " MB for ", ngas, " particles"
+  write(str,fmt) "   allocating ", MB, " MB for ", ngas, " particles"
   call mywrite(str,verb) 
 
   allocate (psys%par(ngas), stat=err)
@@ -291,7 +295,7 @@ subroutine read_Ghdf5_particles()
      ! begin read
      !-----------------------------------------------------------!  
      call form_gadget_snapshot_file_name(GV%SnapPath,GV%ParFileBase,GV%CurSnapNum,fn,snapfile,hdf5bool)
-     call mywrite("   reading particle snapshot file: "//trim(snapfile), verb, fmt="(A)")
+     call mywrite("   reading particle snapshot file: "//trim(snapfile), verb)
      call hdf5_open_file(fh, snapfile, readonly=.true.)
 
 
@@ -427,8 +431,8 @@ subroutine read_Ghdf5_particles()
 
   ! calculate xHI from CLOUDY iontables
   !-----------------------------------------------------------!  
-  write(*,*) 
-  write(*,*) " calculating xHI from CLOUDY tables"
+  call mywrite('',verb) 
+  call mywrite("   calculating input xHI from CLOUDY tables",verb)
 
   call read_ion_table_file( "../data/ionization_tables/h1.hdf5", itab )
   redshift = ghead%z
@@ -478,10 +482,11 @@ subroutine read_Ghdf5_particles()
 
 #ifdef cloudy
   psys%par(:)%xHI_cloudy = psys%par(:)%xHI
-  write(*,*) " min/max xHI_cloudy = ", minval( psys%par%xHI_cloudy ), maxval( psys%par%xHI_cloudy )
+  fmt = "(T7, A, 2ES15.5)"
+  write(str,fmt) "min/max xHI_cloudy = ", minval( psys%par%xHI_cloudy ), maxval( psys%par%xHI_cloudy )
+  call mywrite(str,verb) 
 #endif
-
-  write(*,*) " min/max xHI        = ", minval( psys%par%xHI ), maxval( psys%par%xHI )
+  call mywrite('',verb)
 
   
 
@@ -502,7 +507,7 @@ subroutine read_Ghdf5_particles()
 
   ! set the electron fractions from the ionization fractions
   !----------------------------------------------------------
-  call set_ye(psys, GV%H_mf, GV%He_mf, GV%NeBackGround)
+  call set_ye(psys, GV%H_mf, GV%He_mf, GV%NeBackground)
 
 
 

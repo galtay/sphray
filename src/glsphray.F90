@@ -16,7 +16,7 @@ implicit none
    type(command_line_type) :: cmnd   !< command line variable
 
    integer, parameter :: verb = 3    !< verbosity before config file is read
-   logical, parameter :: crash = .true.             !< stop on error
+   logical, parameter :: crash = .true.               !< stop on error
    character(clen), parameter :: myname = "glsphray"  !< routine name
 
    ! set initial myf90_verbosity (will be changed once config file is read)
@@ -24,14 +24,21 @@ implicit none
    !========================================================================
    myf90_verbosity = verb
 
+   ! test user defined variables sizes
+   !========================================================================
+   if (myf90_test_var_sizes() /= 0) then
+      call mywrite('  ** warning selected____kind sizes are off', verb )
+      call system( 'sleep(2)' )     
+   endif
+
    ! initialize command line variable
    !========================================================================
-   cmnd = initialize_command_line(verb)
+   cmnd = myf90_initialize_command_line(verb)
 
    ! check command line arguments
    !========================================================================
    if (cmnd%nargs /= 1 ) then 
-      call myerr( 'usage: ./sphray config_file', myname, crash )
+      call myerr( 'usage: ./glsphray config_file', myname, crash )
    end if
 
    ! clear terminal and print splash screen

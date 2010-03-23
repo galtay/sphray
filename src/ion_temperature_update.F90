@@ -107,13 +107,13 @@ subroutine update_raylist(raylist, pars, box, srcray)
      ! check we dont have double intersections when we shouldn't
      !-------------------------------------------------------------
      if (srcray) then
-        if (box%tbound(1)==1 .and. GV%rayn.EQ.par%lasthit) then
+        if (box%tbound(1)==1 .and. GV%itime == par%lasthit) then
            ! here we have periodic BCs and a particle has been hit
            ! twice by the same ray so we stop tracing 
            GV%PhotonsLeavingBox = GV%PhotonsLeavingBox + raylist%ray%pcnt
            raylist%lastnnb = impact-1
            exit
-        else if (box%tbound(1)==0 .and. GV%rayn.EQ.par%lasthit) then
+        else if (box%tbound(1)==0 .and. GV%itime == par%lasthit) then
            ! here we have transmissive BCs and a particle has been hit
            ! twice by the same ray so something is wrong
            write(*,*) "transmissive BCs and particle hit twice in one ray!"
@@ -165,7 +165,7 @@ subroutine update_raylist(raylist, pars, box, srcray)
      pars(ipar%index) = par
 
      if (srcray) then
-        pars(ipar%index)%lasthit = GV%rayn 
+        pars(ipar%index)%lasthit = GV%itime 
      end if
 
 
@@ -383,8 +383,8 @@ subroutine update_no_hits(psys, tree)
         ipar%bnorm = 0.0d0   
         ipar%cdfac = b2cdfac( ipar%bnorm, ipar%hsml, GV%cgs_len )
 
-        ipar%dt_code = GV%dtray_code * GV%NraysUpdateNoHits
-        ipar%dt_s    = GV%dtray_s    * GV%NraysUpdateNoHits
+        ipar%dt_code = GV%dt_code * GV%NraysUpdateNoHits
+        ipar%dt_s    = GV%dt_s    * GV%NraysUpdateNoHits
 
         ipar%pdeps    = 0.0d0
         ipar%pdeps_eq = 0.0d0
@@ -431,7 +431,7 @@ subroutine update_no_hits(psys, tree)
 #endif
 
         psys%par(ip) = par
-        psys%par(ip)%lasthit = GV%rayn
+        psys%par(ip)%lasthit = GV%itime
 
 
 

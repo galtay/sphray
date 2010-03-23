@@ -19,6 +19,7 @@ use particle_system_mod, only: particle_info_to_screen
 use atomic_rates_mod, only: get_atomic_rates
 use global_mod, only: PLAN, GV, rtable, cmbT_k
 use global_mod, only: psys, gconst, saved_gheads
+use global_mod, only: set_dt_from_dtcode
 implicit none
 
 contains
@@ -107,7 +108,7 @@ subroutine readin_snapshot(skewers)
 
   ! report readin type
   !======================
-  call mywrite('   input type = ', verb, fmt='(A)', adv=.false.)
+  call mywrite('   input type = ', verb, adv=.false.)
   if (GV%InputType==1) then
      call mywrite(" Gadget-2 public (SnapFormat=1)", verb)
   else if (GV%InputType==2) then
@@ -119,7 +120,7 @@ subroutine readin_snapshot(skewers)
   end if
 
 
-
+ 
   ! read in the particle data
   !=============================
   first = .false.
@@ -207,8 +208,7 @@ subroutine readin_snapshot(skewers)
      psys%src%lastemit = GV%rayn
   endif
 
-
-
+  
   ! these quantities track the photoionization rate.  they are 
   ! rezeroed at inputs (because new source files are loaded) and 
   ! outputs (for time dependence)
@@ -233,6 +233,7 @@ subroutine readin_snapshot(skewers)
   call particle_info_to_screen(psys,str,GV%pardatalun)
   write(GV%pardatalun,*)
   write(GV%pardatalun,*)
+  flush(GV%pardatalun)
 
 
   if (.not. skew) then
@@ -247,6 +248,7 @@ subroutine readin_snapshot(skewers)
      call source_info_to_screen(psys,str,GV%srcdatalun)
      write(GV%srcdatalun,*)
      write(GV%srcdatalun,*)
+     flush(GV%srcdatalun)
   endif
 
 
@@ -364,21 +366,7 @@ subroutine readin_snapshot(skewers)
 #endif
 
 
-  ! set all particles initially neutral for OWLS runs 
-  !=======================================================
-!!$#ifdef OWLS
-!!$  if (first) then
-!!$     do i = 1, size(psys%par(:))
-!!$        if (psys%par(i)%eos == 1.0) then
-!!$           psys%par(i)%xHI = 1.0d0
-!!$           psys%par(i)%xHII = 0.0d0
-!!$        else
-!!$           psys%par(i)%xHI = 1.0d0
-!!$           psys%par(i)%xHII = 0.0d0
-!!$        endif
-!!$     end do
-!!$  endif
-!!$#endif
+
 
 
   ! set neutral or ionized if we need to
@@ -388,7 +376,7 @@ if (first) then
    if (GV%InitxHI > 0.0) then
       psys%par(:)%xHI  = GV%InitxHI
       psys%par(:)%xHII = 1.0d0 - GV%InitxHI
-      call set_ye(psys, GV%H_mf, GV%He_mf, GV%NeBackGround)
+      call set_ye(psys, GV%H_mf, GV%He_mf, GV%NeBackground)
    endif
    
 endif
@@ -401,10 +389,10 @@ endif
 
 
 
-
   ! cap the ionization fractions and temperatures if we have to
   !================================================================
   call enforce_x_and_T_minmax(psys%par, GV%xfloor, GV%xceiling, GV%Tfloor, GV%Tceiling)
+
 
   ! write data after above conditionals to the particle and source log files
   !==========================================================================
@@ -413,12 +401,14 @@ endif
   call particle_info_to_screen(psys,str,GV%pardatalun)
   write(GV%pardatalun,*)
   write(GV%pardatalun,*)
+  flush(GV%pardatalun)
  
   if (.not. skew) then
      write(str,fmt) "After test conditionals from ", trim(srcbase)
      call source_info_to_screen(psys,str,GV%srcdatalun)
      write(GV%srcdatalun,*)
      write(GV%srcdatalun,*)
+     flush(GV%srcdatalun)
   endif
 
   ! scale the data if we need to
@@ -434,12 +424,14 @@ endif
   call particle_info_to_screen(psys,str,GV%pardatalun)
   write(GV%pardatalun,*)
   write(GV%pardatalun,*)
+  flush(GV%pardatalun)
 
   if (.not. skew) then
      write(str,fmt) "After rescaling (a=",a,",h=",h,") from ", trim(srcbase)
      call source_info_to_screen(psys,str,GV%srcdatalun)
      write(GV%srcdatalun,*)
      write(GV%srcdatalun,*)
+     flush(GV%srcdatalun)
   endif
 
 
@@ -450,8 +442,8 @@ endif
   ! and the rest of the stuff
   !===============================================================
   if (.not. skew) then 
-     GV%dtray_code = PLAN%snap(GV%CurSnapNum)%RunTime / PLAN%snap(GV%CurSnapNum)%SrcRays
-     GV%dtray_s    = GV%dtray_code * GV%cgs_time / h
+     GV%dt_code = PLAN%snap(GV%CurSnapNum)%RunTime / PLAN%snap(GV%CurSnapNum)%SrcRays
+     call set_dt_from_dtcode( GV )
   endif
 
   GV%Tcmb_cur = gconst%t_cmb0 / a
@@ -469,7 +461,7 @@ endif
   
   GV%total_atoms = GV%total_mass * GV%cgs_mass * &
        (GV%H_mf  / (gconst%protonmass) + &
-        GV%He_mf / (4*gconst%protonmass) )
+       GV%He_mf / (4*gconst%protonmass) )
 
 
   GV%total_photons = (GV%TotalSimTime * GV%cgs_time / GV%LittleH) * (GV%total_lum * GV%Lunit)
@@ -484,20 +476,21 @@ endif
      write(GV%srcdatalun,100)
      write(GV%srcdatalun,fmt) "Ray / Luminosity info from ", trim(srcbase)
      write(GV%srcdatalun,*) 
-     write(GV%srcdatalun,'(A,ES12.5)') "dt/ray [code] = ", GV%dtray_code
-     write(GV%srcdatalun,'(A,ES12.5)') "dt/ray [s]    = ", GV%dtray_s
-     write(GV%srcdatalun,'(A,ES12.5)') "dt/ray [Myr]  = ", GV%dtray_s / gconst%sec_per_megayear
+     write(GV%srcdatalun,'(A,ES12.5)') "dt  [code] = ", GV%dt_code
+     write(GV%srcdatalun,'(A,ES12.5)') "dt  [s]    = ", GV%dt_s
+     write(GV%srcdatalun,'(A,ES12.5)') "dt  [Myr]  = ", GV%dt_myr
      write(GV%srcdatalun,*)
      write(GV%srcdatalun,'(A,ES12.5)') "total photons = ", GV%total_photons
      write(GV%srcdatalun,'(A,ES12.5)') "total atoms   = ", GV%total_atoms
      write(GV%srcdatalun,'(A,ES12.5)') "photons / atoms = ", GV%total_photons / GV%total_atoms
      write(GV%srcdatalun,*)
      write(GV%srcdatalun,100)
+     flush(GV%srcdatalun)
   endif
 
   call mywrite("",verb)
 
-  write(*,*) 'finished read snapshot data'
+
  
 
 end subroutine readin_snapshot

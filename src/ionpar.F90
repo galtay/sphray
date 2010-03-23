@@ -16,6 +16,7 @@ use cen_atomic_rates_mod, only: Osterbrok_HeII_photo_cs
 use cen_atomic_rates_mod, only: Haiman_Bremss_cool
 use cen_atomic_rates_mod, only: Haiman_Comp_Heol
 use global_mod, only: GV
+use hui_gnedin_atomic_rates_mod
 implicit none
 
 !---------------------------
@@ -182,6 +183,33 @@ end type ionpart_type
 
 
 contains
+
+
+subroutine set_ionpar_xH_eq( ipar )
+  type(ionpart_type), intent(inout) :: ipar  !< output ionization particle
+
+  real(r8b) :: R, Q, P, D
+  real(r8b) :: CI, RC
+  real(r8b) :: y
+
+  y = 0.0d0
+  CI = Hui_HI_col_ion_cool( ipar%T )
+  RC = Hui_HII_recombA( ipar%T )
+  
+
+  R = -( CI + RC ) * ipar%nH
+  Q = CI * ipar%nH - ipar%gammaHI - (CI + RC) * ipar%nH * y
+  P = ipar%gammaHI + CI * ipar%nH * y
+
+  D = Q*Q - 4.0d0 * R * P
+
+
+  ipar%xHII = ( - Q - sqrt(D)) / (2.0d0 * R)
+  ipar%xHI = 1.0d0 - ipar%xHII
+  
+end subroutine set_ionpar_xH_eq
+
+
 
 
 !> copies the basic particle data into an ionization particle
@@ -363,8 +391,8 @@ subroutine initialize_ionpar(ipar,par,index,srcray,He,raylist,impact)
      ipar%bnorm = ipar%b / ipar%hsml
      ipar%cdfac = b2cdfac(ipar%bnorm,ipar%hsml,GV%cgs_len)
 
-     ipar%dt_code = (GV%rayn - ipar%lasthit) * GV%dtray_code
-     ipar%dt_s    = (GV%rayn - ipar%lasthit) * GV%dtray_s
+     ipar%dt_code = (GV%itime - ipar%lasthit) * GV%dt_code
+     ipar%dt_s    = (GV%itime - ipar%lasthit) * GV%dt_s
      
      ipar%pdeps    = 0.0d0
      ipar%pdeps_eq = 0.0d0
