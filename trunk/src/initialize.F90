@@ -7,7 +7,6 @@
 !<
 module initialize_mod
 use myf90_mod
-!use physical_constants_mod
 use config_mod, only: read_config_file
 use mt19937_mod, only: init_mersenne_twister
 use b2cd_mod, only: read_b2cd_file
@@ -141,7 +140,7 @@ subroutine do_output_planning()
   logical :: fthere
   integer(i4b) :: lun
 
-  call mywrite("  doing output planning",verb) 
+  call mywrite("   doing output planning",verb) 
   
   Ni = GV%StartSnapNum
   Nf = GV%EndSnapNum
@@ -175,9 +174,9 @@ subroutine do_output_planning()
   if (GV%Nsnaps==1) then          
 
      PLAN%snap(Ni)%RunTime   = GV%StaticFieldSimTime    ! from config
-     PLAN%snap(Ni)%StartTime = PLAN%snap(Ni)%TimeAt ! from header
+     PLAN%snap(Ni)%StartTime = PLAN%snap(Ni)%TimeAt     ! from header
 
-     GV%TotalSimTime = GV%StaticFieldSimTime ! from config
+     GV%TotalSimTime = GV%StaticFieldSimTime            ! from config
 
   ! for multiple snapshots
   !------------------------
@@ -292,7 +291,7 @@ subroutine do_ray_planning()
   integer(i4b) :: lun
 
 
-  call mywrite("  doing raytracing planning",verb) 
+  call mywrite("   doing raytracing planning",verb) 
 
 
   code2Myr = GV%cgs_time / GV%LittleH / gconst%sec_per_megayear
@@ -396,7 +395,7 @@ subroutine initialize_global_variables()
   integer(i8b) :: nrays
   integer(i8b) :: i
 
-  call mywrite("  initializing global variables",verb) 
+  call mywrite("   initializing global variables",verb) 
 
 
   ! calculate total number of rays to be traced
@@ -410,9 +409,9 @@ subroutine initialize_global_variables()
   ! report ionization solver being used and particle/source mem footprint
   !----------------------------------------------------------------------
   if (GV%IonTempSolver == 1) then
-     call mywrite("  using Implicit Euler ionization solver",verb)
+     call mywrite("   using Implicit Euler ionization solver",verb)
   else if (GV%IonTempSolver == 2) then
-     call mywrite("  using Backwards Difference ionization solver",verb)
+     call mywrite("   using Backwards Difference ionization solver",verb)
   end if
 
   call calc_bytes_per_particle_and_source(GV%bytesperpar, GV%bytespersrc)
@@ -430,22 +429,27 @@ subroutine initialize_global_variables()
 
   GV%raystat_file = trim(GV%OutputDir) // "/raystats.dat"
   if (GV%raystats) then
+     raystatbuffsize = nrays / 10
      call open_unformatted_file_w(GV%raystat_file, GV%raystatlun)
-     write(GV%raystatlun) nrays, raystatbuffsize 
   end if
 
-  
+
                  
   ! initialize counters and timers
   !---------------------------------
   GV%CurSnapNum = GV%StartSnapNum
   GV%rayn = 0
   GV%src_rayn = 0
-
   GV%MB = zero
  
-  GV%time_code = PLAN%snap(GV%StartSnapNum)%StartTime
-  GV%time_s = GV%time_code * GV%cgs_time / GV%LittleH
+  GV%itime = 0_i8b
+  GV%start_time_code = PLAN%snap(GV%StartSnapNum)%StartTime
+  GV%start_time_s    = GV%start_time_code * GV%cgs_time / GV%LittleH
+  GV%start_time_myr  = GV%start_time_s / gconst%sec_per_megayear
+
+  GV%time_elapsed_code = zero
+  GV%time_elapsed_s    = zero
+  GV%time_elapsed_myr  = zero
       
   GV%TotalSourceRaysCast = zero
   GV%TotalDiffuseRaysCast = zero
@@ -461,6 +465,7 @@ subroutine initialize_global_variables()
   GV%ParticleCrossings = zero
   GV%TotalDerivativeCalls = zero
   
+
   ! only important for runs with a background source (src%EmisPrf=-3)
   !-------------------------------------------------------------------
   call init_background_source_variables(nrays)

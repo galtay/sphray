@@ -29,7 +29,7 @@
 #OPT += -Dhdf5     # if you are using the hdf
 
 
-OPT += -DOWLS     # selects input as an OWLS snapshot
+#OPT += -DOWLS     # selects input as an OWLS snapshot
 #OPT += -DGIMIC    # selects input as a GIMIC snapshot
 
 
@@ -83,12 +83,14 @@ CFLAGS= -O3
 
 
 
-APPS= screen sphray 
+APPS= screen sphray sphraybgnd
 
 #--------------------
 
 SRC= 	myf90.o \
 	sobol.o \
+	healpix_types.o \
+	pix_tools.o \
 	physical_constants.o \
 	mt19937.o \
 	m_mrgrnk.o \
@@ -105,6 +107,7 @@ SRC= 	myf90.o \
 	spectra.o \
 	sphpar.o \
 	octtree3.o \
+	ndtree.o \
 	ray.o \
 	raylist.o \
 	global.o \
@@ -120,6 +123,7 @@ SRC= 	myf90.o \
 	output.o \
 	ion_temperature_update.o \
 	initialize.o \
+	backgroundloop.o \
 	mainloop.o 
 
 
@@ -236,6 +240,13 @@ screen: Makefile
 # Main SPHRAY application
 #=============================================================================
 sphray: $(SRC) sphray.o
+	$(FC) $(FFLAGS) $^ $(OPT) $(FNAME) $@
+
+
+#
+# Main SPHRAY background only application
+#=============================================================================
+sphraybgnd: $(SRC) sphraybgnd.o
 	$(FC) $(FFLAGS) $^ $(OPT) $(FNAME) $@
 
 #

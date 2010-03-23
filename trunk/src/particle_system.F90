@@ -238,9 +238,9 @@ subroutine scale_comoving_to_physical(a,par,src,box,hub)
      h = 1.0d0
   end if
 
-  call mywrite("  scaling comoving to physical coordinates", verb)
+  call mywrite("   scaling comoving to physical coordinates", verb)
   fmt = "(A,F12.5,T22,A,T25,F12.5)"
-  write(str,fmt) "  a = ", a, "h = ", h
+  write(str,fmt) "   a = ", a, "h = ", h
   call mywrite(str,verb)
 
   
@@ -301,9 +301,9 @@ subroutine scale_physical_to_comoving(a,par,src,box,hub)
      h = 1.0d0
   end if
 
-  call mywrite("  scaling physical to comoving coordinates", verb)
+  call mywrite("   scaling physical to comoving coordinates", verb)
   fmt = "(A,F12.5,T22,A,T25,F12.5)"
-  write(str,fmt) "  a = ", a, "h = ", h
+  write(str,fmt) "   a = ", a, "h = ", h
   call mywrite(str,verb)
 
   
@@ -566,12 +566,12 @@ subroutine calc_bytes_per_particle_and_source(bpp, bps)
   bpp = bpp + 8  ! last hit index
 
 
-  write(str,'(A,I4)') "  bytes per particle = ", bpp
+  write(str,'(A,I4)') "   bytes per particle = ", bpp
   call mywrite(str, verb)
 
   
   bps = 10 * 4 + 8
-  write(str,'(A,I4)') "  bytes per source = ", bps
+  write(str,'(A,I4)') "   bytes per source = ", bps
   call mywrite(str, verb)
 
 

@@ -24,9 +24,16 @@ implicit none
    !========================================================================
    myf90_verbosity = verb
 
+   ! test user defined variables sizes
+   !========================================================================
+   if (myf90_test_var_sizes() /= 0) then
+      call mywrite('  ** warning selected____kind sizes are off', verb )
+      call system( 'sleep(2)' )     
+   endif
+
    ! initialize command line variable
    !========================================================================
-   cmnd = initialize_command_line(verb)
+   cmnd = myf90_initialize_command_line(verb)
 
    ! check command line arguments
    !========================================================================

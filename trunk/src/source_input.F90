@@ -54,6 +54,11 @@ end subroutine read_source_header
 
 
 subroutine get_planning_data_sources()
+
+  character(clen), parameter :: myname = 'get_planning_data_sources'
+  logical, parameter :: crash = .true.
+  integer, parameter :: verb = 2
+
   integer(i4b) :: loglun
   type(source_header_type) :: shead
   character(clen) :: snapfile ! snapshot file name
@@ -85,6 +90,8 @@ subroutine get_planning_data_sources()
      do j = 1,sfiles
         call form_snapshot_file_name(GV%SourcePath,GV%SourceFileBase,i,j,snapfile)
         write(loglun,'(I3,"  ",A)') i,trim(snapfile)
+        call mywrite('   srcfile = '//trim(snapfile) , verb)
+
         call read_source_header(snapfile,shead,lun,closefile=.true.)
         
         PLAN%snap(i)%RaysFromSrcHeader = shead%TotalRays
@@ -108,9 +115,9 @@ subroutine read_src_snapshot()
   character(clen), parameter :: myname="read_src_snapshot"
   logical, parameter :: crash=.true.
   integer, parameter :: verb=2
+  character(clen) :: str, fmt
 
   character(clen) :: snapfile  
-  character(clen) :: str
   type(source_header_type) :: shead
   integer(i4b) :: lun, err
   integer(i4b) :: i, N, Nall
@@ -131,7 +138,7 @@ subroutine read_src_snapshot()
   MB = GV%bytespersrc * real(Nall) / 2**20
   GV%MB = GV%MB + MB
 
-  write(str,"(A,F10.4,A,I10,A)") "  allocating ", MB, " MB for ", Nall, " sources"
+  write(str,"(T4,A,F10.4,A,I10,A)") "allocating ", MB, " MB for ", Nall, " sources"
   call mywrite(str,verb)
 
   if (allocated(psys%src)) deallocate(psys%src)
@@ -140,8 +147,8 @@ subroutine read_src_snapshot()
      call myerr("cant allocate sources in particle system", myname, crash)
   end if
 
-  write(str,"(A,A)") "   reading source snapshot file: ", trim(snapfile) 
-  call mywrite(str,verb,fmt="(A)")
+  write(str,"(T4,A,A)") "reading source snapshot file: ", trim(snapfile) 
+  call mywrite(str,verb)
      
   do i = 1,N 
      read(lun,*) psys%src(i)%pos(1), &
@@ -267,8 +274,6 @@ subroutine form_snapshot_file_name(Path,FileBase,SnapNum,FileNum,SnapFile)
   100 format(A,"/",A,"_",I3.3,".",A)
   write(SnapFile,100) trim(Path), trim(FileBase), SnapNum, &
                       trim(adjustl(FileNumChar))
-
-  write(*,*) "SnapFile: ", trim(SnapFile)
   
 end subroutine form_snapshot_file_name
 

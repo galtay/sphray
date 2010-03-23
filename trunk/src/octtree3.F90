@@ -109,7 +109,7 @@ end subroutine check
       call parttree(psys,tree,err)
       if(err.NE.0) then
          call killtree(tree)
-         call mywrite("  woops, guessed wrong for tree memory, increasing allocation",verb)
+         call mywrite("   woops, guessed wrong for tree memory, increasing allocation",verb)
          tree_storage_factor = 1.414 * tree_storage_factor
       else
          exit tree_allocation
@@ -121,7 +121,7 @@ end subroutine check
    call shrinkcells2(psys,tree)
 
    fmt="(A,F8.4)"
-   write(str,fmt) "  allocated tree cells / actual tree cells =  ", &
+   write(str,fmt) "   allocated tree cells / actual tree cells =  ", &
                           real(tree%maxcells)/tree%ncells
    call mywrite(str,verb) 
    call mywrite("",verb)
@@ -172,7 +172,7 @@ subroutine maketree(psys,tree,MBalloc)
   MBalloc = MBalloc + MB     
 
   fmt = "(A,F12.4,A)"
-  write(str,fmt) "  allocated ", MBalloc, " MB for tree"
+  write(str,fmt) "   allocated ", MBalloc, " MB for tree"
   call mywrite(str,verb) 
   
 end subroutine maketree

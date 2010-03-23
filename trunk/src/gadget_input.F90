@@ -239,7 +239,7 @@ subroutine read_Gpub_particles()
      ! begin read
      !-----------------------------------------------------------!  
      call form_gadget_snapshot_file_name(GV%SnapPath,GV%ParFileBase,GV%CurSnapNum,fn,snapfile,hdf5bool)
-     call mywrite("   reading public gadget particle snapshot file "//trim(snapfile), verb,fmt="(A)")
+     call mywrite("   reading public gadget particle snapshot file "//trim(snapfile), verb)
      call open_unformatted_file_r( snapfile, lun )
      call read_gadget_header_lun(lun,ghead)
 
@@ -363,7 +363,7 @@ subroutine read_Gpub_particles()
   if (.not. GV%OnTheSpotHe .or. GV%HeliumCaseA)   caseA(2) = .true.
 
   call set_collisional_ionization_equilibrium(psys, caseA, GV%IsoTemp, DoHydrogen=.true., fit="hui")
-  call set_ye(psys, GV%H_mf, GV%He_mf, GV%NeBackGround)
+  call set_ye(psys, GV%H_mf, GV%He_mf, GV%NeBackground)
 
 
 

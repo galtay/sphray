@@ -1,49 +1,67 @@
-!> \file mainloop.F90
+!> \file backgroundloop.F90
 
-!> \brief the main program loop
+!> \brief the background program loop
 !! 
 !! Loops through the snapshots calling the raytracing and output routines 
 !<
 
-module mainloop_mod
+module backgroundloop_mod
   use myf90_mod
 
   ! routines
   use main_input_mod, only: readin_snapshot
-  use oct_tree_mod, only: buildtree, setparticleorder
-  use ndtree_mod, only: build_ndtree
-  use raylist_mod, only: prepare_raysearch, kill_raylist, trace_ray
+  use oct_tree_mod, only: buildtree
+  use oct_tree_mod, only: setparticleorder
+  use raylist_mod, only: prepare_raysearch
+  use output_mod, only: output_total_snap
+  use ray_mod, only: make_healpix_ray
+
+  use ion_table_class
+
+  use raylist_mod, only: kill_raylist, trace_ray
   use ray_mod, only: make_source_ray, make_recomb_ray
   use ray_mod, only: ray_type, raystat_type, raystatbuffsize
   use ion_temperature_update, only: update_raylist, update_no_hits
   use mt19937_mod, only: genrand_real1
-  use output_mod, only: output_total_snap, ion_frac_out
+  use output_mod, only: ion_frac_out
   use global_mod, only: set_dt_from_dtcode, set_time_elapsed_from_itime
+
   
-  ! variables
+  ! variables and types
   use global_mod, only: psys
   use global_mod, only: globalraylist
   use global_mod, only: tree
   use global_mod, only: GV
   use global_mod, only: PLAN
   use global_mod, only: gconst
-  use ndtree_mod, only: yz_tree, zx_tree, xy_tree
+  use global_mod, only: saved_gheads
   
+  use raylist_mod, only: raylist_type
+  use ionpar_mod
+
   implicit none
   
-  integer(i8b), parameter :: one = 1
+  real(r8b), parameter :: zero = 0.0d0
+  real(r8b), parameter :: four_pi = 12.5663706d0
+  integer(i4b), parameter :: nside = 1
+  integer(i4b), parameter :: npix = 12 * nside**2
+  real(r8b), parameter :: solid_angle = 1.0d0 / npix
 
-  integer(i4b), parameter :: rays_per_leaf = 2
-  integer(i4b), parameter :: rays_per_dt = 1
+  
+
   
 contains
   
+
+
+
+
   !> this is the main driver of SPHRAY
   !======================================
-  subroutine mainloop()
+  subroutine backgroundloop()
     implicit none
     
-    character(clen), parameter :: myname="mainloop"
+    character(clen), parameter :: myname="backgroundloop"
     logical, parameter :: crash=.true.
     integer, parameter :: verb=1
     character(clen) :: str,fmt
@@ -57,6 +75,8 @@ contains
     integer(i8b) :: snapn !< snapshot counter
     integer(i8b) :: rayn  !< ray counter
     integer(i8b) :: srcn  !< source counter
+    integer(i8b) :: ipar
+    integer(i8b) :: ihit  !< intersection counter
     
     real(r8b) :: rn       !< random number
     real(r8b) :: MB       !< MBs for memory consumption tracking
@@ -67,14 +87,25 @@ contains
     type(ray_type) :: ray
     real(r8b) :: outmark
     
-#ifdef incHrec
-    integer(i8b) :: rindx
     integer(i8b) :: pindx
     integer(i8b) :: lasthitcheck
-#endif
-    
-    
-    raystatcnt = 0
+
+
+    type(raylist_type) :: raylist_group(0:npix-1)   
+    integer(i4b) :: ipix
+    type(ionpart_type) :: ionpar
+    real(r8b) :: tausum(0:npix-1)
+
+    character(clen) :: ion_table_file
+    type( ion_table_type ) :: itab
+    real(r4b) :: redshift
+    real(r8b) :: logflux(436)
+    real(r8b) :: GHIint
+    real(r8b) :: GHItable
+    real(r8b) :: GHItotal
+
+    ion_table_file = '../data/ionization_tables/h1.hdf5'
+
     
     ! loop over the snapshots 
     !=========================
@@ -83,19 +114,25 @@ contains
        !  read in particle and source snapshot
        !----------------------------------------------------------------              
        call readin_snapshot()
-       
+              
 
-       !  if tracking recombinations do some initializations
+       !  get background flux from Cloudy table
        !----------------------------------------------------------------              
-#ifdef incHrec
-       if (snapn == GV%StartSnapNum) then
-          allocate( reclist(psys%npar) )
-       end if
-       reclist = 0
-       GV%recpt = 0
-       psys%par(:)%OnRecList = .false.
-#endif
-       
+       call read_ion_table_file( ion_table_file, itab )
+       redshift = saved_gheads(snapn,0)%z
+       logflux = return_logflux_at_z( itab, redshift )
+       GHIint = integrate_flux_at_z( itab, redshift )
+       GHItable = return_gammaHI_at_z( itab, redshift )
+
+
+
+       write(*,*) 'GHI int', GHIint
+       write(*,*) 'GHI tab', GHItable
+       write(*,*) 'GHIi/GHIt = ', GHIint/GHItable
+
+
+
+
        !  build oct tree.  only need to do this once per snap (for now)
        !----------------------------------------------------------------
        call buildtree(psys,tree,MB,GV%PartPerCell)
@@ -104,34 +141,7 @@ contains
        call prepare_raysearch(psys, globalraylist)
        
 
-       !  if using quadtree wall sampling build trees and overwrite plan data
-       !---------------------------------------------------------------------  
-       if (GV%WallSampling == 4) then
-          call build_ndtree( xy_tree, psys, iaxis=3, ppc=16, outdir=GV%OutputDir )
-          PLAN%snap(snapn)%SrcRays = xy_tree%nleafs * rays_per_leaf
-          raystatbuffsize = PLAN%snap(snapn)%SrcRays / 10 + 1
-
-          GV%dt_code = ( PLAN%snap(snapn)%RunTime / xy_tree%dtsum ) / rays_per_leaf
-          call set_dt_from_dtcode( GV )
-
-          write(*,*) 'dt_code = ', GV%dt_code
-          write(*,*) 'dt_s    = ', GV%dt_s
-          write(*,*) 'dt_myr  = ', GV%dt_myr
-
-          if (psys%src(1)%EmisPrf == -3) then
-             call build_ndtree( yz_tree, psys, iaxis=1, ppc=16, outdir=GV%OutputDir )
-             call build_ndtree( zx_tree, psys, iaxis=2, ppc=16, outdir=GV%OutputDir )
-          endif
-
-         
-       endif
-
-      
-       if (GV%raystats) then
-          write(GV%raystatlun) PLAN%snap(snapn)%SrcRays, raystatbuffsize 
-       endif
-       
-
+          
        if(GV%JustInit) then
           write(str,"(A,F10.2)") "total memory allocated [MB] = ", GV%MB
           call mywrite(str,verb)
@@ -146,11 +156,66 @@ contains
           call output_total_snap(psys%par)      
           GV%OutputIndx = 1
        end if
+
+
+
        
        
        ! begin ray tracing 
        !------------------------- 
-       src_rays: do rayn = one, PLAN%snap(snapn)%SrcRays
+       over_pars: do ipar = 1, size(psys%par)
+!          write(*,*) 'ipar = ', ipar
+
+
+          GV%itime = GV%itime + 1
+          call set_time_elapsed_from_itime( GV )
+          GV%IonizingPhotonsPerSec = GV%TotalPhotonsCast / GV%time_elapsed_s
+          
+
+          tausum = zero
+          GHItotal = zero
+          over_pixels: do ipix = 0, npix-1
+             call make_healpix_ray( psys%par(ipar), nside, ipix, psys%box, ray )
+             raylist_group(ipix)%ray = ray
+
+             call trace_ray(ray, raylist_group(ipix), psys, tree) 
+
+             over_hits: do ihit = raylist_group(ipix)%nnb, 2, -1
+                pindx = raylist_group(ipix)%intersection(ihit)%pindx
+                call initialize_ionpar( ionpar, psys%par(pindx), pindx, srcray=.false., He=.false., &
+                     raylist= raylist_group(ipix), impact= ihit)
+                call set_taus(ionpar, He=.false.)
+                tausum(ipix) = tausum(ipix) + ionpar%tauHI
+                ionpar%nHI = ionpar%nH * ionpar%xHI
+
+            end do over_hits
+            GHItotal = GHItotal + solid_angle * GHIint
+        
+          end do over_pixels
+
+          ionpar%gammaHI = GHItotal
+
+
+          call set_ionpar_xH_eq( ionpar )
+          call ionpar2par( ionpar, psys%par(ipar) )
+          psys%par(ipar)%gammaHI = GHItotal
+          psys%par(ipar)%time = 1.0d0
+
+       end do over_pars
+
+
+
+       GV%OutputIndx = 1
+       call output_total_snap(psys%par)      
+
+
+
+
+       stop
+
+
+
+       src_rays: do rayn = 1, PLAN%snap(snapn)%SrcRays
 
           
           GV%rayn                = GV%rayn + 1
@@ -164,7 +229,7 @@ contains
              srcn=srcn+1
              if(srcn.GT.size(psys%src)) then
                 write(*,*) srcn, rn, psys%src(size(psys%src))%Lcdf, size(psys%src)
-                stop "src num > number of sources in mainloop.f90"
+                stop "src num > number of sources in backgroundloop.f90"
              endif
           enddo
                     
@@ -338,6 +403,6 @@ contains
     end if
     
     
-  end subroutine mainloop
+  end subroutine backgroundloop
   
-end module mainloop_mod
+end module backgroundloop_mod
