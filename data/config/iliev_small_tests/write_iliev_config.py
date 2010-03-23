@@ -48,8 +48,6 @@ config_files= ['iliev_test1_N64_R6.config',           'iliev_test1_N64_R7.config
                'iliev_test2_N64_R6.config',           'iliev_test2_N64_R7.config',           'iliev_test2_N64_R8.config',
                'iliev_test2_N128_R6.config',          'iliev_test2_N128_R7.config',          'iliev_test2_N128_R8.config']
 
-
-
 dotests= ['True', 'True', 'True',
           'True', 'True', 'True',
           'True', 'True', 'True',
@@ -61,7 +59,6 @@ dotests= ['True', 'True', 'True',
           'True', 'True', 'True',
           'True', 'True', 'True']
 
-
 test_names= ['iliev_test1', 'iliev_test1', 'iliev_test1',
              'iliev_test1', 'iliev_test1', 'iliev_test1',
              'iliev_test1He', 'iliev_test1He', 'iliev_test1He',
@@ -72,7 +69,6 @@ test_names= ['iliev_test1', 'iliev_test1', 'iliev_test1',
              'none', 'none', 'none',
              'iliev_test2', 'iliev_test2', 'iliev_test2',
              'iliev_test2', 'iliev_test2', 'iliev_test2']
-
 
 iso_temps= ['1.0d4', '1.0d4', '1.0d4',
             '1.0d4', '1.0d4', '1.0d4',
@@ -95,6 +91,17 @@ deplete_rays= ['True', 'True', 'True',
                'False', 'False', 'False',
                'True', 'True', 'True',
                'True', 'True', 'True']
+
+spectra_files= ['../data/spectra/thermal1e5.cdf',        '../data/spectra/thermal1e5.cdf',        '../data/spectra/thermal1e5.cdf',
+                '../data/spectra/thermal1e5.cdf',        '../data/spectra/thermal1e5.cdf',        '../data/spectra/thermal1e5.cdf',
+                '../data/spectra/thermal1e5.cdf',        '../data/spectra/thermal1e5.cdf',        '../data/spectra/thermal1e5.cdf',
+                '../data/spectra/thermal1e5.cdf',        '../data/spectra/thermal1e5.cdf',        '../data/spectra/thermal1e5.cdf',
+                '../data/spectra/hm01/hm01qg_z0.00.cdf', '../data/spectra/hm01/hm01qg_z0.00.cdf', '../data/spectra/hm01/hm01qg_z0.00.cdf',
+                '../data/spectra/hm01/hm01qg_z0.00.cdf', '../data/spectra/hm01/hm01qg_z0.00.cdf', '../data/spectra/hm01/hm01qg_z0.00.cdf',
+                '../data/spectra/hm01/hm01qg_z0.00.cdf', '../data/spectra/hm01/hm01qg_z0.00.cdf', '../data/spectra/hm01/hm01qg_z0.00.cdf',
+                '../data/spectra/hm01/hm01qg_z0.00.cdf', '../data/spectra/hm01/hm01qg_z0.00.cdf', '../data/spectra/hm01/hm01qg_z0.00.cdf',
+                '../data/spectra/thermal1e5.cdf',        '../data/spectra/thermal1e5.cdf',        '../data/spectra/thermal1e5.cdf',
+                '../data/spectra/thermal1e5.cdf',        '../data/spectra/thermal1e5.cdf',        '../data/spectra/thermal1e5.cdf']
 
 parbases= ['gadget_glass_L13.2_N64',  'gadget_glass_L13.2_N64',  'gadget_glass_L13.2_N64',
            'gadget_glass_L13.2_N128', 'gadget_glass_L13.2_N128', 'gadget_glass_L13.2_N128',
@@ -128,6 +135,17 @@ raynums= ['1000000', '10000000', '100000000',
           '1000000', '10000000', '100000000',
           '1000000', '10000000', '100000000',
           '1000000', '10000000', '100000000']
+
+hydrogen_caseAs= ['False', 'False', 'False',
+                  'False', 'False', 'False',
+                  'False', 'False', 'False',
+                  'False', 'False', 'False',
+                  'True', 'True', 'True',
+                  'True', 'True', 'True',
+                  'True', 'True', 'True',
+                  'True', 'True', 'True',
+                  'False', 'False', 'False',
+                  'False', 'False', 'False']
 
 outdirs= ['../../sphray_output/IT1_64/r6',           '../../sphray_output/IT1_64/r7',           '../../sphray_output/IT1_64/r8',
           '../../sphray_output/IT1_128/r6',          '../../sphray_output/IT1_128/r7',          '../../sphray_output/IT1_128/r8',
@@ -178,12 +196,16 @@ for indx in range(len(raynums)):
             f.write( conf + ': ' + iso_temps[indx] + '\n' )
         elif conf == 'RayDepletion':
             f.write( conf + ': ' + deplete_rays[indx] + '\n' )
+        elif conf == 'SpectraFile':
+            f.write( conf + ': ' + spectra_files[indx] + '\n' )
         elif conf == 'ParFileBase':
             f.write( conf + ': ' + parbases[indx] + '\n' )
         elif conf == 'SourceFileBase':
             f.write( conf + ': ' + srcbases[indx] + '\n' )
         elif conf == 'ForcedRayNumber':
             f.write( conf + ': ' + raynums[indx] + '\n' )
+        elif conf == 'HydrogenCaseA':
+            f.write( conf + ': ' + hydrogen_caseAs[indx] + '\n' )
         elif conf == 'OutputDir':
             f.write( conf + ': ' + outdirs[indx] + '\n' )
         elif conf == 'IonFracOutRays':
