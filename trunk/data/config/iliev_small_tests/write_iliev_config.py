@@ -147,6 +147,17 @@ hydrogen_caseAs= ['False', 'False', 'False',
                   'False', 'False', 'False',
                   'False', 'False', 'False']
 
+helium_mfs= ['0.0d0', '0.0d0', '0.0d0',
+             '0.0d0', '0.0d0', '0.0d0',
+             '0.4d0', '0.4d0', '0.4d0',
+             '0.4d0', '0.4d0', '0.4d0',
+             '0.0d0', '0.0d0', '0.0d0',
+             '0.0d0', '0.0d0', '0.0d0',
+             '0.0d0', '0.0d0', '0.0d0',
+             '0.0d0', '0.0d0', '0.0d0',
+             '0.0d0', '0.0d0', '0.0d0',
+             '0.0d0', '0.0d0', '0.0d0']
+
 outdirs= ['../../sphray_output/IT1_64/r6',           '../../sphray_output/IT1_64/r7',           '../../sphray_output/IT1_64/r8',
           '../../sphray_output/IT1_128/r6',          '../../sphray_output/IT1_128/r7',          '../../sphray_output/IT1_128/r8',
           '../../sphray_output/IT1_He_64/r6',        '../../sphray_output/IT1_He_64/r7',        '../../sphray_output/IT1_He_64/r8',
@@ -206,6 +217,8 @@ for indx in range(len(raynums)):
             f.write( conf + ': ' + raynums[indx] + '\n' )
         elif conf == 'HydrogenCaseA':
             f.write( conf + ': ' + hydrogen_caseAs[indx] + '\n' )
+        elif conf == 'He_mf':
+            f.write( conf + ': ' + helium_mfs[indx] + '\n' )
         elif conf == 'OutputDir':
             f.write( conf + ': ' + outdirs[indx] + '\n' )
         elif conf == 'IonFracOutRays':
