@@ -236,13 +236,11 @@ subroutine read_Ghdf5_particles()
   real(r8b) :: MB
   real(r8b) :: Hmf
   real(r8b) :: nH8
-  real(r4b) :: nH4
   real(r8b) :: T8
-  real(r4b) :: T4
   real(r8b) :: xvec(5)
 
   type(ion_table_type) :: itab
-  real :: redshift
+  real(r8b) :: redshift
 
   logical :: hdf5bool
 
@@ -441,41 +439,35 @@ subroutine read_Ghdf5_particles()
   GV%UVB_gammaHI_cloudy = return_gammaHI_at_z( itab, redshift )
 
  
+  ! loop through the gas particles and interpolate from the table
+  !---------------------------------------------------------------
   do i = 1,ngas
 
+     ! set individual Hydrogen mass fractions if we have them
 #ifdef incHmf
      Hmf = psys%par(i)%Hmf
 #else
      Hmf = GV%H_mf
 #endif
 
+     ! get Hydrogen number density and temperature
      nH8 = psys%par(i)%rho * GV%cgs_rho * ghead%h**2 / ghead%a**3 * &
            Hmf / gconst%PROTONMASS
-     nH4 = nH8
+     T8 = psys%par(i)%T
 
-     T4 = psys%par(i)%T
-
+     ! if we have EOS particles set their temperature if we need to
 #ifdef incEOS
      if (psys%par(i)%eos == 1.0) then
         if (GV%EOStemp > 0.0) then
-           T4 = GV%EOStemp
-           psys%par(i)%T = T4
+           T8 = GV%EOStemp
+           psys%par(i)%T = T8
         endif
-        T8 = T4
-        call calc_colion_eq_fits('hui', T8, caseA, xvec)
-        psys%par(i)%xHI = xvec(1)
-
-     else
-        psys%par(i)%xHI = &
-             interpolate_ion_table( itab, redshift, log10(T4), log10(nH4) )
      endif
-#else
-
-     psys%par(i)%xHI = &
-          interpolate_ion_table( itab, redshift, log10(T4), log10(nH4) )
-
 #endif
 
+     psys%par(i)%xHI = &
+          interpolate_ion_table( itab, redshift, log10(T8), log10(nH8) )
+     
   end do
 
 

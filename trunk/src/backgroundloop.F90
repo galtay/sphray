@@ -15,6 +15,7 @@ module backgroundloop_mod
   use raylist_mod, only: prepare_raysearch
   use output_mod, only: output_total_snap
   use ray_mod, only: make_healpix_ray
+  use particle_system_mod, only: particle_info_to_screen
 
   use ion_table_class
 
@@ -43,9 +44,9 @@ module backgroundloop_mod
   
   real(r8b), parameter :: zero = 0.0d0
   real(r8b), parameter :: four_pi = 12.5663706d0
-  integer(i4b), parameter :: nside = 1
+  integer(i4b), parameter :: nside = 2
   integer(i4b), parameter :: npix = 12 * nside**2
-  real(r8b), parameter :: solid_angle = 1.0d0 / npix
+  real(r8b), parameter :: sky_frac = 1.0d0 / npix
 
   
 
@@ -72,11 +73,12 @@ contains
     !  local counters 
     !-----------------
     
-    integer(i8b) :: snapn !< snapshot counter
-    integer(i8b) :: rayn  !< ray counter
-    integer(i8b) :: srcn  !< source counter
-    integer(i8b) :: ipar
-    integer(i8b) :: ihit  !< intersection counter
+    integer(i8b) :: snapn    !< snapshot counter
+    integer(i8b) :: rayn     !< ray counter
+    integer(i8b) :: srcn     !< source counter
+    integer(i8b) :: slv_indx ! index of particle being solved
+    integer(i8b) :: hit_indx ! index of a ray particle
+    integer(i8b) :: ihit     !< intersection counter
     
     real(r8b) :: rn       !< random number
     real(r8b) :: MB       !< MBs for memory consumption tracking
@@ -93,17 +95,25 @@ contains
 
     type(raylist_type) :: raylist_group(0:npix-1)   
     integer(i4b) :: ipix
-    type(ionpart_type) :: ionpar
+    type(ionpart_type) :: hit_ionpar
+    type(ionpart_type) :: slv_ionpar
     real(r8b) :: tausum(0:npix-1)
 
     character(clen) :: ion_table_file
     type( ion_table_type ) :: itab
-    real(r4b) :: redshift
-    real(r8b) :: logflux(436)
-    real(r8b) :: GHIint
+    type( mini_spec_type ) :: minispec
+    real(r8b) :: redshift
+    real(r8b) :: GHIint_thin
+    real(r8b) :: GHIint_shield
     real(r8b) :: GHItable
-    real(r8b) :: GHItotal
+    real(r8b) :: GHItotal_thin
+    real(r8b) :: GHItotal_shield
 
+    real(r8b) :: min_logryd
+    real(r8b) :: max_logryd
+
+    integer(i4b) :: iter
+    
     ion_table_file = '../data/ionization_tables/h1.hdf5'
 
     
@@ -112,25 +122,24 @@ contains
     snaps: do snapn = GV%StartSnapNum, GV%EndSnapNum
 
        !  read in particle and source snapshot
-       !----------------------------------------------------------------              
+       !---------------------------------------------------------------- 
        call readin_snapshot()
               
 
        !  get background flux from Cloudy table
-       !----------------------------------------------------------------              
+       !---------------------------------------------------------------- 
        call read_ion_table_file( ion_table_file, itab )
        redshift = saved_gheads(snapn,0)%z
-       logflux = return_logflux_at_z( itab, redshift )
-       GHIint = integrate_flux_at_z( itab, redshift )
-       GHItable = return_gammaHI_at_z( itab, redshift )
 
+       min_logryd = 0.0d0
+       max_logryd = 1.0d0
+       call set_mini_spectrum( min_logryd, max_logryd, redshift, itab, minispec)
+       GHIint_thin = gammaHI_from_mini_spec_thin( minispec )       
+       GHItable = minispec%gammaHI
 
-
-       write(*,*) 'GHI int', GHIint
+       write(*,*) 'GHI int', GHIint_thin
        write(*,*) 'GHI tab', GHItable
-       write(*,*) 'GHIi/GHIt = ', GHIint/GHItable
-
-
+       write(*,*) 'GHIi/GHIt = ', GHIint_thin/GHItable
 
 
        !  build oct tree.  only need to do this once per snap (for now)
@@ -156,57 +165,73 @@ contains
           call output_total_snap(psys%par)      
           GV%OutputIndx = 1
        end if
+       call particle_info_to_screen(psys)
 
 
-
+       over_iterations: do iter = 1, 5
        
        
-       ! begin ray tracing 
-       !------------------------- 
-       over_pars: do ipar = 1, size(psys%par)
-!          write(*,*) 'ipar = ', ipar
-
-
-          GV%itime = GV%itime + 1
-          call set_time_elapsed_from_itime( GV )
-          GV%IonizingPhotonsPerSec = GV%TotalPhotonsCast / GV%time_elapsed_s
+          ! begin ray tracing 
+          !------------------------- 
+          over_pars: do slv_indx = 1, size(psys%par)
+             
+             GV%itime = GV%itime + 1
+             call set_time_elapsed_from_itime( GV )
+             GV%IonizingPhotonsPerSec = GV%TotalPhotonsCast / GV%time_elapsed_s
+             
+             call initialize_ionpar( slv_ionpar, psys%par(slv_indx), slv_indx, &
+                  srcray= .false., He= .false. )
+                          
+             tausum = zero
+             GHItotal_thin = zero
+             GHItotal_shield = zero
+             over_pixels: do ipix = 0, npix-1
+                GV%src_rayn = GV%src_rayn + 1
+                call make_healpix_ray( psys%par(slv_indx), nside, ipix, psys%box, ray )
+                raylist_group(ipix)%ray = ray
+                call trace_ray(ray, raylist_group(ipix), psys, tree) 
+                
+                over_hits: do ihit = raylist_group(ipix)%nnb, 2, -1
+                   hit_indx = raylist_group(ipix)%intersection(ihit)%pindx
+                   call initialize_ionpar( hit_ionpar, psys%par(hit_indx), hit_indx, &
+                        srcray= .false., He= .false., &
+                        raylist= raylist_group(ipix), impact= ihit)
+                   call set_taus(hit_ionpar, He=.false.)
+                   tausum(ipix) = tausum(ipix) + hit_ionpar%tauHI
+                   hit_ionpar%nHI = hit_ionpar%nH * hit_ionpar%xHI
+                                                        
+                end do over_hits
+                
+                GHIint_shield = gammaHI_from_mini_spec_shield( minispec, tausum(ipix) )
+                
+                GHItotal_thin   = GHItotal_thin   + sky_frac * GHIint_thin
+                GHItotal_shield = GHItotal_shield + sky_frac * GHIint_shield 
+        
+             end do over_pixels
+                         
+             slv_ionpar%gammaHI = GHItotal_shield
+             
+             call set_ionpar_xH_eq( slv_ionpar )
+             call ionpar2par( slv_ionpar, psys%par(slv_indx) )
+             psys%par(slv_indx)%gammaHI = GHItotal_shield
+             psys%par(slv_indx)%time = 1.0d0
+             
+          end do over_pars
           
 
-          tausum = zero
-          GHItotal = zero
-          over_pixels: do ipix = 0, npix-1
-             call make_healpix_ray( psys%par(ipar), nside, ipix, psys%box, ray )
-             raylist_group(ipix)%ray = ray
-
-             call trace_ray(ray, raylist_group(ipix), psys, tree) 
-
-             over_hits: do ihit = raylist_group(ipix)%nnb, 2, -1
-                pindx = raylist_group(ipix)%intersection(ihit)%pindx
-                call initialize_ionpar( ionpar, psys%par(pindx), pindx, srcray=.false., He=.false., &
-                     raylist= raylist_group(ipix), impact= ihit)
-                call set_taus(ionpar, He=.false.)
-                tausum(ipix) = tausum(ipix) + ionpar%tauHI
-                ionpar%nHI = ionpar%nH * ionpar%xHI
-
-            end do over_hits
-            GHItotal = GHItotal + solid_angle * GHIint
-        
-          end do over_pixels
-
-          ionpar%gammaHI = GHItotal
-
-
-          call set_ionpar_xH_eq( ionpar )
-          call ionpar2par( ionpar, psys%par(ipar) )
-          psys%par(ipar)%gammaHI = GHItotal
-          psys%par(ipar)%time = 1.0d0
-
-       end do over_pars
+          call particle_info_to_screen(psys)
+          call output_total_snap(psys%par)      
+          GV%OutputIndx = GV%OutputIndx + 1
 
 
 
-       GV%OutputIndx = 1
-       call output_total_snap(psys%par)      
+       end do over_iterations
+
+
+
+
+
+
 
 
 

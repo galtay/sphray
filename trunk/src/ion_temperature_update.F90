@@ -300,7 +300,7 @@ subroutine update_no_hits(psys, tree)
   end do  
   freq = rn2freq( psys%src(isrc)%SpcType )
   enrg = freq * HI_th_erg
-  sigmaHI = Osterbrok_HI_photo_cs(freq * HI_th_Hz)    
+  sigmaHI = Verner_HI_photo_cs(freq)    
 
 
   wallflux = psys%src(isrc)%L * GV%Lunit 
@@ -391,7 +391,7 @@ subroutine update_no_hits(psys, tree)
 
         ipar%penrg = enrg
 
-        ipar%sigmaHI = Osterbrok_HI_photo_cs(freq * HI_th_Hz)    
+        ipar%sigmaHI = Verner_HI_photo_cs(freq)    
         if (He) then
            ipar%sigmaHeI = Osterbrok_HeI_photo_cs(freq * HI_th_Hz)    
            ipar%sigmaHeII = Osterbrok_HeII_photo_cs(freq * HI_th_Hz)
