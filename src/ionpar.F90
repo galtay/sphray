@@ -5,17 +5,18 @@
 
 module ionpar_mod
 use myf90_mod
-use physical_constants_mod
+use physical_constants_mod, only: HI_th_Hz, HI_th_erg, HeI_th_erg, HeII_th_erg
 use atomic_rates_mod, only: atomic_rates_type
 use particle_system_mod, only: particle_type
 use raylist_mod, only: raylist_type
 use b2cd_mod, only: b2cdfac
-use cen_atomic_rates_mod, only: Osterbrok_HI_photo_cs
+use cen_atomic_rates_mod, only: Verner_HI_photo_cs
 use cen_atomic_rates_mod, only: Osterbrok_HeI_photo_cs
 use cen_atomic_rates_mod, only: Osterbrok_HeII_photo_cs
 use cen_atomic_rates_mod, only: Haiman_Bremss_cool
 use cen_atomic_rates_mod, only: Haiman_Comp_Heol
 use global_mod, only: GV
+use global_mod, only: gconst
 use hui_gnedin_atomic_rates_mod
 implicit none
 
@@ -192,21 +193,30 @@ subroutine set_ionpar_xH_eq( ipar )
   real(r8b) :: CI, RC
   real(r8b) :: y
 
+  ipar%strtag = "in set_ionpar_xH_eq_enter"
+  call check_x(ipar)
+
   y = 0.0d0
-  CI = Hui_HI_col_ion_cool( ipar%T )
+  CI = Hui_HI_col_ion( ipar%T )
   RC = Hui_HII_recombA( ipar%T )
   
-
   R = -( CI + RC ) * ipar%nH
   Q = CI * ipar%nH - ipar%gammaHI - (CI + RC) * ipar%nH * y
   P = ipar%gammaHI + CI * ipar%nH * y
 
   D = Q*Q - 4.0d0 * R * P
 
-
   ipar%xHII = ( - Q - sqrt(D)) / (2.0d0 * R)
+  if (ipar%xHII > 1.0d0 .or. ipar%xHII < 0.0d0) then
+     write(*,*) 'shit'
+     stop
+  endif
+
   ipar%xHI = 1.0d0 - ipar%xHII
-  
+
+  ipar%strtag = "in set_ionpar_xH_eq_exit"
+  call check_x(ipar)
+
 end subroutine set_ionpar_xH_eq
 
 
@@ -334,12 +344,12 @@ subroutine initialize_ionpar(ipar,par,index,srcray,He,raylist,impact)
   ipar%gpercm3  = rho_cgs
   ipar%cm3      = mass_cgs / rho_cgs
 
-  ipar%nH       = rho_cgs  * ipar%H_mf / M_H
-  ipar%Hcnt     = mass_cgs * ipar%H_mf / M_H  
+  ipar%nH       = rho_cgs  * ipar%H_mf / gconst%PROTONMASS
+  ipar%Hcnt     = mass_cgs * ipar%H_mf / gconst%PROTONMASS
 
   if (He) then
-     ipar%nHe   = rho_cgs  * ipar%He_mf / M_He
-     ipar%Hecnt = mass_cgs * ipar%He_mf / M_He
+     ipar%nHe   = rho_cgs  * ipar%He_mf / (4 * gconst%PROTONMASS)
+     ipar%Hecnt = mass_cgs * ipar%He_mf / (4 * gconst%PROTONMASS)
   else
      ipar%nHe   = 0.0d0
      ipar%Hecnt = 0.0d0
@@ -399,7 +409,7 @@ subroutine initialize_ionpar(ipar,par,index,srcray,He,raylist,impact)
 
      ipar%penrg = raylist%ray%enrg
 
-     ipar%sigmaHI = Osterbrok_HI_photo_cs(raylist%ray%freq * HI_th_Hz)    
+     ipar%sigmaHI = Verner_HI_photo_cs(raylist%ray%freq)    
      if (He) then
         ipar%sigmaHeI = Osterbrok_HeI_photo_cs(raylist%ray%freq * HI_th_Hz)    
         ipar%sigmaHeII = Osterbrok_HeII_photo_cs(raylist%ray%freq * HI_th_Hz)

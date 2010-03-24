@@ -263,8 +263,38 @@ contains
     end function Cen_He_dielec_recomb
 
 
+! photoionization cross-sections from Verner
+!===========================================================
+
+  !> HI photo ionization x-section (Verner) [cm^2]
+  !-------------------------------------------------------------------------
+  function Verner_HI_photo_cs( Ry ) result( sigma )
+    real(r8b), intent(in) :: Ry  !< energy [Rydbergs]
+    real(r8b) :: sigma           !< cross section [cm^2]
+    real(r8b), parameter :: Eth = 13.6d0
+    real(r8b), parameter :: Emax = 5.0d4
+    real(r8b), parameter :: E0 = 4.298d-1
+    real(r8b), parameter :: sig0 = 5.475d4
+    real(r8b), parameter :: ya = 3.288d1
+    real(r8b), parameter :: P = 2.963d0
+
+    real(r8b) :: eV
+    real(r8b) :: x
+    real(r8b) :: y
+
+    eV = Ry * 13.6d0
+    x = eV / E0
+    y = x
+  
+    sigma = sig0 * (x-1)**2 * y**(0.5d0 * P - 5.5d0) * (1 + sqrt(y/ya))**(-P)
+    sigma = sigma * 1.0d-18
+
+  end function Verner_HI_photo_cs
+
+
 ! photoionization cross-sections from Osterbrok 1989
 !===========================================================
+
 
 !-----------------------------------------
 !> HI photo ionization (Osterbrok) [cm^2]

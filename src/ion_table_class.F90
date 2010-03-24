@@ -20,19 +20,28 @@ private
 
 real(r8b), parameter :: zero= 0.0d0
 real(r8b), parameter :: half= 0.5d0
-real(r8b), parameter :: four_pi= 12.5663706d0
-real(r8b), parameter :: HIth_nu= 3.2899d15    ! Hz
-real(r8b), parameter :: PLANCK= 6.626068d-27
+real(r8b), parameter :: one= 0.0d0
+real(r8b), parameter :: two = 2.0d0
+real(r8b), parameter :: four = 4.0d0
+
+real(r8b), parameter :: pi = 3.14159265358979323846264338327950288
+real(r8b), parameter :: four_pi= four * pi
+real(r8b), parameter :: HIth_nu= 3.2899d15    ! [Hz]
+real(r8b), parameter :: PLANCK= 6.626068d-27  ! [erg s]
 
  
 public :: ion_table_type
 public :: ion_header_type
 public :: ion_spectrum_type
+public :: mini_spec_type
 public :: read_ion_table_file
+public :: set_mini_spectrum
 public :: return_gammaHI_at_z
 public :: return_logflux_at_z
 public :: integrate_flux_at_z
 public :: interpolate_ion_table
+public :: gammaHI_from_mini_spec_thin
+public :: gammaHI_from_mini_spec_shield
 public :: broadcast_ion_table
 
 
@@ -42,10 +51,10 @@ type ion_spectrum_type
    integer :: s_z
    integer :: s_logryd
    integer :: s_logflux
-   real, allocatable :: gammaHI(:)
-   real, allocatable :: z(:)
-   real, allocatable :: logryd(:)    ! [Rydbergs]
-   real, allocatable :: logflux(:,:) ! [ergs/s/Hz/cm^2/sr]
+   real(r8b), allocatable :: gammaHI(:)
+   real(r8b), allocatable :: z(:)
+   real(r8b), allocatable :: logryd(:)    ! [Rydbergs]
+   real(r8b), allocatable :: logflux(:,:) ! [ergs/s/Hz/cm^2/sr]
    character(clen) :: model_name
 end type ion_spectrum_type
 
@@ -63,34 +72,170 @@ type ion_table_type
    integer :: s_z
    integer :: s_logt
    integer :: s_logd
-   real :: logd_max
-   real :: logt_max
-   real, allocatable :: ibal(:,:,:)  ! ibal( iz, it, id )
-   real, allocatable :: z(:)
-   real, allocatable :: logt(:)
-   real, allocatable :: logd(:)
+   real(r8b) :: logd_max
+   real(r8b) :: logt_max
+   real(r8b), allocatable :: ibal(:,:,:)  ! ibal( iz, it, id )
+   real(r8b), allocatable :: z(:)
+   real(r8b), allocatable :: logt(:)
+   real(r8b), allocatable :: logd(:)
 end type ion_table_type
 
 
+!> stores a piece of the spectrum at a specific (interpolated) z
+!-----------------------------------------------------------------
+type mini_spec_type
+   real(r8b) :: min_logryd                  !< lowest requested energy
+   real(r8b) :: max_logryd                  !< highest requested energy
+   real(r8b) :: z                           !< redshift
+   real(r8b) :: gammaHI                     !< interpolated gammaHI from table
+   real(r8b), allocatable :: logryd(:)      !< log energy samples
+   real(r8b), allocatable :: ryd(:)         !< energy samples
+   real(r8b), allocatable :: logflux(:)     !< interpolated log flux from nu1-nu2
+   real(r8b), allocatable :: flux(:)        !< interpolated flux from nu1-nu2
+   real(r8b), allocatable :: sigmaHI(:)     !< HI photoionization cs @ logryd
+   real(r8b), allocatable :: sigma_ratio(:) !< sigma(nu) / sigma(nu_th)
+end type mini_spec_type
 
 
 
 contains
 
 
-  function HI_photo_cs_verner( eV ) result( sigma )
-    real(r8b), intent(in) :: eV
-    real(r8b) :: sigma
+  !> sets up a mini spectrum
+  !------------------------------------------------------------------------
+  subroutine set_mini_spectrum( min_logryd, max_logryd, z, itab, mini_spec )
+    real(r8b), intent(in) :: min_logryd
+    real(r8b), intent(in) :: max_logryd
+    real(r8b), intent(in) :: z
+    type(ion_table_type), intent(in) :: itab
+    type(mini_spec_type), intent(out) :: mini_spec
+
+    real(r8b), allocatable :: logflux_all(:) !< interp logflux @ all energy
+                                             
+    integer(i4b) :: nall, n
+    integer(i4b) :: ilwr, iupr
+    integer(i4b) :: i
+
+    mini_spec%min_logryd = min_logryd
+    mini_spec%max_logryd = max_logryd
+    mini_spec%z          = z
+
+    mini_spec%gammaHI = return_gammaHI_at_z( itab, z )
+
+    ! first get interplated (in redshift) logflux at all energies
+    !-------------------------------------------------------------
+    nall = size(itab%ihead%ispec%logryd)
+    allocate( logflux_all( nall ) )
+    logflux_all = return_logflux_at_z( itab, z )
+
+    ! now find indices that bracket requested energies
+    !---------------------------------------------------
+    do i = 1,nall
+       if ( itab%ihead%ispec%logryd(i) > min_logryd ) then
+          ilwr = i-1
+          exit
+       endif
+    end do
+
+    do i = 1,nall
+       if ( itab%ihead%ispec%logryd(i) > max_logryd ) then
+          iupr = i
+          exit
+       endif
+    end do
+
+    n = iupr - ilwr + 1
+    allocate( mini_spec%logryd(n), mini_spec%ryd(n), mini_spec%logflux(n),      &
+              mini_spec%flux(n), mini_spec%sigmaHI(n), mini_spec%sigma_ratio(n) )
+
+    mini_spec%logryd  = itab%ihead%ispec%logryd(ilwr:iupr)
+    mini_spec%logflux = logflux_all(ilwr:iupr)
+    mini_spec%flux    = 10**mini_spec%logflux
+    mini_spec%ryd     = 10**mini_spec%logryd
+    do i = 1,n
+       mini_spec%sigmaHI(i)     = HI_photo_cs_verner( mini_spec%ryd(i) )
+       mini_spec%sigma_ratio(i) = HI_photo_cs_verner( mini_spec%ryd(i) ) / HI_photo_cs_verner( 1.0d0 ) 
+    end do
+
+
+
+
+  end subroutine set_mini_spectrum
+
+
+  !> calculates gammaHI from mini spectrum in optically thin limit
+  !-------------------------------------------------------------------------
+  function gammaHI_from_mini_spec_thin( mini_spec ) result( gammaHI )
+    type(mini_spec_type), intent(in) :: mini_spec
+    real(r8b) :: gammaHI
+
+    gammaHI = int_tabulated_trap_rule( mini_spec%logryd, &
+         four_pi * log(10.d0) * mini_spec%flux * mini_spec%sigmaHI / PLANCK )   
+
+  end function gammaHI_from_mini_spec_thin
+
+
+
+  !> calculates gammaHI from mini spectrum in optically w/ shielding
+  !-------------------------------------------------------------------------
+  function gammaHI_from_mini_spec_shield( mini_spec, tauHI) result( gammaHI )
+    type(mini_spec_type), intent(in) :: mini_spec
+    real(r8b), intent(in) :: tauHI
+    real(r8b) :: gammaHI
+
+    gammaHI = int_tabulated_trap_rule( mini_spec%logryd, &
+         four_pi * log(10.d0) * mini_spec%flux * mini_spec%sigmaHI / PLANCK * exp(-tauHI * mini_spec%sigma_ratio) )   
+
+  end function gammaHI_from_mini_spec_shield
+
+
+
+
+
+  !> HI photo ionization x-section (Analytic) [cm^2]
+  !-------------------------------------------------------------------------
+  function HI_photo_cs_analytic( Ry ) result( sigma )
+    real(r8b), intent(in) :: Ry  !< energy [Rydbergs]
+    real(r8b) :: sigma           !< cross section [cm^2]
+    real(r8b), parameter :: A0 = 6.30d0
+
+
+    real(r8b) :: eps 
+    real(r8b) :: ieps
+    real(r8b) :: efac
+    real(r8b) :: num
+    real(r8b) :: den
+
+    eps = sqrt( Ry - one )
+    ieps = one/eps
+    efac = four - ( four * atan(eps) ) * ieps
+    num = exp(efac)
+    den = one - exp(-two * pi * ieps)
+  
+    sigma = A0 * (Ry)**(-4) * num / den
+
+
+  end function HI_photo_cs_analytic
+
+
+ 
+  !> HI photo ionization x-section (Verner) [cm^2]
+  !-------------------------------------------------------------------------
+  function HI_photo_cs_verner( Ry ) result( sigma )
+    real(r8b), intent(in) :: Ry  !< energy [Rydbergs]
+    real(r8b) :: sigma           !< cross section [cm^2]
     real(r8b), parameter :: Eth = 13.6d0
     real(r8b), parameter :: Emax = 5.0d4
     real(r8b), parameter :: E0 = 4.298d-1
     real(r8b), parameter :: sig0 = 5.475d4
     real(r8b), parameter :: ya = 3.288d1
     real(r8b), parameter :: P = 2.963d0
-    
+
+    real(r8b) :: eV
     real(r8b) :: x
     real(r8b) :: y
 
+    eV = Ry * 13.6d0
     x = eV / E0
     y = x
   
@@ -100,7 +245,26 @@ contains
   end function HI_photo_cs_verner
 
 
+  !> HI photo ionization x-section (Osterbrok) [cm^2]
+  !----------------------------------------------------------------------------
+  function HI_photo_cs_osterbrok( Ry ) result( sigma )    
+    real(r8b), intent(in) :: Ry    !< energy [Rydbergs]
+    real(r8b) :: sigma             !< cross section 
+    real(r8b), parameter :: sigma0 = 6.3d-18
 
+    if (Ry < one) then
+       sigma = zero
+    else
+       sigma = sigma0 * ( Ry )**(-3)
+    endif
+
+  end function HI_photo_cs_osterbrok
+
+
+
+
+  ! integrates a tabulated function using the trap. rule
+  !-------------------------------------------------------------------------
   function int_tabulated_trap_rule( xarr, yarr ) result(sum)
     real(r8b), intent(in) :: xarr(:)
     real(r8b), intent(in) :: yarr(:)
@@ -129,10 +293,10 @@ contains
   !---------------------------------------------
   function integrate_flux_at_z( itab, z ) result(sum)
     type(ion_table_type) :: itab
-    real :: z
+    real(r8b) :: z
     real(r8b) :: sum
 
-    real(r4b), allocatable :: logfluxall(:) 
+    real(r8b), allocatable :: logfluxall(:) 
     real(r8b), allocatable :: ryd(:)
     real(r8b), allocatable :: sigma(:)
     real(r8b), allocatable :: nu(:)
@@ -144,7 +308,8 @@ contains
     integer :: i
     integer :: icnt
     integer :: nabove
-    real :: GHI
+    real(r8b) :: GHI
+
 
     n = size(itab%ihead%ispec%logryd)
     allocate( logfluxall(n) )
@@ -162,14 +327,15 @@ contains
     nabove = size( itab%ihead%ispec%logryd(icnt:icnt+49) )
 
 
-    allocate( ryd(nabove), sigma(nabove), nu(nabove), logflux(nabove), xarr(nabove), yarr(nabove) )
+    allocate( ryd(nabove), sigma(nabove), nu(nabove), logflux(nabove) )
+    allocate( xarr(nabove), yarr(nabove) )
 
     xarr = itab%ihead%ispec%logryd(icnt:icnt+49)
     logflux = logfluxall(icnt:icnt+49)
     ryd = 10**xarr
     ryd(1) = 1.0d0
     do i = 1,size(ryd) 
-       sigma(i) = HI_photo_cs_verner( ryd(i) * 13.6d0 )
+       sigma(i) = HI_photo_cs_verner( ryd(i) )
     end do
     nu = ryd * HIth_nu
         
@@ -178,7 +344,6 @@ contains
     sum = int_tabulated_trap_rule( xarr, yarr )
 
     GHI = return_gammaHI_at_z( itab, z )
-
 
 
   end function integrate_flux_at_z
@@ -191,12 +356,12 @@ contains
   !---------------------------------------------
   function return_gammaHI_at_z( itab, z ) result(GHI)
     type(ion_table_type) :: itab
-    real :: z
-    real :: GHI
+    real(r8b) :: z
+    real(r8b) :: GHI
 
-    real :: zsearch, zlow, zhigh
-    real :: dz1, dz2, z1, z2
-    real :: frac1, frac2, dGHI
+    real(r8b) :: zsearch, zlow, zhigh
+    real(r8b) :: dz1, dz2, z1, z2
+    real(r8b) :: frac1, frac2, dGHI
     integer :: n, i, iz1, iz2
 
     zsearch = z
@@ -243,12 +408,12 @@ contains
   !---------------------------------------------
   function return_logflux_at_z( itab, z ) result(logflux)
     type(ion_table_type) :: itab
-    real :: z
-    real :: logflux(size(itab%ihead%ispec%logryd))
+    real(r8b) :: z
+    real(r8b) :: logflux(size(itab%ihead%ispec%logryd))
 
-    real :: zsearch, zlow, zhigh
-    real :: dz1, dz2, z1, z2
-    real :: frac1, frac2, dflux
+    real(r8b) :: zsearch, zlow, zhigh
+    real(r8b) :: dz1, dz2, z1, z2
+    real(r8b) :: frac1, frac2, dflux
     integer :: n, i, iz1, iz2
 
     zsearch = z
@@ -449,19 +614,19 @@ contains
 
   function interpolate_ion_table( itab, z, logt, logd ) result (ioneq)
     type(ion_table_type) :: itab
-    real :: z      !< input redshift
-    real :: logt   !< input log temperature
-    real :: logd   !< input log density
-    real :: ioneq  !< returned ionization equilibrium
+    real(r8b) :: z      !< input redshift
+    real(r8b) :: logt   !< input log temperature
+    real(r8b) :: logd   !< input log density
+    real(r8b) :: ioneq  !< returned ionization equilibrium
 
     integer :: nz, nt, nd !< size of interpolation grid
     integer :: iz, it, id !< lower bracketing index
     integer :: fz, ft, fd !< upper bracketing index
-    real    :: rz, rt, rd !< real index (between bracketing index)
+    real(r8b)    :: rz, rt, rd !< real index (between bracketing index)
 
-    real :: wiz, wfz, wit, wft, wid, wfd  !< fractional distances between bracketing indices
-    real :: w111, w211, w121, w221, w112, w212, w122, w222  !< weights
-    real :: dz, dt, dd                    !< difference between bracketing indices
+    real(r8b) :: wiz, wfz, wit, wft, wid, wfd  !< fractional distances between bracketing indices
+    real(r8b) :: w111, w211, w121, w221, w112, w212, w122, w222  !< weights
+    real(r8b) :: dz, dt, dd                    !< difference between bracketing indices
 
     integer :: i !< general loop index
 
@@ -619,8 +784,8 @@ contains
 #ifdef usempi
 
     count = 1
-    call mpi_bcast( itab%logd_max, count, mpi_real, root, mpi_comm_world, ierr )
-    call mpi_bcast( itab%logt_max, count, mpi_real, root, mpi_comm_world, ierr )
+    call mpi_bcast( itab%logd_max, count, mpi_double_precision, root, mpi_comm_world, ierr )
+    call mpi_bcast( itab%logt_max, count, mpi_double_precision, root, mpi_comm_world, ierr )
 
     call mpi_bcast( itab%s_logd,    count, mpi_integer, root, mpi_comm_world, ierr )
     call mpi_bcast( itab%s_logt,    count, mpi_integer, root, mpi_comm_world, ierr )
@@ -649,16 +814,16 @@ contains
 
 
     count = itab%s_logd  
-    call mpi_bcast( itab%logd, count, mpi_real, root, mpi_comm_world, ierr )
+    call mpi_bcast( itab%logd, count, mpi_double_precision, root, mpi_comm_world, ierr )
 
     count = itab%s_logt  
-    call mpi_bcast( itab%logt, count, mpi_real, root, mpi_comm_world, ierr )
+    call mpi_bcast( itab%logt, count, mpi_double_precision, root, mpi_comm_world, ierr )
 
     count = itab%s_z 
-    call mpi_bcast( itab%z, count, mpi_real, root, mpi_comm_world, ierr )
+    call mpi_bcast( itab%z, count, mpi_double_precision, root, mpi_comm_world, ierr )
 
     count = itab%s_ibal 
-    call mpi_bcast( itab%ibal, count, mpi_real, root, mpi_comm_world, ierr )
+    call mpi_bcast( itab%ibal, count, mpi_double_precision, root, mpi_comm_world, ierr )
 
 
     count = clen
@@ -666,16 +831,16 @@ contains
     call mpi_bcast( itab%ihead%ispec%model_name, count, mpi_character, root, mpi_comm_world, ierr )
 
     count = itab%ihead%ispec%s_logflux
-    call mpi_bcast( itab%ihead%ispec%logflux(1,1), count, mpi_real, root, mpi_comm_world, ierr )
+    call mpi_bcast( itab%ihead%ispec%logflux(1,1), count, mpi_double_precision, root, mpi_comm_world, ierr )
 
     count = itab%ihead%ispec%s_logryd 
-    call mpi_bcast( itab%ihead%ispec%logryd, count, mpi_real, root, mpi_comm_world, ierr )
+    call mpi_bcast( itab%ihead%ispec%logryd, count, mpi_double_precision, root, mpi_comm_world, ierr )
 
     count = itab%ihead%ispec%s_z 
-    call mpi_bcast( itab%ihead%ispec%z, count, mpi_real, root, mpi_comm_world, ierr )
+    call mpi_bcast( itab%ihead%ispec%z, count, mpi_double_precision, root, mpi_comm_world, ierr )
 
     count = itab%ihead%ispec%s_gammaHI 
-    call mpi_bcast( itab%ihead%ispec%gammaHI, count, mpi_real, root, mpi_comm_world, ierr )
+    call mpi_bcast( itab%ihead%ispec%gammaHI, count, mpi_double_precision, root, mpi_comm_world, ierr )
 
 
 
