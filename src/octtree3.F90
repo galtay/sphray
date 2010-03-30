@@ -72,10 +72,11 @@ subroutine check(psys,tree)
   
 end subroutine check
 
-!-----------------------------------------------------------------------------
+
 !> constructs an oct-tree from the particle system with the minimum number of 
 !> particles per leaf as an optional input (ppc)
- subroutine buildtree(psys,tree,MBalloc,ppc)
+!-----------------------------------------------------------------------------
+ subroutine buildtree(psys, tree, MBalloc, ppc)
 
    character(clen), parameter :: myname="buildtree"
    logical, parameter :: crash=.true.
@@ -83,9 +84,9 @@ end subroutine check
    character(clen) :: str,fmt
 
    type(particle_system_type), intent(in) :: psys !< input particle system
-   type(oct_tree_type), intent(inout) :: tree !< oct-tree
-   real(r8b), intent(out) :: MBalloc !< MB of memory allocated for tree
-   integer(i4b), intent(in), optional :: ppc !< optional minimum particles per leaf
+   type(oct_tree_type), intent(inout) :: tree     !< oct-tree
+   real(r8b), intent(out) :: MBalloc              !< MB of memory allocated for tree
+   integer(i4b), intent(in), optional :: ppc      !< optional minimum particles per leaf
    integer(i4b) :: err
 
    if (present(ppc)) then
@@ -100,14 +101,14 @@ end subroutine check
    call mywrite(str,verb-1) 
    call mywrite("",verb-1)
 
-   tree_storage_factor=2.5/tree%ppc
+   tree_storage_factor = 2.5/tree%ppc
 
    tree_allocation: do 
       tree%maxcells = tree_storage_factor* size(psys%par)
       call maketree(psys,tree,MBalloc)
       call inittree(psys,tree)  
       call parttree(psys,tree,err)
-      if(err.NE.0) then
+      if(err /= 0) then
          call killtree(tree)
          call mywrite("   woops, guessed wrong for tree memory, increasing allocation",verb)
          tree_storage_factor = 1.414 * tree_storage_factor

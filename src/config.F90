@@ -134,6 +134,8 @@ subroutine read_config_file(config_file)
     keyword = "WallSampling:"
     call scanfile(config_file,keyword,GV%WallSampling)
 
+    keyword = "MaxRayDist:"
+    call scanfile(config_file,keyword,GV%MaxRayDist)
 
     !   ion/temp solving
     !----------------------------
@@ -511,6 +513,7 @@ subroutine config_info_to_file()
   write(lun,*)  "Ray Photon Tol     : ", GV%RayPhotonTol
 
   write(lun,*)  "Wall Sampling [1=Twister, 2=Sobol3D, 3=Sobol2D, 4=QuadTree]: ", GV%WallSampling
+  write(lun,*)  "Maximum Distance to trace a ray [physical code units], negative = default", GV%MaxRayDist
 
   write(lun,*)  "Use On The Spot for Hydrogen? : ", GV%OnTheSpotH
   write(lun,*)  "Use On The Spot for Helium?   : ", GV%OnTheSpotHe

@@ -8,7 +8,8 @@
 module particle_system_mod
 use myf90_mod
 use atomic_rates_mod, only: calc_colion_eq_fits
-
+use mt19937_mod, only: genrand_real1
+use m_mrgrnk, only: mrgrnk
 implicit none
 private
 
@@ -28,6 +29,9 @@ public :: set_collisional_ionization_equilibrium
 public :: enforce_x_and_T_minmax
 public :: particle_info_to_screen
 public :: adjustbox
+public :: create_particle_random_access_list
+public :: create_particle_density_access_list
+
 
 !> Particle type. 
 !=========================
@@ -114,6 +118,7 @@ end type box_type
      type(box_type) :: box                           !< the simulation box     
      type(particle_type), allocatable :: par(:)      !< all particles
      type(source_type), allocatable :: src(:)        !< all sources
+     integer(i4b), allocatable :: acc_list(:)       !< access list
   end type particle_system_type
 
 
@@ -126,7 +131,60 @@ end type transformation_type
 
 
 
+
+
 contains
+
+
+!> allows for accessing the particles in a random order
+!------------------------------------------------------
+subroutine create_particle_random_access_list( psys )
+  type(particle_system_type) :: psys
+
+  integer(i4b) :: i
+  integer(i4b) :: n
+  real(r4b), allocatable :: randoms(:)
+
+  n = size( psys%par )
+  if (.not. allocated(psys%acc_list) ) allocate( psys%acc_list(n) )
+  allocate( randoms(n) )
+
+  do i = 1, size(randoms)
+     randoms(i) = genrand_real1()
+  end do
+  
+  call mrgrnk( randoms, psys%acc_list )
+
+  deallocate( randoms )
+
+
+end subroutine create_particle_random_access_list
+
+
+
+!> allows for accessing the particles from least to most dense
+!--------------------------------------------------------------
+subroutine create_particle_density_access_list( psys )
+  type(particle_system_type) :: psys
+
+  integer(i4b) :: i
+  integer(i4b) :: n
+  real(r4b), allocatable :: rhos(:)
+
+  n = size( psys%par )
+  if (.not. allocated(psys%acc_list) ) allocate( psys%acc_list(n) )
+  allocate( rhos(n) )
+
+  do i = 1,n     
+     rhos(i) = psys%par(i)%rho
+  end do
+  call mrgrnk( rhos, psys%acc_list )
+  
+  deallocate( rhos )
+
+end subroutine create_particle_density_access_list
+
+
 
 
 ! this routine rearranges the particles in pars so that they are stored
@@ -198,7 +256,7 @@ subroutine copypart(parclone,par,transform)
   type(particle_type), intent(out) :: parclone  !< particle copy
   type(particle_type), intent(in)  :: par       !< input particle
   type(transformation_type), intent(in), optional :: transform !< optional transformation
-  parclone=par
+  parclone = par
   if(present(transform)) parclone%pos = transform%fac * (par%pos - transform%shift)
 end subroutine copypart
 
@@ -555,8 +613,8 @@ subroutine calc_bytes_per_particle_and_source(bpp, bps)
 #endif
 
 #ifdef outGammaHI
-  bpp = bpp + 8  ! GammaHI tracking
-  bpp = bpp + 8  ! time var
+  bpp = bpp + 4  ! GammaHI tracking
+  bpp = bpp + 4  ! time var
 #endif
 
 #ifdef incEOS

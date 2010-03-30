@@ -9,6 +9,7 @@ use physical_constants_mod, only: HI_th_Hz, HI_th_erg, HeI_th_erg, HeII_th_erg
 use atomic_rates_mod, only: atomic_rates_type
 use particle_system_mod, only: particle_type
 use raylist_mod, only: raylist_type
+use raylist_mod, only: intersection_type
 use b2cd_mod, only: b2cdfac
 use cen_atomic_rates_mod, only: Verner_HI_photo_cs
 use cen_atomic_rates_mod, only: Osterbrok_HeI_photo_cs
@@ -20,8 +21,9 @@ use global_mod, only: gconst
 use hui_gnedin_atomic_rates_mod
 implicit none
 
-!---------------------------
+
 !> ionization particle type. 
+!---------------------------
 type ionpart_type
 
    ! quantities taken from standard particle
@@ -182,10 +184,159 @@ type ionpart_type
 
 end type ionpart_type
 
+ 
+!> particle type for solving the analytic ionization equations
+!---------------------------------------------------------------
+type bckgnd_particle_type
+   real(r8b) :: H_mf
+   real(r8b) :: T
+   real(r8b) :: rho_cgs
+   real(r8b) :: nH
+   real(r8b) :: RC
+   real(r8b) :: CI
+   real(r8b) :: gammaHI
+   real(r8b) :: y
+   real(r8b) :: R
+   real(r8b) :: Q
+   real(r8b) :: P
+   real(r8b) :: d
+   real(r8b) :: xHI
+   real(r8b) :: xHII
+end type bckgnd_particle_type
+
+
+!> particle type for calculating optical depth
+!---------------------------------------------------------------
+type tau_particle_type
+   real(r8b) :: H_mf
+   real(r8b) :: xHI
+   real(r8b) :: xHII
+   real(r8b) :: hsml
+   real(r8b) :: mass_cgs
+   real(r8b) :: Hcnt
+   real(r8b) :: HIcnt
+   real(r8b) :: d
+   real(r8b) :: b
+   real(r8b) :: bnorm
+   real(r8b) :: cdfac
+   real(r8b) :: tauHI_th
+end type tau_particle_type
+
+
+
+
+real(r8b), parameter, private :: zero = 0.0d0
+real(r8b), parameter, private :: one = 1.0d0
+real(r8b), parameter, private :: two = 2.0d0
+real(r8b), parameter, private :: four = 4.0d0
+
 
 contains
 
 
+!> initializes a particle used just for calculating the optical depth
+!-----------------------------------------------------------------------
+function initialize_tau_particle( par, intersection ) result( tpar )
+  type(particle_type), intent(in) :: par
+  type(intersection_type), intent(in) :: intersection
+  type(tau_particle_type) :: tpar
+
+  logical, save :: first = .true.
+  real(r8b), save :: sigmaHI_th
+
+  if (first) then
+     sigmaHI_th = Verner_HI_photo_cs(one)    
+  endif
+
+#ifdef incHmf
+  tpar%H_mf   = par%Hmf
+#else
+  tpar%H_mf   = GV%H_mf
+#endif
+
+  tpar%xHI  = par%xHI
+  tpar%xHII = par%xHII
+  tpar%hsml = par%hsml
+
+  tpar%mass_cgs = par%mass * GV%cgs_mass
+  tpar%Hcnt     = tpar%mass_cgs * tpar%H_mf / gconst%PROTONMASS
+  tpar%HIcnt    = tpar%Hcnt * tpar%xHI       
+
+  tpar%d = intersection%d   ! distance along ray
+  tpar%b = intersection%b   ! impact parameter
+      
+  tpar%bnorm = tpar%b / tpar%hsml
+  tpar%cdfac = b2cdfac(tpar%bnorm, tpar%hsml, GV%cgs_len)
+
+  if (tpar%xHI > zero) then
+     tpar%tauHI_th = tpar%cdfac * tpar%HIcnt * sigmaHI_th
+  else
+     tpar%tauHI_th = zero
+  end if
+  
+  first = .false.
+  
+end function initialize_tau_particle
+
+
+
+!> initializes a particle used just for calculating the xH's
+!-----------------------------------------------------------------------
+function initialize_bckgnd_particle( par, gammaHI ) result( bpar )
+  type(particle_type), intent(in) :: par
+  real(r8b), intent(in) :: gammaHI
+  type(bckgnd_particle_type) :: bpar
+
+#ifdef incHmf
+  bpar%H_mf   = par%Hmf
+#else
+  bpar%H_mf   = GV%H_mf
+#endif
+
+  bpar%gammaHI = gammaHI
+
+
+  bpar%rho_cgs = par%rho * GV%cgs_rho
+  bpar%nH      = bpar%rho_cgs * bpar%H_mf / gconst%PROTONMASS
+
+  bpar%T = par%T
+  bpar%RC   = Hui_HII_recombA( bpar%T )
+  bpar%CI   = Hui_HI_col_ion( bpar%T )
+  bpar%xHI  = par%xHI
+  bpar%xHII = par%xHII
+  
+end function initialize_bckgnd_particle
+
+
+!> implements analytic solution for xH's in background particles
+!-----------------------------------------------------------------------
+function set_bckgnd_particle_xH_eq( bpar ) result(err)
+  type(bckgnd_particle_type) :: bpar
+  integer(i4b) :: err
+
+  bpar%y = 0.0d0
+
+  bpar%R = -( bpar%CI + bpar%RC ) * bpar%nH
+  bpar%Q = bpar%CI * bpar%nH - bpar%gammaHI - (bpar%CI + bpar%RC) * bpar%nH * bpar%y
+  bpar%P = bpar%gammaHI + bpar%CI * bpar%nH * bpar%y
+
+  bpar%d = bpar%Q * bpar%Q - four * bpar%R * bpar%P
+
+  bpar%xHII = ( -bpar%Q - sqrt(bpar%D) ) / (two * bpar%R)
+  bpar%xHI  = one - bpar%xHII
+
+  if (bpar%xHII > one .or. bpar%xHII < zero) then
+     err = -1
+  else
+     err = 0
+  endif
+
+end function set_bckgnd_particle_xH_eq
+
+
+
+!> implements analytic solution for xH's in ion particles
+!-----------------------------------------------------------------------
 subroutine set_ionpar_xH_eq( ipar )
   type(ionpart_type), intent(inout) :: ipar  !< output ionization particle
 
