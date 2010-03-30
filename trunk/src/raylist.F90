@@ -7,10 +7,14 @@
 module raylist_mod
 use myf90_mod
 use ray_mod, only: ray_type
+use ray_mod, only: part_intersection
+use ray_mod, only: cell_intersection
+use ray_mod, only: transform_ray
 use particle_system_mod, only: particle_system_type
 use particle_system_mod, only: particle_type
 use particle_system_mod, only: transformation_type
 use oct_tree_mod, only: oct_tree_type
+
 implicit none
 
  private
@@ -20,10 +24,12 @@ implicit none
  public :: prepare_raysearch
  public :: kill_raylist
 
+ real, parameter :: zero = 0.0d0
+ real, parameter :: half = 0.5d0
 
- integer,parameter :: MAX_RAYLIST_LENGTH=1000000  !< default maximum
- integer,parameter :: ndim=3                      !< number of dimensions
-
+ integer,parameter :: MAX_RAYLIST_LENGTH = 1000000  !< default maximum
+ integer,parameter :: ndim = 3                      !< number of dimensions
+ integer,parameter :: nimages = 3**ndim             !< number of search images
 
 
 !> holds a particle index, an impact parameter, and a distance along a ray
@@ -47,7 +53,7 @@ implicit none
       integer :: searchimage      !< which transformation of the particles?
       integer :: nsearchimages    !< how many images to search
       type(ray_type) :: ray       !< ray 
-      type(transformation_type) :: trafo(3**ndim)  !< transformations  
+      type(transformation_type) :: trafo(nimages)  !< transformations  
       type(intersection_type), allocatable :: intersection(:) !< ray/par 
    end type raylist_type
 
@@ -59,7 +65,7 @@ contains
  
 !> set intersection values
 !-----------------------------------------
- function set_intersection(ray,part,i) result(t)
+ function set_intersection(ray, part, i) result(t)
  use ray_mod, only: dist2ray
 
    type(intersection_type) :: t  !< the intersection
@@ -68,116 +74,142 @@ contains
    integer(i8b)  :: i            !< the particle index
    real(r8b) :: d
    
-     t%pindx=i
-     t%b=sqrt(dist2ray(ray,part%pos,d))
-     t%d=d
+     t%pindx = i
+     t%b = sqrt( dist2ray(ray, part%pos, d) )
+     t%d = d
 
  end function set_intersection
  
 !> initialize raylist variables and set search images
 !------------------------------------------------------
- subroutine prepare_raysearch(psys,raylist)
+ subroutine prepare_raysearch(psys, raylist)
 
    type(particle_system_type) psys !< particle system
    type(raylist_type) raylist      !< ray list
   
-     call make_raylist(MAX_RAYLIST_LENGTH,raylist)
-     call setsearchimages(psys,raylist)
+   call make_raylist(MAX_RAYLIST_LENGTH, raylist)
+   call setsearchimages(psys,raylist)
 
- end subroutine
+ end subroutine prepare_raysearch
 
 !> check all of the search images for intersection
 !---------------------------------------------------
- subroutine fullsearch(psys,searchtree,raylist)
+ subroutine fullsearch(psys, searchtree, raylist, maxd)
 
    type(particle_system_type) :: psys  !< particle system
    type(oct_tree_type) :: searchtree   !< oct-tree to search
    type(raylist_type) raylist          !< raylist
- 
-     if(raylist%searchimage.EQ.0) call raylistError('raylist init.')
-     do while(raylist%searchimage.LE.raylist%nsearchimages)   
-        call raysearch(psys,searchtree,raylist)
-        if(raylist%searchcell.NE.0) return 
-        raylist%searchimage=raylist%searchimage+1
-        raylist%searchcell=1
+   real, intent(in), optional :: maxd  !< maximum distance to trace 
+
+     if(raylist%searchimage == 0) call raylistError('raylist init.')
+     do while (raylist%searchimage <= raylist%nsearchimages)   
+        if (present(maxd)) then
+           call raysearch(psys, searchtree, raylist, maxd)
+        else
+           call raysearch(psys, searchtree, raylist)
+        endif
+        if (raylist%searchcell /= 0) return 
+        raylist%searchimage = raylist%searchimage + 1
+        raylist%searchcell = 1
      enddo
-     raylist%searchcell=0
+     raylist%searchcell = 0
 
  end subroutine fullsearch
 
 !> checks a single search image for intersection
 !-----------------------------------------------
- subroutine raysearch(psys,searchtree,raylist)
- use ray_mod, only: part_intersection, cell_intersection, transform_ray
+ subroutine raysearch(psys, searchtree, raylist, maxd)
 
-   type(particle_system_type) :: psys          !< particle system
-   type(oct_tree_type), target :: searchtree   !< oct-tree to search
-   type(raylist_type) :: raylist               !< raylist
+   type(particle_system_type), intent(in) :: psys         !< particle system
+   type(oct_tree_type), intent(in), target :: searchtree  !< oct-tree to search
+   type(raylist_type) :: raylist                          !< raylist
+   real, intent(in), optional :: maxd                     !< max distance
 
-   type(oct_tree_type),pointer :: tree
-   type(ray_type) :: curay
-   integer(i8b) :: this, daughter, next
+
+   type(oct_tree_type), pointer :: tree      !< pointer to tree
+   type(ray_type) :: curay                   !< transformed ray
+   integer(i8b) :: this, daughter, next      !< octree indices
+   integer(i8b) :: par_in_cell               !< number of particles in current search cell
+   logical :: par_hit                        !< ray / particle intersection test
+   logical :: cell_hit                       !< ray / cell intersection test
+   logical :: long                           !< past max distance? 
    integer(i8b) :: i, si, orderindx
 
-!   integer :: k  
+   tree => searchtree
+   si = raylist%searchimage
 
-     tree=>searchtree
-     si=raylist%searchimage
-     call transform_ray(curay,raylist%ray,raylist%trafo(si))
-     next=raylist%searchcell
+   ! curay%start = ray%start * fac + shift
+   call transform_ray(curay, raylist%ray, raylist%trafo(si))
+   next = raylist%searchcell
 
-     do while(next.ne.0)
-        this=next
-        daughter=tree%cell(this)%daughter
-        next=tree%cell(this)%next
+   do while (next /= 0)
 
-        if(daughter.EQ.0) then
-           if(raylist%nnb+tree%cell(next)%start-tree%cell(this)%start .GT. &
-           raylist%maxnnb) then 
+      this     = next
+      daughter = tree%cell(this)%daughter
+      next     = tree%cell(this)%next
+           
+      ! if we've reached a leaf
+      !----------------------------
+      if (daughter == 0) then
 
-              raylist%reuseable=.FALSE.
-              raylist%searchcell=this
-              return
 
-           endif
+         ! return if we go over max intersections
+         par_in_cell = tree%cell(next)%start - tree%cell(this)%start
+         if (raylist%nnb + par_in_cell > raylist%maxnnb) then             
+            write(*,*) ' *** reached max intersections *** '
+            raylist%reuseable  = .false.
+            raylist%searchcell = this
+            return            
+         endif
+         
+         ! add intersected particles to list
+         do i = tree%cell(this)%start, tree%cell(next)%start - 1
+            orderindx = tree%partorder(i)
+            par_hit = part_intersection( curay, psys%par(orderindx) ) 
+            if (par_hit) then
+               raylist%nnb = raylist%nnb + 1
+               raylist%intersection(raylist%nnb) = set_intersection(curay, psys%par(orderindx), orderindx)
+            endif
+         enddo
 
-           do i = tree%cell(this)%start, tree%cell(next)%start-1
-              orderindx = tree%partorder(i)
-              if(part_intersection(curay,psys%par(orderindx))) then
-                 raylist%nnb = raylist%nnb+1
-                 raylist%intersection(raylist%nnb)= &
-                      set_intersection(curay,psys%par(orderindx),orderindx)
-              endif
-           enddo
 
-        else
-           if(cell_intersection(curay,tree%cell(this))) next=daughter  
-        endif
-     enddo
+      ! if we need to descend further
+      !--------------------------------
+      else
 
-     raylist%searchcell=next
+         cell_hit = cell_intersection( curay, tree%cell(this) )
+         if ( cell_hit ) next = daughter  
 
+         ! add an extra test to see if this whole cell is beyond maxd
+
+
+      endif
+
+   enddo
+   
+   raylist%searchcell = next
+   
  end subroutine raysearch
 
 !> initializes values in the raylist
 !-------------------------------------------
- subroutine make_raylist(maxnnb,raylist,ray)
+ subroutine make_raylist(maxnnb, raylist, ray)
  use ray_mod, only: set_ray
 
-   integer            :: maxnnb       !< maximum number of intersections
+   integer, intent(in) :: maxnnb       !< maximum number of intersections
    type(raylist_type)      :: raylist !< the raylist
    type(ray_type),optional :: ray     !< the ray
    real(r8b) :: start(ndim)
    real(r8b) :: dir(ndim)
   
-     raylist%nnb=0
-     raylist%maxnnb=maxnnb
-     raylist%searchcell=1
-     raylist%reuseable=.FALSE.
-     raylist%searchimage=1
-     raylist%nsearchimages=1
-     raylist%trafo(1)%fac=1
-     raylist%trafo(1)%shift=0 
+     raylist%nnb            = 0
+     raylist%maxnnb         = maxnnb
+     raylist%searchcell     = 1
+     raylist%reuseable      = .false.
+     raylist%searchimage    = 1
+     raylist%nsearchimages  = 1
+     raylist%trafo(1)%fac   = 1
+     raylist%trafo(1)%shift = zero 
 
      start = (/0.,0.,0./)
      dir   = (/1.,0.,0./) 
@@ -195,11 +227,11 @@ contains
    type(raylist_type) :: raylist   !< the raylist
    type(ray_type), optional :: ray !< the ray
   
-     raylist%nnb=0
-     raylist%searchcell=1
-     raylist%searchimage=1
-     raylist%reuseable=.FALSE.
-     if(present(ray)) raylist%ray=ray
+     raylist%nnb         = 0
+     raylist%searchcell  = 1
+     raylist%searchimage = 1
+     raylist%reuseable   = .false.
+     if (present(ray)) raylist%ray = ray
 
  end subroutine reset_raylist
 
@@ -222,71 +254,86 @@ contains
 
  end subroutine kill_raylist
 
+
 !> create the transformations for the searchimages
 !-------------------------------------------------
  subroutine setsearchimages(psys,raylist)
 
-   type(raylist_type)     :: raylist
-   type(particle_system_type) :: psys
-   integer :: i,j,k(ndim)
-   real :: top(ndim),bot(ndim)
-   integer :: bbound(ndim),tbound(ndim),l,nsearchimages
+   type(particle_system_type), intent(in) :: psys
+   type(raylist_type) :: raylist
+   
+   real :: top(ndim)        !< top box corner
+   real :: bot(ndim)        !< bottom box corner
+   integer :: bbound(ndim)  !< bottom BCs
+   integer :: tbound(ndim)  !< top BCs
+   integer :: nsearchimages !< number of valid periodic images
+
+   integer :: i_image       !< loop over images counter
+   integer :: i_dim         !< loop over dimensions counter
+  
+   integer :: vec(ndim)     !< vector from origin of base box to origin of image box
+   integer :: fac           !< tmp storage transformation factor for each dimension
+   real    :: shift         !< tmp storage transformation shift for each dimension
+
+   integer :: l
    real :: lx(ndim),hx(ndim)
    logical :: boxexists
 
-     top=psys%box%top
-     bot=psys%box%bot
-     bbound=psys%box%bbound
-     tbound=psys%box%tbound
- 
+   top    = psys%box%top
+   bot    = psys%box%bot
+   bbound = psys%box%bbound
+   tbound = psys%box%tbound
+   
+   nsearchimages = 0
+   
+   do i_image = 0, nimages - 1
+      l = i_image
+      
+      do i_dim = 1, ndim
+         vec(i_dim)=mod(l,3)-1 
+         l=l/3
+      enddo
+      
+      boxexists = .true.
+      
+      do i_dim = 1, ndim
+         lx(i_dim) = bot(i_dim) + vec(i_dim) * ( top(i_dim) - bot(i_dim) )
+         hx(i_dim) = top(i_dim) + vec(i_dim) * ( top(i_dim) - bot(i_dim) )
+         if( vec(i_dim) == -1 .and. bbound(i_dim) == 0) boxexists = .false.  
+         if( vec(i_dim) ==  1 .and. tbound(i_dim) == 0) boxexists = .false.  
+      enddo
+            
+      if (boxexists) then
+         nsearchimages = nsearchimages + 1
+         
+         do i_dim = 1, ndim
+            
+            fac   = 1
+            shift = zero
+            
+            if( vec(i_dim) == -1 ) then
+               fac   = bbound(i_dim)
+               shift = (-3 * fac + 1) * half * bot(i_dim) + &
+                       (     fac + 1) * half * top(i_dim)
+            endif
+            
+            if( vec(i_dim) == 1 ) then
+               fac   = tbound(i_dim)
+               shift = (-3 * fac + 1) * half * top(i_dim) + &
+                       (     fac + 1) * half * bot(i_dim)
+            endif
 
-     nsearchimages=0
+            raylist%trafo(nsearchimages)%fac(i_dim)   = fac
+            raylist%trafo(nsearchimages)%shift(i_dim) = shift
 
-     do i=0,3**ndim-1
-        l=i
-
-        do j=1,ndim
-           k(j)=mod(l,3)-1 
-           l=l/3
-        enddo
-
-        boxexists=.TRUE.
-
-
-        do j=1,ndim
-           lx(j)=bot(j)+k(j)*(top(j)-bot(j))
-           hx(j)=top(j)+k(j)*(top(j)-bot(j))
-           if(k(j).eq.-1.AND.bbound(j).EQ.0) boxexists=.FALSE.  
-           if(k(j).eq.1.AND.tbound(j).EQ.0) boxexists=.FALSE.  
-        enddo
-
-        if(boxexists) then
-           nsearchimages=nsearchimages+1
-  
-           do j=1,ndim
-              raylist%trafo(nsearchimages)%fac(j)=1
-              raylist%trafo(nsearchimages)%shift(j)=0.
-              if(k(j).eq.-1) then
-                 raylist%trafo(nsearchimages)%fac(j)=bbound(j)
-                 raylist%trafo(nsearchimages)%shift(j) = &
-                   (-3*raylist%trafo(nsearchimages)%fac(j)+1)*bot(j)/2 + &
-                    (1+raylist%trafo(nsearchimages)%fac(j))*top(j)/2
-              endif
-              if(k(j).eq.1) then
-                 raylist%trafo(nsearchimages)%fac(j)=tbound(j)
-                 raylist%trafo(nsearchimages)%shift(j) = &
-                   (-3*raylist%trafo(nsearchimages)%fac(j)+1)*top(j)/2 + &
-                    (1+raylist%trafo(nsearchimages)%fac(j))*bot(j)/2
-              endif
-
-           enddo
-
-        endif ! boxexists
-
-
-     enddo
-
-     raylist%nsearchimages=nsearchimages
+         enddo
+         
+      endif ! boxexists
+      
+      
+   enddo
+   
+   raylist%nsearchimages = nsearchimages
 
 
  end subroutine setsearchimages
@@ -340,18 +387,33 @@ contains
 
 !> given a ray creates a raylist with intersections
 !------------------------------------------------------
- subroutine trace_ray(ray,raylist,psys,searchtree) 
+ subroutine trace_ray(ray, raylist, psys, searchtree, dosort, maxd) 
    type(ray_type), intent(in) :: ray               !< the ray to trace
    type(raylist_type), intent(inout) :: raylist    !< the returned raylist
    type(particle_system_type), intent(in) :: psys  !< the particle system
    type(oct_tree_type), intent(in) :: searchtree   !< the oct-tree to search
-   
-   if (raylist%maxnnb.ne.MAX_RAYLIST_LENGTH) then      
-      call prepare_raysearch(psys,raylist)
+   logical, intent(in), optional :: dosort         !< default is true
+   real, intent(in), optional :: maxd              !< maximum distance to trace
+
+   logical :: wantsort
+
+   wantsort = .true.
+   if (present(dosort)) then
+      if (.not. dosort) wantsort = .false.
+   endif
+
+   if (raylist%maxnnb /= MAX_RAYLIST_LENGTH) then      
+      call prepare_raysearch(psys, raylist)
    end if
-   call reset_raylist(raylist,ray)
-   call fullsearch(psys,searchtree,raylist) 
-   call sort3_raylist(raylist)
+
+   call reset_raylist(raylist, ray)
+   if (present(maxd)) then
+      call fullsearch(psys, searchtree, raylist, maxd) 
+   else
+      call fullsearch(psys, searchtree, raylist)
+   endif
+   if (wantsort) call sort3_raylist(raylist)
+
  end subroutine trace_ray
 
 

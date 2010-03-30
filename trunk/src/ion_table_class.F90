@@ -218,6 +218,14 @@ contains
   end function HI_photo_cs_analytic
 
 
+
+  !> HI photo ionization x-section at 1 Rydberg (Verner) [cm^2]
+  !-------------------------------------------------------------------------
+  function HIth_photo_cs_verner() result( sigma )
+    real(r8b) :: sigma
+    sigma = HI_photo_cs_verner( 1.0d0 )
+  end function HIth_photo_cs_verner
+
  
   !> HI photo ionization x-section (Verner) [cm^2]
   !-------------------------------------------------------------------------

@@ -430,30 +430,34 @@ end subroutine return_next_ray_start_weight
 
 !> creates a healpix ray
 !-----------------------------------------------------------------------  
-  subroutine make_healpix_ray(par, nside, ipix, box, ray)
+  subroutine make_healpix_ray(par, nside, ipix, box, ray, length)
 
     type(particle_type), intent(in) :: par    !< the particle
     integer(i4b), intent(in) :: nside         !< the healpix nsides
     integer(i4b), intent(in) :: ipix          !< the healpix pixel number
     type(box_type), intent(in) :: box         !< simulation box
     type(ray_type), intent(out) :: ray        !< output ray
+    real(r8b), intent(in), optional :: length !< optional length, default=huge
 
     integer :: i
 
     ray%start = par%pos
     call pix2vec_ring( nside, ipix, ray%dir )
-    ray%length=sqrt(sum(ray%dir*ray%dir))
+    if (present(length)) then
+       ray%length = length
+    else
+       ray%length = huge(1.0d0)
+    endif
 
 !   set the class of the ray (what octant is it going into)
-    ray%class=0
-    do i=1,3
-       if(ray%dir(i).GE.0) ray%class=ray%class+2**(i-1)
+    ray%class = 0
+    do i = 1, 3
+       if(ray%dir(i) >= 0) ray%class = ray%class + 2**(i-1)
     enddo
 
     ray%weight = 1_i8b
-
-    ray%freq = 1.0d0
-    ray%enrg = ray%freq * HI_th_erg  
+    ray%freq   = 1.0d0
+    ray%enrg   = ray%freq * HI_th_erg  
 
   end subroutine make_healpix_ray
 
@@ -461,7 +465,7 @@ end subroutine return_next_ray_start_weight
 
 !> creates a source ray (as opposed to recombination)
 !-----------------------------------------------------------------------  
-  subroutine make_source_ray(src, rayn, wall_sampling, dtray_s, LumFac, box, ray)
+  subroutine make_source_ray(src, rayn, wall_sampling, dtray_s, LumFac, box, ray, length)
 
     type(source_type), intent(inout) :: src   !< the source
     integer(i8b), intent(in) :: rayn          !< the ray indx
@@ -470,6 +474,7 @@ end subroutine return_next_ray_start_weight
     real(r8b), intent(in) :: LumFac           !< pt. src src%lum -> photons/s
     type(box_type), intent(in) :: box         !< simulation box
     type(ray_type), intent(out) :: ray        !< output ray
+    real(r8b), intent(in), optional :: length !< optional length (default=huge)
 
     real(r8b) :: start(3)
     real(r8b) :: xx,yy,zz,r
@@ -635,8 +640,11 @@ end subroutine return_next_ray_start_weight
 
 
     ray%weight = weight
-
-    ray%length=sqrt(sum(ray%dir**2))
+    if ( present(length) ) then
+       ray%length = length
+    else
+       ray%length = huge(1.0d0)
+    endif
 
   
 !   set the class of the ray (what octant is it going into)
@@ -671,14 +679,15 @@ end subroutine return_next_ray_start_weight
 
 !> creates a recombination ray (as opposed to source)
 !-----------------------------------------------------------------------  
-  subroutine make_recomb_ray(par, Dflt_Mass, Munit, Dflt_Hmf, Dflt_Hemf, ray)
+  subroutine make_recomb_ray(par, Dflt_Mass, Munit, Dflt_Hmf, Dflt_Hemf, ray, length)
 
-    type(particle_type), intent(in) :: par  !< recombining particle
-    real(r8b), intent(in) :: Dflt_Mass      !< default mass
-    real(r8b), intent(in) :: Munit          !< cgs mass unit
-    real(r8b), intent(in) :: Dflt_Hmf       !< Hydrogen mass fraction
-    real(r8b), intent(in) :: Dflt_Hemf      !< Helium mass fraction
-    type(ray_type), intent(out) :: ray      !< output ray
+    type(particle_type), intent(in) :: par    !< recombining particle
+    real(r8b), intent(in) :: Dflt_Mass        !< default mass
+    real(r8b), intent(in) :: Munit            !< cgs mass unit
+    real(r8b), intent(in) :: Dflt_Hmf         !< Hydrogen mass fraction
+    real(r8b), intent(in) :: Dflt_Hemf        !< Helium mass fraction
+    type(ray_type), intent(out) :: ray        !< output ray
+    real(r8b), intent(in), optional :: length !< ray length (default=huge)
 
     real(r8b) :: mass, H_mf, He_mf, H_nuclei, He_nuclei
     real(r8b) :: r,xx,yy,zz
@@ -718,8 +727,11 @@ end subroutine return_next_ray_start_weight
     ray%dir(2) = yy/r
     ray%dir(3) = zz/r
     
-    ray%length=sqrt(sum(ray%dir**2))
-
+    if (present(length)) then
+       ray%length = length
+    else
+       ray%length = huge(1.0d0)
+    endif
   
 !   set the class of the ray (what octant is it going into)
     ray%class=0
@@ -742,19 +754,26 @@ end subroutine return_next_ray_start_weight
 
 !> creates a probe ray w/o photons (useful for probing the state of particles)
 !------------------------------------------------------------------------------
-  subroutine make_probe_ray(pos,dir,ray)
+  subroutine make_probe_ray(pos,dir,ray,length)
 
-    real(r8b), intent(in) :: pos(3)         !< starting position
-    real(r8b), intent(in) :: dir(3)         !< direction
-    type(ray_type), intent(out) :: ray !< output ray
-  
+    real(r8b), intent(in) :: pos(3)           !< starting position
+    real(r8b), intent(in) :: dir(3)           !< direction
+    type(ray_type), intent(out) :: ray        !< output ray
+    real(r8b), intent(in), optional :: length !< ray length (default=huge)
+
+    real(r8b) :: unit(3)
     integer :: i
     
+    unit = dir / sqrt( dot_product(dir,dir) ) 
+
     ray%start = pos
-    ray%dir = dir
-    ray%length = sqrt(sum(dir*dir))
-    ray%dir = ray%dir / ray%length
-    ray%length = 1.0
+    ray%dir   = unit
+
+    if (present(length)) then
+       ray%length = length
+    else
+       ray%length = huge(1.0d0)
+    endif
 
 
 !   set the class of the ray (what quadrant is it going into)
@@ -771,13 +790,14 @@ end subroutine return_next_ray_start_weight
   end subroutine make_probe_ray
 
 
-!> creates a source ray (as opposed to recombination)
+!> creates a skewer ray
 !-----------------------------------------------------------------------  
-  subroutine make_skewer_ray(box,ray)
+  subroutine make_skewer_ray(box,ray,length)
 
     type(box_type), intent(in) :: box       !< simulation box
     type(ray_type), intent(out) :: ray      !< output ray
-  
+    real(r8b), intent(in), optional :: length !< ray length (default=huge)  
+
     real(r8b) :: xx,yy,zz,r
     real(r8b) :: rn, rn1, rn2
     integer :: i
@@ -827,7 +847,13 @@ end subroutine return_next_ray_start_weight
        stop "curface out of bounds"
     end select
 
-    ray%length=sqrt(sum(ray%dir**2))
+
+    if (present(length)) then
+       ray%length = length
+    else
+       ray%length = huge(1.0d0)
+    endif
+
 
   
 !   set the class of the ray (what octant is it going into)
@@ -852,35 +878,46 @@ end subroutine return_next_ray_start_weight
 !> properly sets the starting point, direction, class, and length of a ray
 !--------------------------------------------------------------------------
   subroutine set_ray(ray,start,dir,len)
-    type(ray_type) :: ray   !< inout ray
-    real(r8b) :: start(3)        !< starting position
-    real(r8b) :: dir(3)          !< direction 
-    real(r8b),optional :: len    !< length
+    type(ray_type) :: ray     !< inout ray
+    real(r8b) :: start(3)     !< starting position
+    real(r8b) :: dir(3)       !< direction 
+    real(r8b),optional :: len !< length
     integer :: i
     
-    ray%start=start
-    ray%length=SQRT(sum(dir**2))
-    ray%dir=dir/ray%length  
-    if(present(len)) ray%length=len  
-    ray%class=0
+    real(r8b) :: unit(3)
+
+    unit = dir / sqrt( dot_product(dir,dir) )
+
+    ray%start = start
+    ray%dir   = unit
+    ray%class = 0
+
     do i=1,3
        if(dir(i).GE.0) ray%class=ray%class+2**(i-1)
     enddo
+
+    if (present(len)) then
+       ray%length = len
+    else
+       ray%length = huge(1.0d0)
+    endif
+
+
   end subroutine set_ray
   
 !> returns a transformed ray while preserving the initial ray
 !--------------------------------------------------------------
-  subroutine transform_ray(ray,inray,pm)
+  subroutine transform_ray(ray, inray, pm)
     type(ray_type) :: ray           !< output transformed ray
     type(ray_type) :: inray         !< input ray
     type(transformation_type) :: pm !< transformation
     integer :: i
-    ray%start=inray%start*pm%fac+pm%shift
-    ray%dir=inray%dir*pm%fac
-    ray%length=inray%length  
-    ray%class=0
+    ray%start  = inray%start * pm%fac + pm%shift
+    ray%dir    = inray%dir   * pm%fac
+    ray%length = inray%length  
+    ray%class  = 0
     do i=1,3
-       if(ray%dir(i).GE.0) ray%class=ray%class+2**(i-1)
+       if (ray%dir(i) >= 0) ray%class=ray%class+2**(i-1)
     enddo
   end subroutine transform_ray
 
@@ -894,61 +931,78 @@ end subroutine return_next_ray_start_weight
     real(r8b), optional :: dd         !< GT 0 when particle is in front of ray start
     real(r8b) :: d
 
-    d=SUM((part%pos-ray%start)*ray%dir)           ! sp dot dir
-    dist2=SUM((part%pos-d*ray%dir-ray%start)**2)  ! dist^2
-    if(present(dd)) dd=d
+    d     = sum( (part%pos - ray%start) * ray%dir  )    ! sp dot dir
+    dist2 = sum( (part%pos-d*ray%dir-ray%start)**2 )    ! dist^2
+
+    if (present(dd)) dd = d
+
   end function pdist2ray
+
 
 !> returns the distance^2 between a point and a ray
 !--------------------------------------------------------------  
-  function dist2ray(ray,pos,dd) result(dist2)
-    type(ray_type) :: ray  !< input ray
-    real(r4b) :: pos(3)    !< input position
-    real(r8b) :: dist2          !< distance^2
+  function dist2ray(ray, pos, dd) result(dist2)
+    type(ray_type) :: ray       !< input ray
+    real(r4b) :: pos(3)         !< input position
     real(r8b), optional :: dd   !< GT 0 when point is in front of ray start
-    real(r8b) :: dotp
+    real(r8b) :: dist2          !< distance^2
 
-    dotp=SUM((pos-ray%start)*ray%dir)
-    dist2=SUM((pos-dotp*ray%dir-ray%start)**2)
-    if(present(dd)) dd=dotp
+    real(r8b) :: dotp
+    real(r8b) :: diff(3)
+
+    real(r8b) :: vec1(3)
+    real(r8b) :: vec2(3)
+
+    vec1 = pos - ray%start
+    vec2 = ray%dir
+
+    dotp  = dot_product( vec1, vec2 )
+    diff  = vec1 - dotp * ray%dir 
+    dist2 = dot_product( diff, diff )
+
+    if( present(dd) ) dd = dotp
+
   end function dist2ray
   
 !> tests for ray / particle intersection. 
 !----------------------------------------------  
-  function part_intersection(ray,part) result(x)
-    logical :: x                 !< true or false result
+  function part_intersection(ray, part) result(hit)
+    logical :: hit               !< true or false result
     type(ray_type) :: ray        !< ray
     type(particle_type) :: part  !< particle
-    real(r8b) dist2,dotp
-    dist2=dist2ray(ray,part%pos,dotp)
-    x=dist2.LT.part%hsml**2.and.dotp.GE.0
+    real(r8b) :: dist2           !< distance to particle squared
+    real(r8b) :: dotp            !< projected distance along ray
+
+    dist2 = dist2ray(ray, part%pos, dotp)
+    hit = dist2 < part%hsml * part%hsml .and. dotp >= zero .and. dotp <= ray%length
+
   end function part_intersection
   
 !> tests for ray / cell intersection. 
 !----------------------------------------------  
-  function cell_intersection(ray,cell) result(x)
-    logical :: x             !< true or false result
+  function cell_intersection(ray,cell) result(hit)
+    logical :: hit           !< true or false result
     type(ray_type) :: ray    !< ray
     type(cell_type) :: cell  !< cell
     real(r8b) bot(3),top(3)
-    bot=cell%botrange-ray%start
-    top=cell%toprange-ray%start
-    x=pluecker(ray,bot,top)
+    bot = cell%botrange - ray%start
+    top = cell%toprange - ray%start
+    hit = pluecker(ray, bot, top)
   end function cell_intersection
   
 
 !> pluecker test for line segment / cell intersection
 !-----------------------------------------------------    
-  function pluecker(ray,bot,top) result(x)
-    logical :: x                !< true or false result
-    type(ray_type) :: ray       !< input ray
-    real(r8b) bot(3)                 !< lower cell corner
-    real(r8b) top(3)                 !< upper cell corner
+  function pluecker(ray,bot,top) result(hit)
+    logical :: hit            !< true or false result
+    type(ray_type) :: ray     !< input ray
+    real(r8b) :: bot(3)       !< lower cell corner
+    real(r8b) :: top(3)       !< upper cell corner
 
-    real(r8b) dir(3)
+    real(r8b) :: dir(3)
 
     dir=ray%dir  
-    x=.FALSE.
+    hit=.FALSE.
     select case(ray%class)
     case(0)
        if(bot(1).GT.0.OR.bot(2).GT.0.OR.bot(3).GT.0) return
@@ -1017,7 +1071,7 @@ end subroutine return_next_ray_start_weight
     case default
        call rayError('ray class.')
     end select
-    x=.TRUE.
+    hit=.TRUE.
   end function pluecker
 
 !> error handling

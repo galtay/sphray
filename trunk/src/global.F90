@@ -112,7 +112,8 @@ type global_variables_type
    real(r8b)       :: RayPhotonTol        !< [Config File] fractional ray depletion to stop ray
 
    integer(i4b)    :: WallSampling        !< [Config File] 1=Twister, 2=Sobol3D, 3=Sobol2D, 4=QuadTree
-
+   real(r8b)       :: MaxRayDist          !< [Config File] max ray distance in physical code units, negative=default
+   
    logical         :: OnTheSpotH          !< [Config File] T = on the spot approximation for Hydrogen
    logical         :: OnTheSpotHe         !< [Config File] T = on the spot approximation for Helium
 
