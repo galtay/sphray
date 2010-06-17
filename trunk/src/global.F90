@@ -9,7 +9,6 @@ use gadget_header_class, only: gadget_units_type
 use gadget_header_class, only: gadget_constants_type
 use particle_system_mod, only: particle_system_type
 use oct_tree_mod, only: oct_tree_type
-use ndtree_mod, only: ndtree_type
 use raylist_mod, only: raylist_type
 use atomic_rates_mod, only: atomic_rates_table_type
 use atomic_rates_mod, only: atomic_rates_type
