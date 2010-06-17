@@ -11,7 +11,6 @@ module mainloop_mod
   ! routines
   use main_input_mod, only: readin_snapshot
   use oct_tree_mod, only: buildtree, setparticleorder
-  use ndtree_mod, only: build_ndtree
   use raylist_mod, only: prepare_raysearch, kill_raylist, trace_ray
   use ray_mod, only: make_source_ray, make_recomb_ray
   use ray_mod, only: ray_type, raystat_type, raystatbuffsize
@@ -27,7 +26,7 @@ module mainloop_mod
   use global_mod, only: GV
   use global_mod, only: PLAN
   use global_mod, only: gconst
-  use ndtree_mod, only: yz_tree, zx_tree, xy_tree
+
   
   implicit none
   
@@ -103,29 +102,6 @@ contains
        call setparticleorder(psys, tree)             
        call prepare_raysearch(psys, globalraylist)
        
-
-       !  if using quadtree wall sampling build trees and overwrite plan data
-       !---------------------------------------------------------------------  
-       if (GV%WallSampling == 4) then
-          call build_ndtree( xy_tree, psys, iaxis=3, ppc=16, outdir=GV%OutputDir )
-          PLAN%snap(snapn)%SrcRays = xy_tree%nleafs * rays_per_leaf
-          raystatbuffsize = PLAN%snap(snapn)%SrcRays / 10 + 1
-
-          GV%dt_code = ( PLAN%snap(snapn)%RunTime / xy_tree%dtsum ) / rays_per_leaf
-          call set_dt_from_dtcode( GV )
-
-          write(*,*) 'dt_code = ', GV%dt_code
-          write(*,*) 'dt_s    = ', GV%dt_s
-          write(*,*) 'dt_myr  = ', GV%dt_myr
-
-          if (psys%src(1)%EmisPrf == -3) then
-             call build_ndtree( yz_tree, psys, iaxis=1, ppc=16, outdir=GV%OutputDir )
-             call build_ndtree( zx_tree, psys, iaxis=2, ppc=16, outdir=GV%OutputDir )
-          endif
-
-         
-       endif
-
       
        if (GV%raystats) then
           write(GV%raystatlun) PLAN%snap(snapn)%SrcRays, raystatbuffsize 

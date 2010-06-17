@@ -12,8 +12,8 @@ use mt19937_mod, only: genrand_real1
 use sobol_mod, only: i8_sobol
 use spectra_mod, only: rn2freq
 use physical_constants_mod, only: HI_th_erg, M_H, M_He
-use ndtree_mod, only: yz_tree, zx_tree, xy_tree, create_random_access_list
-use pix_tools, only: pix2vec_ring
+!use ndtree_mod, only: yz_tree, zx_tree, xy_tree, create_random_access_list
+!use pix_tools, only: pix2vec_ring
 implicit none
 
   private
@@ -30,12 +30,12 @@ implicit none
   public :: make_probe_ray
   public :: make_recomb_ray
   public :: make_skewer_ray
-  public :: make_healpix_ray
+
 
   integer(i8b) :: raystatbuffsize 
   integer(i8b), parameter :: sobol_buff_size = 6 * 1000
   integer(i8b), parameter :: sobol_istart = 0
-  integer(i4b), parameter :: type_of_random = 4 ! 1=twister, 2=3D sobol, 3=2Dsobol, 4=tree
+  integer(i4b), parameter :: type_of_random = 2 ! 1=twister, 2=3D sobol, 3=2Dsobol
   real(r8b), parameter :: one = 1.0d0
   real(r8b), parameter :: zero = 0.0d0
   
@@ -96,9 +96,9 @@ contains
     curface = 0_i8b
     sobol_seed = sobol_istart
 
-    i_yz_leaf = 1_i4b
-    i_zx_leaf = 1_i4b
-    i_xy_leaf = 1_i4b
+!    i_yz_leaf = 1_i4b
+!    i_zx_leaf = 1_i4b
+!    i_xy_leaf = 1_i4b
 
   end subroutine init_background_source_variables
 
@@ -288,132 +288,7 @@ subroutine return_next_ray_start_weight(wall_sampling, rayn, box, start, weight)
      endif
 
 
-  ! loop thru the leafs of a quad tree in random order for each wall
-  !------------------------------------------------------------------
-  case(4)
-  !------------------------------------------------------------------
 
-     qrn1 = genrand_real1()
-     qrn2 = genrand_real1()     
-     
-     select case (curface)
-     case(1)
-        inode  = yz_tree%leaflist( yz_tree%racclist(i_yz_leaf) )
-        origin = yz_tree%nodelist(inode)%origin
-        extent = yz_tree%nodelist(inode)%extent
-
-        start(1) = box%bot(1)
-        start(2) = origin(1) + qrn1 * extent
-        start(3) = origin(2) + qrn2 * extent
-
-        ratio = yz_tree%nodelist(0)%extent / extent
-        level = anint( log(ratio)/log(2.d0) )
-        weight = (2**(yz_tree%levels - level))**2
-
-        i_yz_leaf = i_yz_leaf + 1
-        if (i_yz_leaf > yz_tree%nleafs) then
-           i_yz_leaf = 1
-           call create_random_access_list(yz_tree)
-        endif
-        
-     case(2)
-        inode  = zx_tree%leaflist( zx_tree%racclist(i_zx_leaf) )
-        origin = zx_tree%nodelist(inode)%origin
-        extent = zx_tree%nodelist(inode)%extent
-
-        start(2) = box%bot(2)
-        start(3) = origin(1) + qrn1 * extent
-        start(1) = origin(2) + qrn2 * extent
-
-        ratio = zx_tree%nodelist(0)%extent / extent
-        level = anint( log(ratio)/log(2.d0) )
-        weight = (2**(zx_tree%levels - level))**2
-
-        i_zx_leaf = i_zx_leaf + 1
-        if (i_zx_leaf > zx_tree%nleafs) then
-           i_zx_leaf = 1
-           call create_random_access_list(zx_tree)
-        endif
-
-     case(3)
-        inode  = xy_tree%leaflist( xy_tree%racclist(i_xy_leaf) )
-        origin = xy_tree%nodelist(inode)%origin
-        extent = xy_tree%nodelist(inode)%extent
-
-        start(3) = box%bot(3)
-        start(1) = origin(1) + qrn1 * extent
-        start(2) = origin(2) + qrn2 * extent
-
-        ratio = xy_tree%nodelist(0)%extent / extent
-        level = anint( log(ratio)/log(2.d0) )
-        weight = (2**(xy_tree%levels - level))**2
-
-        i_xy_leaf = i_xy_leaf + 1
-        if (i_xy_leaf > xy_tree%nleafs) then
-           i_xy_leaf = 1
-           call create_random_access_list(xy_tree)
-        endif
-
-
-     case(4)
-        inode  = yz_tree%leaflist( yz_tree%racclist(i_yz_leaf) )
-        origin = yz_tree%nodelist(inode)%origin
-        extent = yz_tree%nodelist(inode)%extent
-
-        start(1) = box%top(1)
-        start(2) = origin(1) + qrn1 * extent
-        start(3) = origin(2) + qrn2 * extent
-
-        ratio = yz_tree%nodelist(0)%extent / extent
-        level = anint( log(ratio)/log(2.d0) )
-        weight = (2**(yz_tree%levels - level))**2
-
-        i_yz_leaf = i_yz_leaf + 1
-        if (i_yz_leaf > yz_tree%nleafs) then
-           i_yz_leaf = 1
-           call create_random_access_list(yz_tree)
-        endif
-
-
-     case(5)
-        inode  = zx_tree%leaflist( zx_tree%racclist(i_zx_leaf) )
-        origin = zx_tree%nodelist(inode)%origin
-        extent = zx_tree%nodelist(inode)%extent
-
-        start(2) = box%top(2)
-        start(3) = origin(1) + qrn1 * extent
-        start(1) = origin(2) + qrn2 * extent
-
-        ratio = zx_tree%nodelist(0)%extent / extent
-        level = anint( log(ratio)/log(2.d0) )
-        weight = (2**(zx_tree%levels - level))**2
-
-        i_zx_leaf = i_zx_leaf + 1
-        if (i_zx_leaf > zx_tree%nleafs) then
-           i_zx_leaf = 1
-           call create_random_access_list(zx_tree)
-        endif
-
-     case(6)
-        inode  = xy_tree%leaflist( xy_tree%racclist(i_xy_leaf) )
-        origin = xy_tree%nodelist(inode)%origin
-        extent = xy_tree%nodelist(inode)%extent
-
-        start(3) = box%top(3)
-        start(1) = origin(1) + qrn1 * extent
-        start(2) = origin(2) + qrn2 * extent
-
-        ratio = yz_tree%nodelist(0)%extent / extent
-        level = anint( log(ratio)/log(2.d0) )
-        weight = (2**(yz_tree%levels - level))**2
-
-        i_xy_leaf = i_xy_leaf + 1
-        if (i_xy_leaf > xy_tree%nleafs) then
-           i_xy_leaf = 1
-           call create_random_access_list(xy_tree)
-        endif
-
-     end select
      
      
 
@@ -428,38 +303,7 @@ end subroutine return_next_ray_start_weight
 
 
 
-!> creates a healpix ray
-!-----------------------------------------------------------------------  
-  subroutine make_healpix_ray(par, nside, ipix, box, ray, length)
 
-    type(particle_type), intent(in) :: par    !< the particle
-    integer(i4b), intent(in) :: nside         !< the healpix nsides
-    integer(i4b), intent(in) :: ipix          !< the healpix pixel number
-    type(box_type), intent(in) :: box         !< simulation box
-    type(ray_type), intent(out) :: ray        !< output ray
-    real(r8b), intent(in), optional :: length !< optional length, default=huge
-
-    integer :: i
-
-    ray%start = par%pos
-    call pix2vec_ring( nside, ipix, ray%dir )
-    if (present(length)) then
-       ray%length = length
-    else
-       ray%length = huge(1.0d0)
-    endif
-
-!   set the class of the ray (what octant is it going into)
-    ray%class = 0
-    do i = 1, 3
-       if(ray%dir(i) >= 0) ray%class = ray%class + 2**(i-1)
-    enddo
-
-    ray%weight = 1_i8b
-    ray%freq   = 1.0d0
-    ray%enrg   = ray%freq * HI_th_erg  
-
-  end subroutine make_healpix_ray
 
 
 

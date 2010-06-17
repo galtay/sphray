@@ -29,7 +29,7 @@
 #OPT += -Dhdf5     # if you are using the hdf
 
 
-OPT += -DOWLS     # selects input as an OWLS snapshot
+#OPT += -DOWLS     # selects input as an OWLS snapshot
 #OPT += -DGIMIC    # selects input as a GIMIC snapshot
 
 
