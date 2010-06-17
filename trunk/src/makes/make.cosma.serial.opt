@@ -1,5 +1,5 @@
 FC= f95 
-FFLAGS= -g -xO5 -xtarget=native -xarch=native -xmodel=medium -xlibmil -xlibmopt -xipo=2 -e -m64
+FFLAGS= -g -C -xO5 -xtarget=native -xarch=native -xmodel=medium -xlibmil -xlibmopt -xipo=2 -e -m64
 
 ISLIB=  -L
 ISINC=  -I

@@ -29,7 +29,7 @@
 #OPT += -Dhdf5     # if you are using the hdf
 
 
-#OPT += -DOWLS     # selects input as an OWLS snapshot
+OPT += -DOWLS     # selects input as an OWLS snapshot
 #OPT += -DGIMIC    # selects input as a GIMIC snapshot
 
 
@@ -62,12 +62,11 @@ endif
 #include makes/make.icc-graphics.serial.debug
 #include makes/make.icc-graphics.serial.opt
 
-include makes/make.xgpc.serial.debug
+#include makes/make.xgpc.serial.debug
 #include makes/make.xgpc.serial.opt
 
-
-#include makes/make.cosma.openmp
-#include makes/make.cosma.mpi
+#include makes/make.cosma.serial.debug
+include makes/make.cosma.serial.opt
 
 #include makes/make.santabuntu.serial.opt
 #include makes/make.santabuntu.serial.debug
@@ -83,14 +82,12 @@ CFLAGS= -O3
 
 
 
-APPS= screen sphray sphraybgnd
+APPS= screen sphray 
 
 #--------------------
 
 SRC= 	myf90.o \
 	sobol.o \
-	healpix_types.o \
-	pix_tools.o \
 	physical_constants.o \
 	mt19937.o \
 	m_mrgrnk.o \
@@ -107,7 +104,6 @@ SRC= 	myf90.o \
 	spectra.o \
 	sphpar.o \
 	octtree3.o \
-	ndtree.o \
 	ray.o \
 	raylist.o \
 	global.o \
@@ -123,7 +119,6 @@ SRC= 	myf90.o \
 	output.o \
 	ion_temperature_update.o \
 	initialize.o \
-	backgroundloop.o \
 	mainloop.o 
 
 
@@ -240,13 +235,6 @@ screen: Makefile
 # Main SPHRAY application
 #=============================================================================
 sphray: $(SRC) sphray.o
-	$(FC) $(FFLAGS) $^ $(OPT) $(FNAME) $@
-
-
-#
-# Main SPHRAY background only application
-#=============================================================================
-sphraybgnd: $(SRC) sphraybgnd.o
 	$(FC) $(FFLAGS) $^ $(OPT) $(FNAME) $@
 
 #
