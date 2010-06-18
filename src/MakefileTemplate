@@ -63,10 +63,10 @@ endif
 #include makes/make.icc-graphics.serial.opt
 
 #include makes/make.xgpc.serial.debug
-#include makes/make.xgpc.serial.opt
+include makes/make.xgpc.serial.opt
 
 #include makes/make.cosma.serial.debug
-include makes/make.cosma.serial.opt
+#include makes/make.cosma.serial.opt
 
 #include makes/make.santabuntu.serial.opt
 #include makes/make.santabuntu.serial.debug
