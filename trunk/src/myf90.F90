@@ -35,7 +35,7 @@ implicit none
 !------------------------------------------------------------------------
   integer, parameter :: r4b  = selected_real_kind(p=6,r=37)    !< 4 byte real type
   integer, parameter :: r8b  = selected_real_kind(p=15,r=307)  !< 8 byte real type
-  integer, parameter :: r16b = selected_real_kind(p=33,r=4931) !< 16 byte real type
+!  integer, parameter :: r16b = selected_real_kind(p=33,r=4931) !< 16 byte real type
 
 
   integer, parameter :: clen  = 500 !< default character variable length
@@ -68,7 +68,7 @@ function myf90_test_var_sizes() result( err )
 
   real(r4b)  :: r_four_byte
   real(r8b)  :: r_eight_byte
-  real(r16b) :: r_sixteen_byte
+!  real(r16b) :: r_sixteen_byte
 
 
   err = 0     
@@ -90,12 +90,10 @@ function myf90_test_var_sizes() result( err )
 
 
   if ( digits(r_four_byte)    /= 24  .or. &
-       digits(r_eight_byte)   /= 53  .or. &
-       digits(r_sixteen_byte) /= 113      ) then
+       digits(r_eight_byte)   /= 53        ) then
 
      write(*,*) 'digits r4b: ',  digits(r_four_byte)
      write(*,*) 'digits r8b: ',  digits(r_eight_byte)
-     write(*,*) 'digits r16b: ', digits(r_sixteen_byte)
 
      err = -1
      

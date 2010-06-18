@@ -134,9 +134,6 @@ subroutine read_config_file(config_file)
     keyword = "WallSampling:"
     call scanfile(config_file,keyword,GV%WallSampling)
 
-    keyword = "MaxRayDist:"
-    call scanfile(config_file,keyword,GV%MaxRayDist)
-
     !   ion/temp solving
     !----------------------------
     keyword = "OnTheSpotH:"
