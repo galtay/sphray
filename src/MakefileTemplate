@@ -65,6 +65,8 @@ endif
 #include makes/make.xgpc.serial.debug
 include makes/make.xgpc.serial.opt
 
+#include makes/make.ferrari.serial.opt
+
 #include makes/make.cosma.serial.debug
 #include makes/make.cosma.serial.opt
 

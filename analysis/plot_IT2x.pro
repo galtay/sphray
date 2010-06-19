@@ -9,7 +9,7 @@ makepng=1  ; if ps=0 and makepng=1 then tries a screen capture to png
 
 ; SPHRAY file IO
 ;----------------
-snapdir  = "../../sphray_output/IT2/r6"
+snapdir  = "../../sphray_output/IT2_N64/r6"
 snapbase = "snap"
 snapnum = 1
 snapnumstr = string(snapnum, format="(I3.3)")
