@@ -277,6 +277,13 @@ subroutine dummy_check_config_variables()
         config_good = .false. 
      end if
 
+     if (GV%FixSnapTemp) then 
+        write(*,*) "Only one of the following can be true:"
+        write(*,*) "FixSnapTemp = T (then IsoTemp must be < 0)"
+        write(*,*) "IsoTemp > 0     (then FixSnapTemp must = F)"
+        config_good = .false.
+     endif
+
   end if
 
   if (GV%StartSnapNum < 0 .or. GV%EndSnapNum < 0) then
@@ -376,25 +383,25 @@ subroutine dummy_check_config_variables()
 
      if ( trim(GV%TestScenario) == "iliev_test2" ) then
         charmatch = .true.
-        if (GV%IsoTemp /= 0.0) then
+        if (GV%IsoTemp > 0.0) then
            config_good = .false.
-           write(*,*) "iliev test 2 must have IsoTemp = 0.0"
+           write(*,*) "iliev test 2 must have IsoTemp <= 0.0"
         end if
      end if
 
      if ( trim(GV%TestScenario) == "iliev_test3" ) then
         charmatch = .true.
-        if (GV%IsoTemp /= 0.0) then
+        if (GV%IsoTemp > 0.0) then
            config_good = .false.
-           write(*,*) "iliev test 3 must have IsoTemp = 0.0"
+           write(*,*) "iliev test 3 must have IsoTemp <= 0.0"
         end if
      end if
 
      if ( trim(GV%TestScenario) == "iliev_test4" ) then
         charmatch = .true.
-        if (GV%IsoTemp /= 0.0) then
+        if (GV%IsoTemp > 0.0) then
            config_good = .false.
-           write(*,*) "iliev test 4 must have IsoTemp = 0.0"
+           write(*,*) "iliev test 4 must have IsoTemp <= 0.0"
         end if
      end if
 
@@ -446,7 +453,7 @@ subroutine config_info_to_file()
   write(lun,*)
   write(lun,*)"Input is in comoving coords? " , GV%Comoving
   write(lun,*)
-  write(lun,*)"Iso temperature (0.0 = variable temperature): ", GV%IsoTemp
+  write(lun,*)"Iso temperature (if > 0.0 fixed single temperature): ", GV%IsoTemp
   write(lun,*) 
   write(lun,*)"Fix temperature at snapshot values?: ", GV%FixSnapTemp
   write(lun,*) 
@@ -566,7 +573,7 @@ subroutine config_info_to_file()
      write(lun,*) "the temperatures are fixed at the readin snapshot values"
      write(lun,*) "***********************************************************"
   else
-     if (GV%IsoTemp /= 0.0) then
+     if (GV%IsoTemp > 0.0) then
         write(lun,*) "***********************************************************"
         write(lun,*) "you are running a constant temperature simulation."
         write(lun,*) "the temperature is fixed at T (K) = ", GV%IsoTemp

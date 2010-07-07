@@ -20,7 +20,7 @@ private
 
 real(r8b), parameter :: zero= 0.0d0
 real(r8b), parameter :: half= 0.5d0
-real(r8b), parameter :: one= 0.0d0
+real(r8b), parameter :: one= 1.0d0
 real(r8b), parameter :: two = 2.0d0
 real(r8b), parameter :: four = 4.0d0
 
@@ -197,7 +197,7 @@ contains
   function HI_photo_cs_analytic( Ry ) result( sigma )
     real(r8b), intent(in) :: Ry  !< energy [Rydbergs]
     real(r8b) :: sigma           !< cross section [cm^2]
-    real(r8b), parameter :: A0 = 6.30d0
+    real(r8b), parameter :: A0 = 6.30d-18
 
 
     real(r8b) :: eps 
@@ -223,7 +223,7 @@ contains
   !-------------------------------------------------------------------------
   function HIth_photo_cs_verner() result( sigma )
     real(r8b) :: sigma
-    sigma = HI_photo_cs_verner( 1.0d0 )
+    sigma = HI_photo_cs_verner( one )
   end function HIth_photo_cs_verner
 
  

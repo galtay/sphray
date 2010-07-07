@@ -510,7 +510,7 @@ subroutine set_collisional_ionization_equilibrium(psys, caseA, IsoTemp, DoHydrog
 
   ! if we have a single temperature
   !------------------------------------
-  if (IsoTemp /= 0.0) then
+  if (IsoTemp > 0.0) then
      call calc_colion_eq_fits(fit, IsoTemp, caseA, xvec)
      if (DoHydrogen) then
         psys%par(:)%xHI    = xvec(1)
