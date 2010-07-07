@@ -50,7 +50,7 @@ subroutine set_bools( He, caseA, isoT, fixT )
   if (.not. GV%OnTheSpotH  .or. GV%HydrogenCaseA) caseA(1) = .true.
   if (.not. GV%OnTheSpotHe .or. GV%HeliumCaseA)   caseA(2) = .true.
 
-  if (GV%IsoTemp /= 0.0) then
+  if (GV%IsoTemp > 0.0) then
      isoT = .true.
   else
      isoT = .false.

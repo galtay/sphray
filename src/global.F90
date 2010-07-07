@@ -69,8 +69,8 @@ type global_variables_type
    logical         :: JustInit            !< [Config File] set true to stop after initialization
    logical         :: Comoving            !< [Config File] set true if values to be read are in comoving coords
 
-   real(r8b)       :: IsoTemp             !< [Config File] if non zero all pars fixed @ IsoTemp
-   logical         :: FixSnapTemp         !< [Config File] T = fix temp at snapshot values (ignored if IsoTemp /= 0)
+   real(r8b)       :: IsoTemp             !< [Config File] if > zero all pars fixed @ IsoTemp (FixSnapTemp must be F)
+   logical         :: FixSnapTemp         !< [Config File] if T, fix temp at snapshot values (IsoTemp must be <= 0)
 
    real(r8b)       :: EOStemp             !< [Config File] if non-negative, initialize EOS particles w/ T = EOStemp 
    real(r8b)       :: InitxHI             !< [Config File] if non-negative, all xHI initialized to this value

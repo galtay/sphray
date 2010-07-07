@@ -385,7 +385,7 @@ endif
 
   ! set constant temperature if we have one
   !=======================================================
-  if (GV%IsoTemp /= 0.0) psys%par(:)%T = GV%IsoTemp
+  if (GV%IsoTemp > 0.0) psys%par(:)%T = GV%IsoTemp
 
 
 
