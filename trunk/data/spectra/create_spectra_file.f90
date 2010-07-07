@@ -113,7 +113,7 @@ implicit none
 !=================================================================
 
 integer(i4b), parameter   :: Nspectra = 1
-real(r8b), parameter      :: NuMax(Nspectra) = (/ 36.0d0 /)
+real(r8b), parameter      :: NuMax(Nspectra) = (/ 20.0d0 /)
 character(1), parameter   :: SpecType(Nspectra) = (/ "p" /)
 real(r8b), parameter      :: SpecParam(Nspectra) = (/ -4 /)
 character(200), parameter :: filebase = "power4.0"
