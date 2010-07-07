@@ -1,7 +1,7 @@
 FC=ifort
 FFLAGS= -traceback -fpe0 -C
 
-APPS = create_spectra_file create_d6bh_file
+APPS = create_spectra_file 
 
 #--------------------
 
@@ -24,9 +24,6 @@ LIBS=
 all:$(APPS)
 
 create_spectra_file: $(FILES) create_spectra_file.o
-	$(FC) $(FFLAGS) -o $@ $^ $(LIBS) $(INCLUDE)
-
-create_d6bh_file: $(FILES) create_d6bh_file.o
 	$(FC) $(FFLAGS) -o $@ $^ $(LIBS) $(INCLUDE)
 
 %.o: %.F90 
