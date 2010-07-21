@@ -125,7 +125,9 @@ SRC= 	myf90.o \
 
 
 #=============================================================================
-# These lines should be edited if you are using the HDF5 libraries
+# These lines should NOT be edited if you are using the HDF5 libraries.
+# Instead, simply set the variable DIRHDF, preferably in one of the 
+# include files specified above.
 #
 
 OPTHDF= 
