@@ -239,8 +239,8 @@ subroutine dummy_check_config_variables()
   end if
 
   if (GV%OutputType /= 1 .and. GV%OutputType /= 2) then
-     write(*,*) "Input Type ", GV%OutputType, " not recognized"
-     write(*,*) "must be 1 (Standard Gadget) or 2 (HDF5 Gadget)"
+     write(*,*) "Output Type ", GV%OutputType, " not recognized"
+     write(*,*) "must be 1 (Standard Gadget) or 2 (HDF5)"
      config_good = .false. 
   end if
 
