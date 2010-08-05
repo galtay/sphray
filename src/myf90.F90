@@ -120,7 +120,7 @@ end function myf90_test_var_sizes
     call get_command( command=cmnd%str, length=cmnd%len, status=stat )
     if (stat /= 0) call myerr("stat /= 0 after get_command", myname, crash)
 
-    call mywrite('', verb) 
+    call mywrite(' ', verb) 
     call mywrite('command string: ' // trim(cmnd%str), verb)
     write(str,'(A,I5)') 'command nargs :', cmnd%nargs
     call mywrite( str, verb) 
@@ -189,9 +189,9 @@ end function myf90_test_var_sizes
      fmt='(A)'
 
      if (present(lun)) then
-        if (verb <= myf90_verbosity) write(lun,fmt,advance=sadv) trim(str)        
+        if (verb <= myf90_verbosity) write(lun,fmt,advance=sadv) trim(str)
      else
-        if (verb <= myf90_verbosity) write(stdout,fmt,advance=sadv) trim(str)        
+        if (verb <= myf90_verbosity) write(stdout,fmt,advance=sadv) trim(str)
      endif
 
    end subroutine mywrite

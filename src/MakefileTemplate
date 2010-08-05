@@ -63,7 +63,9 @@ endif
 #include makes/make.icc-graphics.serial.opt
 
 #include makes/make.xgpc.serial.debug
-include makes/make.xgpc.serial.opt
+#include makes/make.xgpc.serial.opt
+
+include makes/make.warp.opt
 
 #include makes/make.ferrari.serial.opt
 
