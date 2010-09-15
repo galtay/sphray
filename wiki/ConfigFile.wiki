@@ -5,4 +5,4 @@
 || *Keyword* || *Type* || *Description* || 
 || Verbosity || Integer || Level of screen output ||
 || DoTestScenario || Logical || True if doing one of the Iliev Tests || 
-|| TestScenario || Character || {"iliev_test1","iliev_test2","iliev_test3","iliev_test4"} ||
+|| TestScenario || Character || { {{{iliev_test1, iliev_test2, iliev_test3, iliev_test4}}} } ||
