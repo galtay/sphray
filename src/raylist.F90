@@ -279,8 +279,8 @@ contains
    real :: lx(ndim),hx(ndim)
    logical :: boxexists
 
-   top    = psys%box%top
-   bot    = psys%box%bot
+   top    = psys%box%tops
+   bot    = psys%box%bots
    bbound = psys%box%bbound
    tbound = psys%box%tbound
    

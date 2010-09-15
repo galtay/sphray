@@ -11,6 +11,9 @@ use gadget_input_hdf5_mod
 use particle_system_mod, only: particle_system_type
 use particle_system_mod, only: particle_type
 use particle_system_mod, only: set_ye_pars
+use particle_system_mod, only: number_weight_ionfrac
+use particle_system_mod, only: mass_weight_ionfrac
+use particle_system_mod, only: volume_weight_ionfrac
 use oct_tree_mod, only: oct_tree_type
 use physical_constants_mod
 use global_mod, only: PLAN, GV
@@ -142,6 +145,8 @@ contains
 
      integer(i8b) :: i,j
 
+     real(r8b) :: scale
+     real(r8b) :: hub
      real(r8b) :: nHe_over_nH
      real(r8b) :: Hmf, Hemf
      real(r4b) :: mu
@@ -153,13 +158,16 @@ contains
      nHe_over_nH = 0.0
      ipar=0
 
+     scale = PLAN%snap(GV%CurSnapNum)%ScalefacAt
+     hub   = GV%LittleH
+
      write(*,*) 'output number: ', GV%OutputIndx
      write(*,*) 'output type:   ', GV%OutputType
      write(*,*) "writing total state of system"
      write(*,*) "time (elapsed code) ", GV%time_elapsed_code
      write(*,*) "time (elapsed myr)  ", GV%time_elapsed_myr
 
-     if (GV%Comoving) call scale_physical_to_comoving(PLAN%snap(GV%CurSnapNum)%ScalefacAt, pars, hub=GV%LittleH)
+     if (GV%Comoving) call scale_physical_to_comoving(scale, hub, pars)
 
      100 format(I3.3)
      write(label,100) GV%OutputIndx
@@ -312,7 +320,7 @@ contains
      !================================================================
 
 
-     if (GV%Comoving) call scale_comoving_to_physical(PLAN%snap(GV%CurSnapNum)%ScalefacAt,pars, hub=GV%LittleH)
+     if (GV%Comoving) call scale_comoving_to_physical(scale, hub, pars)
 
   end subroutine output_total_snap
 
@@ -353,9 +361,9 @@ contains
 
 
 !    calculate the ionized number, volume, and mass fractions
-     Nionfrac = number_weight_ionfrac(psys%par)
-     Mionfrac = mass_weight_ionfrac(psys%par) 
-     Vionfrac = volume_weight_ionfrac(psys%par)
+     Nionfrac = number_weight_ionfrac(psys)
+     Mionfrac = mass_weight_ionfrac(psys) 
+     Vionfrac = volume_weight_ionfrac(psys)
 
      GV%nwionfrac = Nionfrac
      GV%mwionfrac = Mionfrac
@@ -467,69 +475,7 @@ contains
 
   end subroutine ion_frac_out
 
-!> calculates the number weighted ionization fraction
-!========================================================
 
-  function number_weight_ionfrac(pars) result(numionfrac)
-     type(particle_type), intent(in) :: pars(:)   !< particle system
-     real(r8b) :: numionfrac                      !< ion fraction n weighted
-
-     integer :: i
-
-!      because the ionization fractions are stored as single
-!      precision variables, the intrinsic sum function returns 
-!      a single precision answer.  I think it is better to use 
-!      the loop here.
-
-       numionfrac = 0.0d0
-       do i = 1,size(pars)
-          numionfrac = numionfrac + pars(i)%xHII 
-       end do
-       numionfrac = numionfrac / size(pars)
-
-  end function number_weight_ionfrac
-
-!> calculates the mass weighted ionization fraction
-!========================================================
-
-  function mass_weight_ionfrac(pars) result(massionfrac)
-     type(particle_type), intent(in) :: pars(:) !< particle system
-     real(r8b) :: massionfrac                   !< ion fraction m weighted
-     real(r8b) :: masstot                       !< total volume
-     integer :: i
-
-     massionfrac = 0.0d0
-     masstot = 0.0d0
-     do i = 1,size(pars)
-        massionfrac = massionfrac + pars(i)%mass * pars(i)%xHII
-        masstot = masstot + pars(i)%mass
-     end do
-     massionfrac = massionfrac / masstot
-
-
-  end function mass_weight_ionfrac
-
-
-!> calculates the volume weighted ionization fraction
-!========================================================
-
-  function volume_weight_ionfrac(pars) result(volionfrac)
-     type(particle_type), intent(in) :: pars(:) !< particle system
-     real(r8b) :: volionfrac                    !< ion fraction v weighted
-     real(r8b) :: voltot                        !< total volume
-     real(r8b) :: h3                            !< hsml^3
-     integer :: i
-
-     volionfrac = 0.0d0
-     voltot = 0.0d0
-     do i = 1,size(pars)
-        h3 = pars(i)%hsml * pars(i)%hsml * pars(i)%hsml
-        volionfrac = volionfrac + h3 * pars(i)%xHII
-        voltot = voltot + h3
-     end do
-     volionfrac = volionfrac / voltot
-
-   end function volume_weight_ionfrac
 
 
 end module output_mod

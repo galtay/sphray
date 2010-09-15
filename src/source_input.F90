@@ -79,7 +79,7 @@ subroutine get_planning_data_sources()
 
   ! open up the planning data log file
   !======================================================
-  logfile = trim(GV%OutputDir) // "/" // "headers.log"
+  logfile = trim(GV%OutputDir) // "/" // "source_headers.log"
   call open_formatted_file_w(logfile,loglun)
 
   ! read all source headers and write to log file
