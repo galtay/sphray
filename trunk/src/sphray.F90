@@ -63,6 +63,8 @@ implicit none
    config_file = cmnd%args(1)
    call initialize(config_file)
 
+   stop
+
    call mainloop()
 
 

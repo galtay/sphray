@@ -35,8 +35,6 @@ implicit none
 !------------------------------------------------------------------------
   integer, parameter :: r4b  = selected_real_kind(p=6,r=37)    !< 4 byte real type
   integer, parameter :: r8b  = selected_real_kind(p=15,r=307)  !< 8 byte real type
-!  integer, parameter :: r16b = selected_real_kind(p=33,r=4931) !< 16 byte real type
-
 
   integer, parameter :: clen  = 500 !< default character variable length
 
@@ -68,8 +66,6 @@ function myf90_test_var_sizes() result( err )
 
   real(r4b)  :: r_four_byte
   real(r8b)  :: r_eight_byte
-!  real(r16b) :: r_sixteen_byte
-
 
   err = 0     
 
@@ -121,8 +117,8 @@ end function myf90_test_var_sizes
     if (stat /= 0) call myerr("stat /= 0 after get_command", myname, crash)
 
     call mywrite(' ', verb) 
-    call mywrite('command string: ' // trim(cmnd%str), verb)
-    write(str,'(A,I5)') 'command nargs :', cmnd%nargs
+    call mywrite('[cmnd line] string: ' // trim(cmnd%str), verb)
+    write(str,'(A,I5)') '[cmnd line] nargs :', cmnd%nargs
     call mywrite( str, verb) 
     
     allocate( cmnd%args( 0:cmnd%nargs ), cmnd%arglens( 0:cmnd%nargs ) )
@@ -137,10 +133,9 @@ end function myf90_test_var_sizes
           call myerr("stat /= 0 after get_command_argument", myname, crash)
        end if
 
-       write(str,'(A,I2,A,A)') 'arg ', i, ': ', trim(cmnd%args(i))
+       write(str,'(A,I2,A,A)') '[cmnd line] arg ', i, ': ', trim(cmnd%args(i))
        call mywrite(str, verb)
 
-       call mywrite('', verb)
     end do
     
   end function myf90_initialize_command_line

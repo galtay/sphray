@@ -18,11 +18,21 @@ public :: source_type
 public :: box_type
 public :: particle_system_type
 public :: transformation_type
+
 public :: orderparticles
 public :: orderpsys
 public :: calc_bytes_per_particle_and_source
 public :: scale_comoving_to_physical
 public :: scale_physical_to_comoving
+
+public :: number_weight_ionfrac_pars
+public :: mass_weight_ionfrac_pars
+public :: volume_weight_ionfrac_pars
+
+public :: number_weight_ionfrac
+public :: mass_weight_ionfrac
+public :: volume_weight_ionfrac
+
 public :: set_ye
 public :: set_ye_pars
 public :: set_collisional_ionization_equilibrium
@@ -105,11 +115,19 @@ end type source_type
 !> simulation box and boundary conditions
 !==========================================
 type box_type
-   real(r8b)    :: top(1:3)     !< upper x,y,z coordinates
-   real(r8b)    :: bot(1:3)     !< lower x,y,z coordinates
+   real(r8b)    :: tops(1:3)    !< upper x,y,z coordinates [code]
+   real(r8b)    :: bots(1:3)    !< lower x,y,z coordinates [code]
+   real(r8b)    :: lens(1:3)    !< side lengths [code] (xf-xi,yf-yi,zf-zi)
+   real(r8b)    :: lens_cm(1:3) !< side lengths [cm] (xf-xi,yf-yi,zf-zi)
+   real(r8b)    :: vol          !< box volume [code] (xlen*ylen*zlen)
+   real(r8b)    :: vol_cm       !< box volume [cm^3] (xlen*ylen*zlen) 
+
    integer(i8b) :: bbound(1:3)  !< BCs for upper faces (0:vac 1:per -1: ref) 
    integer(i8b) :: tbound(1:3)  !< BCs for lower faces (0:vac 1:per -1: ref) 
 end type box_type
+
+
+
 
 
 !----------------------------
@@ -268,33 +286,26 @@ subroutine adjustbox(box,bot,top)
   real(r4b), intent(in) :: bot(3)      !< new bottoms
   real(r4b), intent(in) :: top(3)      !< new tops
 
-  where (box%bbound==0) box%bot = bot
-  where (box%tbound==0) box%top = top
+  where (box%bbound==0) box%bots = bot
+  where (box%tbound==0) box%tops = top
 
 end subroutine adjustbox
 
 
 !> scales particles, sources, and the box from comoving to physical values
 !==========================================================================
-subroutine scale_comoving_to_physical(a,par,src,box,hub)
+subroutine scale_comoving_to_physical(a, h, par, src, box)
 
   character(clen), parameter :: myname="scale_comoving_to_physical"
   integer, parameter :: verb=2
   character(clen) :: str,fmt
 
   real(r8b), intent(in) :: a                           !< scale factor
+  real(r8b), intent(in) :: h                           !< hubble parameter (little h)
   type(particle_type), intent(inout) :: par(:)         !< particles
   type(source_type), optional, intent(inout) :: src(:) !< sources
   type(box_type), optional, intent(inout) :: box       !< box 
-  real(r8b), optional, intent(in) :: hub               !< hubble parameter (little h)
 
-  real(r8b) :: h
-
-  if (present(hub)) then 
-     h = hub
-  else
-     h = 1.0d0
-  end if
 
   call mywrite("   scaling comoving to physical coordinates", verb)
   fmt = "(A,F12.5,T22,A,T25,F12.5)"
@@ -330,8 +341,14 @@ subroutine scale_comoving_to_physical(a,par,src,box,hub)
   end if
 
   if (present(box)) then
-     box%top = box%top * a / h
-     box%bot = box%bot * a / h
+     box%tops = box%tops * a / h
+     box%bots = box%bots * a / h
+
+     box%lens    = box%lens * a / h
+     box%lens_cm = box%lens_cm * a / h
+
+     box%vol    = product( box%lens )
+     box%vol_cm = product( box%lens_cm )
   end if
 
 end subroutine scale_comoving_to_physical
@@ -339,25 +356,17 @@ end subroutine scale_comoving_to_physical
 
 !> scales particles, sources, and the box from physical to comoving  values
 !==========================================================================
-subroutine scale_physical_to_comoving(a,par,src,box,hub)
+subroutine scale_physical_to_comoving(a,h,par,src,box)
 
   character(clen), parameter :: myname="scale_physical_to_comoving"
   integer, parameter :: verb=2
   character(clen) :: str,fmt
 
   real(r8b), intent(in) :: a                            !< scale factor 
+  real(r8b), intent(in) :: h                            !< hubble parameter (little h)
   type(particle_type), intent(inout) :: par(:)          !< particles
   type(source_type), optional, intent(inout) :: src(:)  !< sources
   type(box_type), optional, intent(inout) :: box        !< box 
-  real(r8b), optional, intent(in) :: hub                !< hubble parameter (little h)
-
-  real(r8b) :: h
-
-  if (present(hub)) then 
-     h = hub
-  else
-     h = 1.0d0
-  end if
 
   call mywrite("   scaling physical to comoving coordinates", verb)
   fmt = "(A,F12.5,T22,A,T25,F12.5)"
@@ -393,11 +402,148 @@ subroutine scale_physical_to_comoving(a,par,src,box,hub)
   end if
 
   if (present(box)) then
-     box%top = box%top / a * h
-     box%bot = box%bot / a * h
+     box%tops = box%tops / a * h
+     box%bots = box%bots / a * h
+
+     box%lens    = box%lens / a * h
+     box%lens_cm = box%lens_cm / a * h
+
+     box%vol    = product( box%lens )
+     box%vol_cm = product( box%lens_cm )
   end if
 
 end subroutine scale_physical_to_comoving
+
+
+
+
+
+!> calculates the number weighted ionization fraction
+!========================================================
+
+  function number_weight_ionfrac_pars(pars) result(numionfrac)
+     type(particle_type), intent(in) :: pars(:)   !< particle system
+     real(r8b) :: numionfrac                      !< ion fraction n weighted
+
+     integer :: i
+
+!      because the ionization fractions are stored as single
+!      precision variables, the intrinsic sum function returns 
+!      a single precision answer.  I think it is better to use 
+!      the loop here.
+
+       numionfrac = 0.0d0
+       do i = 1,size(pars)
+          numionfrac = numionfrac + pars(i)%xHII 
+       end do
+       numionfrac = numionfrac / size(pars)
+
+  end function number_weight_ionfrac_pars
+
+!> calculates the mass weighted ionization fraction
+!========================================================
+
+  function mass_weight_ionfrac_pars(pars) result(massionfrac)
+     type(particle_type), intent(in) :: pars(:) !< particle system
+     real(r8b) :: massionfrac                   !< ion fraction m weighted
+     real(r8b) :: masstot                       !< total volume
+     integer :: i
+
+     massionfrac = 0.0d0
+     masstot = 0.0d0
+     do i = 1,size(pars)
+        massionfrac = massionfrac + pars(i)%mass * pars(i)%xHII
+        masstot = masstot + pars(i)%mass
+     end do
+     massionfrac = massionfrac / masstot
+
+
+  end function mass_weight_ionfrac_pars
+
+
+!> calculates the volume weighted ionization fraction
+!========================================================
+
+  function volume_weight_ionfrac_pars(pars) result(volionfrac)
+     type(particle_type), intent(in) :: pars(:) !< particle system
+     real(r8b) :: volionfrac                    !< ion fraction v weighted
+     real(r8b) :: voltot                        !< total volume
+     real(r8b) :: h3                            !< hsml^3
+     integer :: i
+
+     volionfrac = 0.0d0
+     voltot = 0.0d0
+     do i = 1,size(pars)
+        h3 = pars(i)%hsml * pars(i)%hsml * pars(i)%hsml
+        volionfrac = volionfrac + h3 * pars(i)%xHII
+        voltot = voltot + h3
+     end do
+     volionfrac = volionfrac / voltot
+
+   end function volume_weight_ionfrac_pars
+
+
+
+
+
+
+   !> function to calculate the global number weighted ionization fraction
+   !========================================================================
+   function number_weight_ionfrac(psys) result(numionfrac)
+     type(particle_system_type), intent(in) :: psys !< input particle system  
+     real(r8b) :: numionfrac !< number weighted global ionization fraction
+     integer :: i
+     
+     numionfrac = 0.0d0
+     do i = 1,size(psys%par)
+        numionfrac = numionfrac + psys%par(i)%xHII
+     end do
+     numionfrac = numionfrac / size(psys%par)
+     
+   end function number_weight_ionfrac
+   
+   
+  !> calculates the mass weighted ionization fraction
+  !========================================================
+  
+  function mass_weight_ionfrac(psys) result(massionfrac)
+    type(particle_system_type), intent(in) :: psys !< input particle system  
+    real(r8b) :: massionfrac                   !< ion fraction m weighted
+    real(r8b) :: masstot                       !< total volume
+    integer :: i
+    
+    massionfrac = 0.0d0
+    masstot = 0.0d0
+    do i = 1,size(psys%par)
+       massionfrac = massionfrac + psys%par(i)%mass * psys%par(i)%xHII
+       masstot = masstot + psys%par(i)%mass
+    end do
+    massionfrac = massionfrac / masstot
+        
+  end function mass_weight_ionfrac
+  
+  
+  !> calculates the volume weighted ionization fraction
+  !========================================================
+  
+  function volume_weight_ionfrac(psys) result(volionfrac)
+    type(particle_system_type), intent(in) :: psys !< input particle system  
+    real(r8b) :: volionfrac                    !< ion fraction v weighted
+    real(r8b) :: voltot                        !< total volume
+    real(r8b) :: h3                            !< hsml^3
+    integer :: i
+    
+    volionfrac = 0.0d0
+    voltot = 0.0d0
+    do i = 1,size(psys%par)
+       h3 = psys%par(i)%hsml * psys%par(i)%hsml * psys%par(i)%hsml
+       volionfrac = volionfrac + h3 * psys%par(i)%xHII
+       voltot = voltot + h3
+    end do
+    volionfrac = volionfrac / voltot
+    
+  end function volume_weight_ionfrac
+  
 
 
 
@@ -758,8 +904,8 @@ subroutine particle_info_to_screen(psys,str,lun)
 
   write(outlun,*)
   
-  write(outlun,100) "Box Uppers = ", psys%box%top
-  write(outlun,100) "Box Lowers = ", psys%box%bot
+  write(outlun,100) "Box Uppers = ", psys%box%tops
+  write(outlun,100) "Box Lowers = ", psys%box%bots
   write(outlun,103) "Upr BCs    = ", psys%box%tbound
   write(outlun,103) "Lwr BCs    = ", psys%box%bbound
   

@@ -8,6 +8,9 @@ use myf90_mod
 use raylist_mod, only: raylist_type
 use ray_mod, only: ray_type
 use particle_system_mod, only: particle_system_type
+use particle_system_mod, only: number_weight_ionfrac
+use particle_system_mod, only: mass_weight_ionfrac
+use particle_system_mod, only: volume_weight_ionfrac
 use oct_tree_mod, only: oct_tree_type
 use global_mod, only: global_variables_type
 use physical_constants_mod
@@ -66,8 +69,9 @@ contains
   end subroutine initialize_iliev_tests
 
 
-!-------------------------------
+
 !> iliev T1screen output
+!-------------------------------
   subroutine iliev_test1_screen_out(psys,searchtree,GV)
   use ray_mod, only: make_probe_ray
   use raylist_mod, only: trace_ray
@@ -80,7 +84,7 @@ contains
     type(ray_type) :: ray
     type(raylist_type) :: raylist
 
-    real(r8b) :: NWionfrac, time_ratio
+    real(r8b) :: VWionfrac, time_ratio
     real(r8b) :: ionRa, ionRn, ionVn
     real(r8b) :: pos(3), dir(3)
     real(r8b) :: d,d1,d2,d3,d4
@@ -91,17 +95,13 @@ contains
     ionRa = rtcpStromRad_kpc * (1.0d0 - exp(-time_ratio) )**(1.0/3.0)
  
 !   compute numerical Stromgren radius (Volume method)
-    NWionfrac = number_weight_ionfrac(psys)
-    if (psys%src(1)%EmisPrf == -2) then
-       ionVn = ( (NWionfrac - rtcpT1xHII) * 6.6**3 ) * 8  
-    else
-       ionVn = (NWionfrac - rtcpT1xHII) * GV%BoxVolPhys_kpc
-    end if
+    VWionfrac = volume_weight_ionfrac(psys)
+    ionVn = (VWionfrac - rtcpT1xHII) * psys%box%vol
     ionRn = (3.0 * ionVn / (4 * pi) )**(1.0/3.0)
 
 !   compute numerical Stromgren radius (Ray probe method)
     call prepare_raysearch(psys,raylist)
-    pos = GV%BoxLensPhys / 2.0d0
+    pos = psys%box%bots + psys%box%lens / 2.0d0
 
     dir = (/1.0,0.0,0.0/)
     call make_probe_ray( pos,dir,ray )
@@ -132,8 +132,9 @@ contains
   end subroutine iliev_test1_screen_out
 
 
-!-------------------------------
+
 !> iliev test 2 screen output
+!-------------------------------
   subroutine iliev_test2_screen_out(psys,searchtree,GV)
   use ray_mod, only: make_probe_ray
   use raylist_mod, only: trace_ray
@@ -146,7 +147,7 @@ contains
     type(ray_type) :: ray
     type(raylist_type) :: raylist
 
-    real(r8b) :: NWionfrac, time_ratio
+    real(r8b) :: VWionfrac, time_ratio
     real(r8b) :: ionRa, ionRn, ionVn
     real(r8b) :: pos(3), dir(3)
     real(r8b) :: d,d1,d2,d3,d4
@@ -157,13 +158,13 @@ contains
     ionRa = rtcpStromRad_kpc * (1.0d0 - exp(-time_ratio) )**(1.0/3.0)
  
 !   compute numerical Stromgren radius
-    NWionfrac = number_weight_ionfrac(psys)
-    ionVn = (NWionfrac - rtcpT2xHII) * GV%BoxVolPhys_kpc
+    VWionfrac = volume_weight_ionfrac(psys)
+    ionVn = (VWionfrac - rtcpT2xHII) * psys%box%vol
     ionRn = (3.0 * ionVn / (4 * pi) )**(1.0/3.0)
 
 !   compute numerical Stromgren radius (Ray probe method)
     call prepare_raysearch(psys,raylist)
-    pos = GV%BoxLensPhys_kpc / 2.0d0
+    pos = psys%box%bots + psys%box%lens / 2.0d0
 
     dir = (/1.0,0.0,0.0/)
     call make_probe_ray( pos,dir,ray )
@@ -195,8 +196,9 @@ contains
   end subroutine iliev_test2_screen_out
 
 
-!-------------------------------
+
 !> iliev test 3 screen output
+!-------------------------------
   subroutine iliev_test3_screen_out(psys,GV)
  
     type(particle_system_type), intent(in) :: psys !< input particle system  
@@ -209,7 +211,6 @@ contains
     ! real(r8b) :: pos(3)
 
     
-
     ! ionization fraction of the clump
     cionsum = 0.0
     Tinsum = 0.0
@@ -249,8 +250,9 @@ contains
   end subroutine iliev_test3_screen_out
 
 
-!-------------------------------
+
 !> iliev test 4 screen output
+!-------------------------------
   subroutine iliev_test4_screen_out(psys,GV)  
     type(particle_system_type), intent(in) :: psys !< input particle system  
     type(global_variables_type), intent(in) :: GV  !< global variables
@@ -266,21 +268,7 @@ contains
   end subroutine iliev_test4_screen_out
 
 
-!-----------------------------------------------------------------------
-!> function to calculate the global number weighted ionization fraction
-  function number_weight_ionfrac(psys) result(numionfrac)
 
-     type(particle_system_type), intent(in) :: psys !< input particle system  
-     real(r8b) :: numionfrac !< number weighted global ionization fraction
-     integer :: i
-
-       numionfrac = 0.0d0
-       do i = 1,size(psys%par)
-          numionfrac = numionfrac + psys%par(i)%xHII
-       end do
-       numionfrac = numionfrac / size(psys%par)
-
-  end function number_weight_ionfrac
 
 
 

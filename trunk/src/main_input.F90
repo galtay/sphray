@@ -27,21 +27,10 @@ contains
 
 !> Read in planning data from the header of all snapshots 
 !========================================================
-subroutine get_planning_data(skewers)
-  logical, optional, intent(in) :: skewers
-  
+subroutine get_planning_data()  
   character(clen), parameter :: myname="get_planning_data"
   logical, parameter :: crash=.true.
   integer, parameter :: verb=1
-
-  logical :: skew
-
-
-  if (present(skewers)) then
-     skew = skewers
-  else
-     skew = .false.
-  endif
 
   call mywrite("getting planning data:", verb)
   call mywrite("",verb) 
@@ -51,18 +40,20 @@ subroutine get_planning_data(skewers)
   if (allocated(PLAN%snap)) deallocate(PLAN%snap)
   allocate( PLAN%snap(GV%StartSnapNum : GV%EndSnapNum) )
 
+  ! these three input type expect a standard 256 byte Gadget Header
+  !-------------------------------------------------------------------
   if (GV%InputType == 1 .or. GV%InputType == 2 .or. GV%InputType == 4) then
      call get_planning_data_gadget()
+
+  ! this input type expects an OWLS/GIMIC style hdf5 header
+  !-------------------------------------------------------------------
   else if (GV%InputType == 3) then
      call get_planning_data_gadget_hdf5()
+
   end if
 
 
-  if (.not. skew) then
-     call get_planning_data_sources()
-  endif
-
-
+  call get_planning_data_sources()
 
 
 end subroutine get_planning_data
@@ -70,17 +61,12 @@ end subroutine get_planning_data
 
 !> read in particle, box, and source data 
 !============================================
-subroutine readin_snapshot(skewers)
-
-  
-  logical, optional, intent(in) :: skewers
-
+subroutine readin_snapshot()
   character(clen), parameter :: myname="readin_snapshot"
   logical, parameter :: crash=.true.
   integer, parameter :: verb=2
   character(clen) :: str,fmt
   
-  logical :: skew
   logical :: first
   real(r8b) :: MB
   integer(i8b) :: i
@@ -91,12 +77,6 @@ subroutine readin_snapshot(skewers)
   character(clen) :: srcbase
   real :: cm2kpc
 
-
-  if (present(skewers)) then
-     skew = skewers
-  else
-     skew = .false.
-  endif
   
   call mywrite("reading in particle and source snapshots:", verb-1)
   call mywrite("",verb-1) 
@@ -112,7 +92,7 @@ subroutine readin_snapshot(skewers)
   if (GV%InputType==1) then
      call mywrite(" Gadget-2 public (SnapFormat=1)", verb)
   else if (GV%InputType==2) then
-     call mywrite(" Gadget w/ cooling, stars, UVB (SnapFormat=1)", verb)
+     call mywrite(" Gadget w/ ye and xHI (SnapFormat=1)", verb)
   else if (GV%InputType==3) then
      call mywrite(" Gadget HDF5", verb)
   else if (GV%InputType==4) then
@@ -185,28 +165,26 @@ subroutine readin_snapshot(skewers)
 
   ! copy over box properties
   !==================================================
-  psys%box%top = GV%BoxUprsComoh
-  psys%box%bot = GV%BoxLwrsComoh
+  psys%box%tops = GV%BoxUprs
+  psys%box%bots = GV%BoxLwrs
+
+  psys%box%lens    = GV%BoxUprs - GV%BoxLwrs
+  psys%box%lens_cm = psys%box%lens * GV%cgs_len
+
+  psys%box%vol    = product( psys%box%lens )
+  psys%box%vol_cm = product( psys%box%lens_cm )
+
   psys%box%tbound = GV%BndryCond
   psys%box%bbound = GV%BndryCond
 
-  ! tighten box - add this to config file also
-
-!  do i = 1,3
-!     psys%box%top(i) = maxval( psys%par(:)%pos(i) )
-!     psys%box%bot(i) = minval( psys%par(:)%pos(i) )
-!     GV%BoxUprsComoh(i) = psys%box%top(i)
-!     GV%BoxLwrsComoh(i) = psys%box%bot(i)
-!  end do
 
 
   ! read in the source data
   !============================================
-  if (.not. skew) then
-     call read_src_snapshot()
-     call order_sources_lum(psys%src)
-     psys%src%lastemit = GV%rayn
-  endif
+  call read_src_snapshot()
+  call order_sources_lum(psys%src)
+  psys%src%lastemit = GV%rayn
+
 
   
   ! these quantities track the photoionization rate.  they are 
@@ -236,91 +214,76 @@ subroutine readin_snapshot(skewers)
   flush(GV%pardatalun)
 
 
-  if (.not. skew) then
+
 #ifdef hdf5
-     write(GV%srcdatalun,*) "================================================================="
-     write(GV%srcdatalun,*) " HM01 G+C gammaHI for z = ", saved_gheads(GV%CurSnapNum,0)%z, ": ", &
-                              GV%UVB_gammaHI_cloudy
-     write(GV%srcdatalun,*) "================================================================="
-     write(GV%srcdatalun,*) 
+  write(GV%srcdatalun,*) "================================================================="
+  write(GV%srcdatalun,*) " HM01 G+C gammaHI for z = ", saved_gheads(GV%CurSnapNum,0)%z, ": ", &
+       GV%UVB_gammaHI_cloudy
+  write(GV%srcdatalun,*) "================================================================="
+  write(GV%srcdatalun,*) 
 #endif
-     write(str,fmt) "Fresh read from ", trim(srcbase)
-     call source_info_to_screen(psys,str,GV%srcdatalun)
-     write(GV%srcdatalun,*)
-     write(GV%srcdatalun,*)
-     flush(GV%srcdatalun)
+
+  write(str,fmt) "Fresh read from ", trim(srcbase)
+  call source_info_to_screen(psys,str,GV%srcdatalun)
+  write(GV%srcdatalun,*)
+  write(GV%srcdatalun,*)
+  flush(GV%srcdatalun)
+  
+
+
+
+  ! scale the data if we need to
+  !=====================================================================
+  if(GV%Comoving) then
+     call scale_comoving_to_physical(a, h, psys%par, psys%src, psys%box)
   endif
 
+  ! write data after rescaling to the particle_data.log file
+  !=====================================================================
+  fmt = "(A,F5.3,A,F5.3,A,A)"
+  write(str,fmt) "After rescaling (a=",a,",h=",h,") from ", trim(snpbase)
+  call particle_info_to_screen(psys,str,GV%pardatalun)
+  write(GV%pardatalun,*)
+  write(GV%pardatalun,*)
+  flush(GV%pardatalun)
 
 
-  ! take care of all the box variables
-  !===============================================================
-  cm2kpc = 1.0d0 / (gconst%cm_per_mpc * 1.0d-3)
+  write(str,fmt) "After rescaling (a=",a,",h=",h,") from ", trim(srcbase)
+  call source_info_to_screen(psys,str,GV%srcdatalun)
+  write(GV%srcdatalun,*)
+  write(GV%srcdatalun,*)
+  flush(GV%srcdatalun)
 
-  GV%BoxLwrsComo = GV%BoxLwrsComoh / h
-  GV%BoxLwrsPhys = GV%BoxLwrsComoh / h * a
 
-  GV%BoxUprsComo = GV%BoxUprsComoh / h
-  GV%BoxUprsPhys = GV%BoxUprsComoh / h * a
- 
-  GV%BoxLensComoh = GV%BoxUprsComoh - GV%BoxLwrsComoh
-  GV%BoxLensComo  = GV%BoxUprsComo  - GV%BoxLwrsComo
-  GV%BoxLensPhysh = GV%BoxUprsPhysh - GV%BoxLwrsPhysh
-  GV%BoxLensPhys  = GV%BoxUprsPhys  - GV%BoxLwrsPhys
-
-  GV%BoxLensComoh_cm = GV%BoxLensComoh * GV%cgs_len
-  GV%BoxLensComo_cm  = GV%BoxLensComo  * GV%cgs_len
-  GV%BoxLensPhysh_cm = GV%BoxLensPhysh * GV%cgs_len
-  GV%BoxLensPhys_cm  = GV%BoxLensPhys  * GV%cgs_len
- 
-  GV%BoxLensComoh_kpc = GV%BoxLensComoh_cm * cm2kpc
-  GV%BoxLensComo_kpc  = GV%BoxLensComo_cm  * cm2kpc
-  GV%BoxLensPhysh_kpc = GV%BoxLensPhysh_cm * cm2kpc
-  GV%BoxLensPhys_kpc  = GV%BoxLensPhys_cm  * cm2kpc
-
-  GV%BoxVolComoh = product( GV%BoxLensComoh )
-  GV%BoxVolComo  = product( GV%BoxLensComo  )
-  GV%BoxVolPhysh = product( GV%BoxLensPhysh )
-  GV%BoxVolPhys  = product( GV%BoxLensPhys  )
-
-  GV%BoxVolComoh_cm = product( GV%BoxLensComoh_cm )
-  GV%BoxVolComo_cm  = product( GV%BoxLensComo_cm  )
-  GV%BoxVolPhysh_cm = product( GV%BoxLensPhysh_cm )
-  GV%BoxVolPhys_cm  = product( GV%BoxLensPhys_cm  )
-
-  GV%BoxVolComoh_kpc = product( GV%BoxLensComoh_kpc )
-  GV%BoxVolComo_kpc  = product( GV%BoxLensComo_kpc  )
-  GV%BoxVolPhysh_kpc = product( GV%BoxLensPhysh_kpc )
-  GV%BoxVolPhys_kpc  = product( GV%BoxLensPhys_kpc  )
 
 
   ! convert number density to flux for planar sources
   !==========================================================
-  if (.not. skew) then
-     do i = 1,size(psys%src)
+  do i = 1,size(psys%src)
+     
+     if (psys%src(i)%EmisPrf == -3 .or. &
+         psys%src(i)%EmisPrf == -2 .or. &
+         psys%src(i)%EmisPrf == -1) then 
+
+        ! if this is true the input luminosity is a number density 
+        ! [photons/cm^3].  we want the flux that would produce this 
+        ! number density in an optically thin volume
         
-        if (psys%src(i)%EmisPrf == -3 .or. &
-            psys%src(i)%EmisPrf == -2 .or. &
-            psys%src(i)%EmisPrf == -1) then 
-           ! if this is true the input luminosity is a number density 
-           ! [photons/cm^3].  we want the flux that would produce this 
-           ! number density in an optically thin volume
+        write(*,*) 
+        write(*,*) "  converting a photon number density to a flux"
+        write(*,*) "  n_photon/cm^3                = ", psys%src(i)%L
+        
+        Flux = psys%src(i)%L * gconst%c * psys%box%lens_cm(1)**2
+        Flux = Flux / GV%Lunit
+        psys%src(i)%L = Flux
+        
+        write(*,*) "  photons/s from walls [1.e50] = ",  psys%src(i)%L
+        write(*,*)            
+        
+     end if
+     
+  end do
 
-           write(*,*) 
-           write(*,*) "  converting a photon number density to a flux"
-           write(*,*) "  n_photon/cm^3                = ", psys%src(i)%L
-           
-           Flux = psys%src(i)%L * gconst%c * GV%BoxLensPhys_cm(1)**2 
-           Flux = Flux / GV%Lunit
-           psys%src(i)%L = Flux
-
-           write(*,*) "  photons/s from walls [1.e50] = ",  psys%src(i)%L
-           write(*,*)            
-
-        end if
-
-     end do
-  endif
 
   ! check test conditionals 
   !==========================================================
@@ -403,49 +366,19 @@ endif
   write(GV%pardatalun,*)
   flush(GV%pardatalun)
  
-  if (.not. skew) then
-     write(str,fmt) "After test conditionals from ", trim(srcbase)
-     call source_info_to_screen(psys,str,GV%srcdatalun)
-     write(GV%srcdatalun,*)
-     write(GV%srcdatalun,*)
-     flush(GV%srcdatalun)
-  endif
 
-  ! scale the data if we need to
-  !=====================================================================
-  if(GV%Comoving) then
-     call scale_comoving_to_physical(a, psys%par, psys%src, psys%box, h )
-  endif
-
-  ! write data after rescaling to the particle_data.log file
-  !=====================================================================
-  fmt = "(A,F5.3,A,F5.3,A,A)"
-  write(str,fmt) "After rescaling (a=",a,",h=",h,") from ", trim(snpbase)
-  call particle_info_to_screen(psys,str,GV%pardatalun)
-  write(GV%pardatalun,*)
-  write(GV%pardatalun,*)
-  flush(GV%pardatalun)
-
-  if (.not. skew) then
-     write(str,fmt) "After rescaling (a=",a,",h=",h,") from ", trim(srcbase)
-     call source_info_to_screen(psys,str,GV%srcdatalun)
-     write(GV%srcdatalun,*)
-     write(GV%srcdatalun,*)
-     flush(GV%srcdatalun)
-  endif
-
-
-   
-
+  write(str,fmt) "After test conditionals from ", trim(srcbase)
+  call source_info_to_screen(psys,str,GV%srcdatalun)
+  write(GV%srcdatalun,*)
+  write(GV%srcdatalun,*)
+  flush(GV%srcdatalun)
   
 
   ! and the rest of the stuff
   !===============================================================
-  if (.not. skew) then 
-     GV%dt_code = PLAN%snap(GV%CurSnapNum)%RunTime / PLAN%snap(GV%CurSnapNum)%SrcRays
-     call set_dt_from_dtcode( GV )
-  endif
-
+  GV%dt_code = PLAN%snap(GV%CurSnapNum)%RunTime / PLAN%snap(GV%CurSnapNum)%SrcRays
+  call set_dt_from_dtcode( GV )
+  
   GV%Tcmb_cur = gconst%t_cmb0 / a
   call get_atomic_rates(GV%Tcmb_cur, rtable, cmbT_k)
 
@@ -469,24 +402,23 @@ endif
   
   ! write some final data to the source log file
   !=====================================================================
-  if (.not. skew) then
-     fmt = "(A,A)"
-     100  format(72("-"))
-     
-     write(GV%srcdatalun,100)
-     write(GV%srcdatalun,fmt) "Ray / Luminosity info from ", trim(srcbase)
-     write(GV%srcdatalun,*) 
-     write(GV%srcdatalun,'(A,ES12.5)') "dt  [code] = ", GV%dt_code
-     write(GV%srcdatalun,'(A,ES12.5)') "dt  [s]    = ", GV%dt_s
-     write(GV%srcdatalun,'(A,ES12.5)') "dt  [Myr]  = ", GV%dt_myr
-     write(GV%srcdatalun,*)
-     write(GV%srcdatalun,'(A,ES12.5)') "total photons = ", GV%total_photons
-     write(GV%srcdatalun,'(A,ES12.5)') "total atoms   = ", GV%total_atoms
-     write(GV%srcdatalun,'(A,ES12.5)') "photons / atoms = ", GV%total_photons / GV%total_atoms
-     write(GV%srcdatalun,*)
-     write(GV%srcdatalun,100)
-     flush(GV%srcdatalun)
-  endif
+  fmt = "(A,A)"
+  100 format(72("-"))
+  
+  write(GV%srcdatalun,100)
+  write(GV%srcdatalun,fmt) "Ray / Luminosity info from ", trim(srcbase)
+  write(GV%srcdatalun,*) 
+  write(GV%srcdatalun,'(A,ES12.5)') "dt  [code] = ", GV%dt_code
+  write(GV%srcdatalun,'(A,ES12.5)') "dt  [s]    = ", GV%dt_s
+  write(GV%srcdatalun,'(A,ES12.5)') "dt  [Myr]  = ", GV%dt_myr
+  write(GV%srcdatalun,*)
+  write(GV%srcdatalun,'(A,ES12.5)') "total photons = ", GV%total_photons
+  write(GV%srcdatalun,'(A,ES12.5)') "total atoms   = ", GV%total_atoms
+  write(GV%srcdatalun,'(A,ES12.5)') "photons / atoms = ", GV%total_photons / GV%total_atoms
+  write(GV%srcdatalun,*)
+  write(GV%srcdatalun,100)
+  flush(GV%srcdatalun)
+  
 
   call mywrite("",verb)
 

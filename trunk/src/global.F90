@@ -193,73 +193,30 @@ type global_variables_type
 
    ! these should be reset each time a new snapshot is read in
    !------------------------------------------------------------
-   integer(i8b) :: itime          !< integer time. measures ticks from start time
+   integer(i8b) :: itime           !< integer time. measures ticks from start time
 
-   real(r8b) :: start_time_code   !< starting time in code units
-   real(r8b) :: start_time_s      !< starting time in seconds
-   real(r8b) :: start_time_myr    !< starting time in Myr
+   real(r8b) :: start_time_code    !< starting time in code units
+   real(r8b) :: start_time_s       !< starting time in seconds
+   real(r8b) :: start_time_myr     !< starting time in Myr
 
-   real(r8b) :: time_elapsed_code !< elapsed time in code units
-   real(r8b) :: time_elapsed_s    !< elapsed time in seconds
-   real(r8b) :: time_elapsed_myr  !< elapsed time in Myr
+   real(r8b) :: time_elapsed_code  !< elapsed time in code units
+   real(r8b) :: time_elapsed_s     !< elapsed time in seconds
+   real(r8b) :: time_elapsed_myr   !< elapsed time in Myr 
 
-   real(r8b) :: dt_code           !< one tick in code units
-   real(r8b) :: dt_s              !< one tick in seconds
-   real(r8b) :: dt_myr            !< one tick in Myr
+   real(r8b) :: dt_code            !< one tick in code units
+   real(r8b) :: dt_s               !< one tick in seconds
+   real(r8b) :: dt_myr             !< one tick in Myr
 
+   real(r8b) :: BoxLwrs(3)         !< input coords [code] of lower x,y,z corner
+   real(r8b) :: BoxUprs(3)         !< input coords [code] of upper x,y,z corner
 
-!   real(r8b) :: dtray_code        !< time between each ray (code units)
-!   real(r8b) :: dtray_s           !< time between each ray (seconds)
+   real(r8b) :: total_mass         !< summed mass of all particles in a snapshot
+   real(r8b) :: total_lum          !< summed luminosity of sources in a snapshot
+   real(r8b) :: total_atoms        !< sum of all atoms in computational volume
+   real(r8b) :: total_photons      !< sum of all photons to be released
+   real(r8b) :: Tcmb_cur           !< CMB temperature for the current snapshot
 
-
-
-   real(r8b) :: BoxLwrsComoh(3)   !< comoving h-mangled input coords of lower x,y,z corner
-   real(r8b) :: BoxLwrsComo(3)    !< comoving non h-mangled input coords of lower x,y,z corner
-   real(r8b) :: BoxLwrsPhysh(3)   !< physical h-mangled input coords of lower x,y,z corner
-   real(r8b) :: BoxLwrsPhys(3)    !< physical non h-mangled input coords of lower x,y,z corner
-
-   real(r8b) :: BoxUprsComoh(3)   !< comoving h-mangled input coords of upper x,y,z corner
-   real(r8b) :: BoxUprsComo(3)    !< comoving non h-mangled input coords of upper x,y,z corner
-   real(r8b) :: BoxUprsPhysh(3)   !< physical h-mangled input coords of upper x,y,z corner
-   real(r8b) :: BoxUprsPhys(3)    !< physical non h-mangled input coords of upper x,y,z corner
-
-   real(r8b) :: BoxLensComoh(3)   !< comoving h-mangled side lengths (xf-xi,yf-yi,zf-zi)
-   real(r8b) :: BoxLensComo(3)    !< comoving non h-mangled side lengths (xf-xi,yf-yi,zf-zi)
-   real(r8b) :: BoxLensPhysh(3)   !< physical h-mangled side lengths (xf-xi,yf-yi,zf-zi)
-   real(r8b) :: BoxLensPhys(3)    !< physical non h-mangled side lengths (xf-xi,yf-yi,zf-zi)
-
-   real(r8b) :: BoxLensComoh_cm(3)  !< comoving h-mangled side lengths [cm/h] (xf-xi,yf-yi,zf-zi)
-   real(r8b) :: BoxLensComo_cm(3)   !< comoving non h-mangled side lengths [cm] (xf-xi,yf-yi,zf-zi)
-   real(r8b) :: BoxLensPhysh_cm(3)  !< physical h-mangled side lengths [cm/h] (xf-xi,yf-yi,zf-zi)
-   real(r8b) :: BoxLensPhys_cm(3)   !< physical non h-mangled side lengths [cm] (xf-xi,yf-yi,zf-zi)
-
-   real(r8b) :: BoxLensComoh_kpc(3)  !< comoving h-mangled side lengths [kpc/h] (xf-xi,yf-yi,zf-zi)
-   real(r8b) :: BoxLensComo_kpc(3)   !< comoving non h-mangled side lengths [kpc] (xf-xi,yf-yi,zf-zi)
-   real(r8b) :: BoxLensPhysh_kpc(3)  !< physical h-mangled side lengths [kpc/h] (xf-xi,yf-yi,zf-zi)
-   real(r8b) :: BoxLensPhys_kpc(3)   !< physical non h-mangled side lengths [kpc] (xf-xi,yf-yi,zf-zi)
-
-   real(r8b) :: BoxVolComoh       !< comoving h-mangled box volume (xlen*ylen*zlen)
-   real(r8b) :: BoxVolComo        !< comoving non h-mangled box volume (xlen*ylen*zlen)
-   real(r8b) :: BoxVolPhysh       !< physical h-mangled box volume (xlen*ylen*zlen)
-   real(r8b) :: BoxVolPhys        !< physical non h-mangled box volume (xlen*ylen*zlen)
-
-   real(r8b) :: BoxVolComoh_cm       !< comoving h-mangled box volume [cm^3/h^3] (xlen*ylen*zlen)
-   real(r8b) :: BoxVolComo_cm        !< comoving non h-mangled box volume [cm^3] (xlen*ylen*zlen)
-   real(r8b) :: BoxVolPhysh_cm       !< physical h-mangled box volume [cm^3/h^3] (xlen*ylen*zlen)
-   real(r8b) :: BoxVolPhys_cm        !< physical non h-mangled box volume [cm^3] (xlen*ylen*zlen)
-
-   real(r8b) :: BoxVolComoh_kpc       !< comoving h-mangled box volume [kpc^3/h^3] (xlen*ylen*zlen)
-   real(r8b) :: BoxVolComo_kpc        !< comoving non h-mangled box volume [kpc^3] (xlen*ylen*zlen)
-   real(r8b) :: BoxVolPhysh_kpc       !< physical h-mangled box volume [kpc^3/h^3] (xlen*ylen*zlen)
-   real(r8b) :: BoxVolPhys_kpc        !< physical non h-mangled box volume [kpc^3] (xlen*ylen*zlen)
-
-   real(r8b) :: total_mass      !< summed mass of all particles in a snapshot
-   real(r8b) :: total_lum       !< summed luminosity of sources in a snapshot
-   real(r8b) :: total_atoms     !< sum of all atoms in computational volume
-   real(r8b) :: total_photons   !< sum of all photons to be released
-   real(r8b) :: Tcmb_cur        !< CMB temperature for the current snapshot
-
-   real(r8b) :: sf_gamma_eos    !< index for polytropic equation of state for star forming gas.
+   real(r8b) :: sf_gamma_eos       !< index for polytropic equation of state for star forming gas.
 
    real(r8b) :: UVB_gammaHI_cloudy !< magnitude of UVB from cloudy ionization table
    

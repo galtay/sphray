@@ -62,10 +62,8 @@ endif
 #include makes/make.icc-graphics.serial.debug
 #include makes/make.icc-graphics.serial.opt
 
-#include makes/make.xgpc.serial.debug
+include makes/make.xgpc.serial.debug
 #include makes/make.xgpc.serial.opt
-
-include makes/make.warp.opt
 
 #include makes/make.ferrari.serial.opt
 
@@ -243,11 +241,6 @@ screen: Makefile
 sphray: $(SRC) sphray.o
 	$(FC) $(FFLAGS) $^ $(OPT) $(FNAME) $@
 
-#
-# Skewers application
-#=============================================================================
-skewers: $(SRC) skewers.o
-	$(FC) $(FFLAGS) $^ $(OPT) $(FNAME) $@
 
 
 # OpenGL Targets
@@ -306,7 +299,7 @@ clean :
 cleanall :
 	rm -f *.o *.mod *__genmod.f90 \
 	$(LCLGLDIR)/libpt.a $(LCLGLDIR)/*.o $(LCLGLDIR)/*.mod \
-	density_test glsphray skewers $(APPS) 
+	density_test glsphray $(APPS) 
 
 tidy :
 	rm -f *~ 

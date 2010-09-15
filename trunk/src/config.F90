@@ -22,7 +22,7 @@ subroutine read_config_file(config_file)
   character(clen), parameter :: myname="read_config_file"
   logical, parameter :: crash = .true.
 
-    write(str,'(A,A)') ' using configuration file: ', trim(config_file)
+    write(str,'(A,A)') 'using configuration file: ', trim(config_file)
     call mywrite(str,verb=0) 
 
     inquire( file=config_file, exist=file_exists )
@@ -244,9 +244,9 @@ subroutine dummy_check_config_variables()
      config_good = .false. 
   end if
 
-  if (GV%WallSampling /= 1 .and. GV%WallSampling /= 2 .and. GV%WallSampling /= 3 .and. GV%WallSampling /= 4) then
+  if (GV%WallSampling /= 1 .and. GV%WallSampling /= 2 .and. GV%WallSampling /= 3) then
      write(*,*) "Wall Sampling ", GV%WallSampling, " not recognized"
-     write(*,*) "must be 1 (Twister), 2 (Sobol3D), 3 (Sobol2D), or 4 (QuadTree)"
+     write(*,*) "must be 1 (Twister), 2 (Sobol3D), 3 (Sobol2D)"
      config_good = .false. 
   end if
 

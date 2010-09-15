@@ -94,8 +94,8 @@ subroutine get_planning_data_gadget()
 
         ! IsoTemp comes from config file
 
-        GV%BoxLwrsComoh(:) = 0.0d0
-        GV%BoxUprsComoh(:) = ghead%boxlen
+        GV%BoxLwrs(:) = 0.0d0
+        GV%BoxUprs(:) = ghead%boxlen
 
         GV%OmegaM = ghead%OmegaM
         GV%OmegaL = ghead%OmegaL
