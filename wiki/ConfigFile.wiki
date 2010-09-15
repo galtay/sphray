@@ -1,13 +1,8 @@
 #summary Explains the config file options.
 
-= Introduction =
+= Options =
 
-Add your content here.
-
-
-= Details =
-
-Add your content here.  Format your content with:
-  * Text in *bold* or _italic_
-  * Headings, paragraphs, and lists
-  * Automatic links to other wiki pages
+|| *Keyword* || *Type* || *Description* || 
+|| Verbosity || Integer || Level of screen output ||
+|| DoTestScenario || Logical || True if doing one of the Iliev Tests || 
+|| TestScenario || Character || {"iliev_test1","iliev_test2","iliev_test3","iliev_test4"} ||
