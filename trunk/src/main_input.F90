@@ -215,7 +215,7 @@ subroutine readin_snapshot()
 
 
 
-#ifdef hdf5
+#ifdef useHDF5
   write(GV%srcdatalun,*) "================================================================="
   write(GV%srcdatalun,*) " HM01 G+C gammaHI for z = ", saved_gheads(GV%CurSnapNum,0)%z, ": ", &
        GV%UVB_gammaHI_cloudy

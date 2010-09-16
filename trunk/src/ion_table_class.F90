@@ -7,11 +7,11 @@
 module ion_table_class
 use myf90_mod
 
-#ifdef hdf5
+#ifdef useHDF5
 use hdf5_wrapper
 #endif
 
-#ifdef usempi
+#ifdef useMPI
 use mpi
 #endif
 
@@ -483,7 +483,7 @@ contains
     type(ion_table_type) :: itab
     integer :: fh
 
-#ifdef hdf5    
+#ifdef useHDF5    
     integer :: rank
     integer :: dims(3)
     character(clen) :: fmt
@@ -789,7 +789,7 @@ contains
     
     root = 0
 
-#ifdef usempi
+#ifdef useMPI
 
     count = 1
     call mpi_bcast( itab%logd_max, count, mpi_double_precision, root, mpi_comm_world, ierr )

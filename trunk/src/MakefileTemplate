@@ -26,7 +26,7 @@
 
 #OPT += -DincEOS  # track the equation of state variable
 
-#OPT += -Dhdf5     # if you are using the hdf
+#OPT += -DuseHDF5     # if you are using the hdf5
 
 
 #OPT += -DOWLS     # selects input as an OWLS snapshot
@@ -35,7 +35,7 @@
 
 ifeq (OWLS,$(findstring OWLS, $(OPT)))	
    OPT += -DincHmf
-   OPT += -Dhdf5     
+   OPT += -DuseHDF5     
    OPT += -DoutGammaHI
    OPT += -Dcloudy
    OPT += -DincEOS
@@ -44,7 +44,7 @@ endif
 
 ifeq (GIMIC,$(findstring GIMIC, $(OPT)))	
    OPT += -DincHmf
-   OPT += -Dhdf5     
+   OPT += -DuseHDF5     
    OPT += -DoutGammaHI
    OPT += -Dcloudy
    OPT += -DincEOS
@@ -132,7 +132,7 @@ SRC= 	myf90.o \
 
 OPTHDF= 
 
-ifeq (hdf5,$(findstring hdf5, $(OPT)))
+ifeq (useHDF5,$(findstring useHDF5, $(OPT)))
    INCHDF= $(ISINC)$(DIRHDF)/include $(ISINC)$(DIRHDF)/lib
    MODHDF= $(ISMOD)$(DIRHDF)/lib
    RLIBHDF= $(ISRLIB)$(DIRHDF)/lib
