@@ -57,4 +57,4 @@
 || {{{IonFracOutRays}}} || Integer || Produce screen report every {{{IonFracOutRays}}} traced. ||
 || {{{ForcedOutFile}}} || Character || Path to file indicating when forced outputs should be made. || 
 || {{{ForcedUnits}}} || Character || {{{{codetime, myr, mwionfrac}}}}.  Units for forced output times, code time, Myr, or mass weighted ionization fraction. ||
-|| {{{PartPerCell}}} || Integer || Maximum number of particles per oct-tree cell ||
+|| {{{PartPerCell}}} || Integer || Maximum number of particles per oct-tree leaf ||
