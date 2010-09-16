@@ -5,10 +5,10 @@
 
 module gadget_header_class
 use myf90_mod
-#ifdef hdf5
+#ifdef useHDF5
   use hdf5_wrapper
 #endif
-#ifdef usempi
+#ifdef useMPI
   use mpi
 #endif
 implicit none
@@ -184,7 +184,7 @@ subroutine read_gadget_header_file_hdf5(snapfile, ghead)
   type(gadget_header_type) :: ghead
   integer(i4b) :: fh
 
-#ifdef hdf5
+#ifdef useHDF5
   call hdf5_open_file( fh, snapfile, readonly=.true. )
   call hdf5_read_attribute(fh,'Header/NumPart_ThisFile',ghead%npar_file)
   call hdf5_read_attribute(fh,'Header/MassTable',ghead%mass)
@@ -219,7 +219,7 @@ subroutine read_gadget_header_lun_hdf5(lun, ghead)
   integer(i4b), intent(in) :: lun    
   type(gadget_header_type) :: ghead
 
-#ifdef hdf5
+#ifdef useHDF5
   call hdf5_read_attribute(lun,'Header/NumPart_ThisFile',ghead%npar_file)
   call hdf5_read_attribute(lun,'Header/MassTable',ghead%mass)
   call hdf5_read_attribute(lun,'Header/ExpansionFactor',ghead%a)
@@ -252,7 +252,7 @@ subroutine write_gadget_header_lun_hdf5(lun, ghead)
   integer(i4b), intent(in) :: lun    
   type(gadget_header_type) :: ghead
 
-#ifdef hdf5
+#ifdef useHDF5
   call hdf5_write_attribute(lun,'Header/NumPart_ThisFile',ghead%npar_file)
   call hdf5_write_attribute(lun,'Header/MassTable',ghead%mass)
   call hdf5_write_attribute(lun,'Header/ExpansionFactor',ghead%a)
@@ -408,7 +408,7 @@ subroutine read_gadget_units(snapfile, gunits, hdf5bool, simname )
   integer(i4b) :: fh
   
   if (hdf5bool) then 
-#ifdef hdf5
+#ifdef useHDF5
      call hdf5_open_file( fh, snapfile, readonly=.true. )
      call hdf5_read_attribute(fh,'Units/UnitLength_in_cm',gunits%len)
      call hdf5_read_attribute(fh,'Units/UnitMass_in_g',gunits%mass)
@@ -486,7 +486,7 @@ subroutine read_gadget_constants(snapfile, gconst, hdf5bool, simname)
   integer(i8b) :: lun
 
   if (hdf5bool) then 
-#ifdef hdf5
+#ifdef useHDF5
      call hdf5_open_file( fh, snapfile, readonly=.true. )
      call hdf5_read_attribute(fh,'Constants/PI',gconst%pi)
      call hdf5_read_attribute(fh,'Constants/GAMMA',gconst%gamma)
@@ -626,7 +626,7 @@ subroutine broadcast_gadget_header( head )
 
   root = 0
 
-#ifdef usempi
+#ifdef useMPI
   count = 6
   call mpi_bcast( head%npar_file, count, mpi_integer, root, mpi_comm_world, ierr )
   call mpi_bcast( head%mass, count, mpi_double_precision, root, mpi_comm_world, ierr )
@@ -670,7 +670,7 @@ subroutine broadcast_gadget_units( units )
   integer :: root
   integer :: ierr
 
-#ifdef usempi
+#ifdef useMPI
   count = 7
   root = 0
   call mpi_bcast( units, count, mpi_double_precision, root, mpi_comm_world, ierr )
@@ -692,7 +692,7 @@ subroutine broadcast_gadget_constants( const )
   integer :: root
   integer :: ierr
 
-#ifdef usempi
+#ifdef useMPI
   count = 23
   root = 0
   call mpi_bcast( const, count, mpi_double_precision, root, mpi_comm_world, ierr )

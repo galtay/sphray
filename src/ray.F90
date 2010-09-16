@@ -106,7 +106,7 @@ contains
 !> returns a triplet of coordinates for a new ray startin position
 !-----------------------------------------------------------------------
 subroutine return_next_ray_start_weight(wall_sampling, rayn, box, start, weight)
-  integer(i4b), intent(in) :: wall_sampling !< sampling method [1=Twister, 2=Sobol3D, 3=Sobol2D, 4=QuadTree]
+  integer(i4b), intent(in) :: wall_sampling !< sampling method [1=Twister, 2=Sobol3D, 3=Sobol2D]
   integer(i8b), intent(in) :: rayn   !< ray number
   type(box_type), intent(in) :: box  !< simulation box
   real(r8b), intent(out) :: start(3) !< starting coordinates

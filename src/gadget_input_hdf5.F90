@@ -13,7 +13,7 @@ use global_mod, only: psys, PLAN, GV
 use global_mod, only: saved_gheads, gconst
 
 
-#ifdef hdf5
+#ifdef useHDF5
 use hdf5_wrapper
 #endif
 implicit none
@@ -26,7 +26,7 @@ public :: gadget_output_hdf5
 
 contains
 
-#ifndef hdf5
+#ifndef useHDF5
 
 ! these are dummy subroutines so that the calls outside this file
 ! dont have to be wrapped with pre processor macros.
