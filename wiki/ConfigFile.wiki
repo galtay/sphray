@@ -1,4 +1,4 @@
-#summary Explains the config file options.
+#summary Explains config file options.
 
 = Options =
 
