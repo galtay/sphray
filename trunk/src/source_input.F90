@@ -97,6 +97,9 @@ subroutine get_planning_data_sources()
         PLAN%snap(i)%RaysFromSrcHeader = shead%TotalRays
         GV%Lunit = shead%Lunit
         
+        write(loglun,'(A,"  ",ES15.5)') '  Total Rays:', shead%TotalRays
+        write(loglun,'(A,"  ",ES15.5)') '  L Unit:', shead%Lunit
+        
      end do
   end do
 
