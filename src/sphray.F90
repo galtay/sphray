@@ -63,8 +63,6 @@ implicit none
    config_file = cmnd%args(1)
    call initialize(config_file)
 
-   stop
-
    call mainloop()
 
 
@@ -86,7 +84,7 @@ implicit none
 !! (http://www.gnu.org/copyleft/gpl.html).
 !!
 !! The quickest way to get started is to have a look at the guide on the wiki 
-!! page (http://gabriel-altay.wikidot.com/sphray). 
+!! page (http://code.google.com/p/sphray). 
 !!
 !!
 !!

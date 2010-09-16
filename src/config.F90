@@ -516,7 +516,7 @@ subroutine config_info_to_file()
   write(lun,*)  "Rec Ray Frac Tol   : ", GV%RecRayTol
   write(lun,*)  "Ray Photon Tol     : ", GV%RayPhotonTol
 
-  write(lun,*)  "Wall Sampling [1=Twister, 2=Sobol3D, 3=Sobol2D, 4=QuadTree]: ", GV%WallSampling
+  write(lun,*)  "Wall Sampling [1=Twister, 2=Sobol3D, 3=Sobol2D]: ", GV%WallSampling
   write(lun,*)  "Maximum Distance to trace a ray [physical code units], negative = default", GV%MaxRayDist
 
   write(lun,*)  "Use On The Spot for Hydrogen? : ", GV%OnTheSpotH
