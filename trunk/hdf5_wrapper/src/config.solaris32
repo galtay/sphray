@@ -1,0 +1,44 @@
+#
+# Configuration file for HDF5 wrapper library makefile for
+# Solaris - Sun f90 Fortran compiler and Sun cc C compiler
+#
+
+# -------- HDF5 information --------
+
+# Path to directory with HDF5 lib/ and include/ subdirectories
+HDF5 = /opt/local/hdf5/32/1.8.0_jch
+
+
+# -------- C Compiler information --------
+
+# Name of the C compiler
+CC = cc
+
+# C compiler flags
+CFLAGS = -xarch=generic -KPIC
+
+# Compiler flag to add an include file path
+INCFLAG = -I
+
+# -------- Fortran Compiler information --------
+
+# Name of the Fortran compiler
+FC = f95
+
+# Fortran compiler flags
+FFLAGS = -xarch=generic -KPIC
+
+# Compiler flag to add a library path
+LIBFLAG = -L
+
+# Compiler flag to add search path for F90 module (.mod) files
+MODFLAG = -M
+
+# How to run the Fortran preprocessor
+FPP = fpp
+
+# Compiler flag to specify path to run-time libraries
+RFLAG = -R
+
+# Compiler flag to make a shared library
+SHARED = -G

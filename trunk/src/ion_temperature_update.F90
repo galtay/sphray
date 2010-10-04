@@ -6,7 +6,7 @@
 !! flags)  
 !<
 module ion_temperature_update
-use myf90_mod
+use myf03_mod
 use raylist_mod, only: raylist_type
 use ray_mod, only: ray_type
 use ray_mod, only: make_recomb_ray, make_probe_ray

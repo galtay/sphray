@@ -19,7 +19,7 @@
 !! and are accurate to 10% from 5e3 to 5e5
 !<
 module hui_gnedin_atomic_rates_mod
-use myf90_mod
+use myf03_mod
 implicit none
 
 ! contains

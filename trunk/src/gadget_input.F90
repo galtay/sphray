@@ -4,7 +4,7 @@
 !<
 
 module gadget_input_mod
-use myf90_mod
+use myf03_mod
 use gadget_header_class
 use gadget_input_hdf5_mod
 use particle_system_mod, only: particle_system_type

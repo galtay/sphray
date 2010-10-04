@@ -5,7 +5,7 @@
 !<
 
 module raylist_mod
-use myf90_mod
+use myf03_mod
 use ray_mod, only: ray_type
 use ray_mod, only: part_intersection
 use ray_mod, only: cell_intersection

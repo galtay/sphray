@@ -4,7 +4,7 @@
 !! http://adsabs.harvard.edu/abs/1992ApJS...78..341C
 !<
 module cen_atomic_rates_mod
-use myf90_mod
+use myf03_mod
 implicit none
 
   real(r8b), parameter, private :: h_erg_s = 6.626068e-27 !< plank [erg s]
@@ -104,7 +104,7 @@ contains
         real(r8b)  :: Cen_He_dielec_recomb_cool !< rate
         real(r8b)  :: T !< temperature [K]
         Cen_He_dielec_recomb_cool = 1.24e-13 * T**(-1.5e0) * &
-                     exp(-4.7e5/T) * ( 1.0e0 + 0.3e0 * exp(-9.4e4) )
+                     exp(-4.7e5/T) * ( 1.0e0 + 0.3e0 * exp(-9.4e4/T) )
     end function Cen_He_dielec_recomb_cool
 
 

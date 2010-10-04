@@ -4,13 +4,16 @@
 !<
 
 module gadget_header_class
-use myf90_mod
+use myf03_mod
+
 #ifdef useHDF5
   use hdf5_wrapper
 #endif
+
 #ifdef useMPI
   use mpi
 #endif
+
 implicit none
 private
 
@@ -41,16 +44,62 @@ public :: broadcast_gadget_constants
 
 
 
-
 !> Gadget particle type names
 !-----------------------------------------
 character(5), parameter :: ptype_names(6) = (/"gas  ","halo ","disk ",&
                                               "bulge","stars","bndry"/)
 
+
+!> Constants type ( 23 doubles )
+!-----------------------------------------
+type gadget_constants_type
+   real(r8b) :: PI = 3.1415927d0                 !< [pure]                  
+   real(r8b) :: GAMMA = 1.6666667d0              !< [pure]
+   real(r8b) :: GRAVITY = 6.6720000d-08          !< [cm^3 g^-1s^-2]    
+   real(r8b) :: SOLAR_MASS = 1.9890000d+33       !< [g]                        
+   real(r8b) :: SOLAR_LUM = 3.8260000d+33        !< [erg/s]
+   real(r8b) :: RAD_CONST = 7.5650000d-15        !< [erg cm^-3 K^-4]  
+   real(r8b) :: AVOGADRO = 6.0222000d+23         !< [pure] 
+   real(r8b) :: BOLTZMANN = 1.3806000d-16        !< [cm^2 g s^-2 K^-1] 
+   real(r8b) :: GAS_CONST = 83142500.d0          !< [erg K^-1 mol^-1]  
+   real(r8b) :: C = 2.9979000d+10                !< [cm/s]   
+   real(r8b) :: PLANCK = 6.6262000d-27           !< [cm^2 g s^-1]  
+   real(r8b) :: CM_PER_MPC = 3.0856780d+24       !< [pure]    
+   real(r8b) :: PROTONMASS = 1.6726000d-24       !< [g]
+   real(r8b) :: ELECTRONMASS = 9.1095300d-28     !< [g] 
+   real(r8b) :: ELECTRONCHARGE = 4.8032000d-10   !< [esu]
+   real(r8b) :: HUBBLE = 3.2407789d-18           !< [s^-1 h]
+   real(r8b) :: T_CMB0 = 2.7280000d0             !< [K]
+   real(r8b) :: SEC_PER_MEGAYEAR = 3.1550000d+13 !< [pure]
+   real(r8b) :: SEC_PER_YEAR = 31550000.d0       !< [pure]
+   real(r8b) :: STEFAN = 7.5657000d-15     !< = rad. const. [erg cm^-3 K^-4]  
+   real(r8b) :: THOMPSON = 6.6524587d-25   !< [cm^2]
+   real(r8b) :: EV_TO_ERG = 1.6021765d-12  !< [pure]
+   real(r8b) :: Z_SOLAR = 0.012663729d0    !< [Mass Fraction] 
+end type gadget_constants_type
+
+
+
+!> Units type (default= kpc/h, 1.0e10 Msolar/h, km/s)
+!-----------------------------------------------------
+type gadget_units_type
+   real(r8b) :: cgs_length   = 3.0856780d21  !<  [cm h^-1]
+   real(r8b) :: cgs_mass     = 1.989d43      !<  [g h^-1]
+   real(r8b) :: cgs_velocity = 1.0d5         !<  [cm s^-1]
+   real(r8b) :: cgs_time     = 3.085678d16   !<  [s h^-1]
+   real(r8b) :: cgs_density  = 6.769911d-22  !<  [g cm^-3 h^2]
+   real(r8b) :: cgs_pressure = 6.769911d-12  !<  [ba = g cm^-1 s^-2 h^2]
+   real(r8b) :: cgs_energy   = 1.989d53      !<  [erg = g cm^2 s^-2 h^-1] 
+ contains
+   procedure :: set_owls_gimic => set_gadget_units_owls_gimic !< sets len = Mpc/h
+   procedure :: set_user => set_gadget_units_user !< sets user supplied values
+   procedure :: print_lun => print_units_to_lun   !< formatted print to lun
+end type gadget_units_type
+
+
 !> Gadget header type
 !-----------------------------------------
 type gadget_header_type
-   sequence
    integer(i4b) :: npar_file(6)    !< number of particles in snapshot file
    real(r8b)    :: mass(6)         !< mass of each particle type if constant
    real(r8b)    :: a               !< scale factor or time
@@ -77,56 +126,145 @@ type gadget_header_type
    integer(i4b) :: flag_gammaHI    !< output has HI photoionization rate? 
    integer(i4b) :: flag_cloudy     !< output has Cloudy xHIeq? 
    integer(i4b) :: flag_eos        !< output has EOS info?
-   real(i4b)    :: unused(5)       !< spacer
+   real(r8b)    :: time_myr        !< time since BB from cosmo variables
+   real(i4b)    :: unused(3)       !< spacer
 end type gadget_header_type
 
 
-!> gadget units type ( 7 doubles )
-!-----------------------------------------
-type gadget_units_type
-   sequence
-   real(r8b) :: len      
-   real(r8b) :: mass
-   real(r8b) :: vel
-   real(r8b) :: rho
-   real(r8b) :: energy
-   real(r8b) :: prs
-   real(r8b) :: time
-end type gadget_units_type
 
-
-!> gadget constants type ( 23 doubles )
-!-----------------------------------------
-type gadget_constants_type
-   sequence
-   real(r8b) :: PI              
-   real(r8b) :: GAMMA           
-   real(r8b) :: GRAVITY         
-   real(r8b) :: SOLAR_MASS      
-   real(r8b) :: SOLAR_LUM       
-   real(r8b) :: RAD_CONST       
-   real(r8b) :: AVOGADRO        
-   real(r8b) :: BOLTZMANN       
-   real(r8b) :: GAS_CONST       
-   real(r8b) :: C               
-   real(r8b) :: PLANCK          
-   real(r8b) :: PROTONMASS      
-   real(r8b) :: ELECTRONMASS    
-   real(r8b) :: ELECTRONCHARGE  
-   real(r8b) :: HUBBLE          
-   real(r8b) :: T_CMB0          
-   real(r8b) :: SEC_PER_MEGAYEAR                 
-   real(r8b) :: SEC_PER_YEAR    
-   real(r8b) :: STEFAN          
-   real(r8b) :: THOMPSON        
-   real(r8b) :: EV_TO_ERG       
-   real(r8b) :: Z_SOLAR         
-   real(r8b) :: CM_PER_MPC        
-end type gadget_constants_type
 
 
 
 contains
+
+
+!> sets user supplied units
+!--------------------------------------------------------------
+subroutine set_gadget_units_user(this, cgs_length, cgs_mass, cgs_velocity)
+  class(gadget_units_type) :: this
+  real(r8b) :: cgs_length
+  real(r8b) :: cgs_mass
+  real(r8b) :: cgs_velocity
+
+  this%cgs_length   = cgs_length
+  this%cgs_mass     = cgs_mass
+  this%cgs_velocity = cgs_velocity
+
+  this%cgs_density  = this%cgs_mass / this%cgs_length**3
+  this%cgs_energy   = this%cgs_mass * this%cgs_velocity**2
+  this%cgs_time     = this%cgs_length / this%cgs_velocity
+  this%cgs_pressure = this%cgs_mass / &
+       (this%cgs_length**3 / this%cgs_velocity**2)
+
+end subroutine set_gadget_units_user
+
+
+!> sets units used in OWLS/GIMIC runs
+!--------------------------------------------------------------
+subroutine set_gadget_units_owls_gimic(this)
+  class(gadget_units_type) :: this
+
+  this%cgs_length   = 3.0856780d24
+  this%cgs_mass     = 1.989d43    
+  this%cgs_velocity = 1.0d5
+
+  this%cgs_density  = this%cgs_mass / this%cgs_length**3
+  this%cgs_energy   = this%cgs_mass * this%cgs_velocity**2
+  this%cgs_time     = this%cgs_length / this%cgs_velocity
+  this%cgs_pressure = this%cgs_mass / &
+       (this%cgs_length**3 / this%cgs_velocity**2)
+
+end subroutine set_gadget_units_owls_gimic
+
+
+
+!> formatted print of units to lun (including standard out)
+!---------------------------------------------------------------
+subroutine print_units_to_lun(this, lun)
+  class(gadget_units_type), intent(in) :: this 
+  integer(i4b), intent(in) :: lun
+
+  type(gadget_constants_type) :: gconst
+
+  character(clen) :: n1
+  character(clen) :: star_fmt
+  character(clen) :: unit_fmt
+  character(clen) :: line_fmt
+
+  real(r8b), parameter :: cm_per_km = 1.0d5
+
+  ! binding energy of 1.0d8 [Msolar/h] halo @ z=0 
+  ! Delta_c = 18 pi^2, units = erg/h
+  ! http://arxiv.org/pdf/astro-ph/0010468v3
+  real(r8b), parameter :: E8 = 5.45d53 * 1.0d-1
+
+  real(r8b) :: rho_crit_0
+
+  rho_crit_0 = 3.0d0 * gconst%hubble**2 / (8.0d0 * gconst%pi * gconst%gravity)
+
+  star_fmt = "(78('='))"
+  line_fmt = "(78('-'))"
+  unit_fmt = "(A,T30,A)"
+
+  write(lun,*)
+  write(lun,star_fmt)
+  write(lun,*) "   Units"
+  write(lun,line_fmt)
+  write(n1,'(ES20.6)') this%cgs_length
+  write(lun,unit_fmt) "length [cm/h]:", trim(adjustl(n1)) 
+
+  write(n1,'(ES20.6)') this%cgs_mass
+  write(lun,unit_fmt) "mass [g/h]:", trim(adjustl(n1)) 
+
+  write(n1,'(ES20.6)') this%cgs_velocity
+  write(lun,unit_fmt) "velocity [cm/s]:", trim(adjustl(n1)) 
+
+  write(n1,'(ES20.6)') this%cgs_density
+  write(lun,unit_fmt) "density [g/cm^3 h^2]:", trim(adjustl(n1)) 
+
+  write(n1,'(ES20.6)') this%cgs_energy
+  write(lun,unit_fmt) "energy [erg/h]:", trim(adjustl(n1)) 
+
+  write(n1,'(ES20.6)') this%cgs_time
+  write(lun,unit_fmt) "time [s/h]:", trim(adjustl(n1)) 
+
+  write(n1,'(ES20.6)') this%cgs_pressure
+  write(lun,unit_fmt) "pressure [ba h^2]:", trim(adjustl(n1)) 
+
+  write(lun,*) 
+
+  write(n1,'(ES20.6)') rho_crit_0
+  write(lun,unit_fmt) "rho_crit_0 [g/cm^3 h^2]:", trim(adjustl(n1))
+  write(n1,'(ES20.6)') E8
+  write(lun,unit_fmt) "E8 [erg/h]:", trim(adjustl(n1))
+
+  write(lun,*)
+
+  write(n1,'(ES20.6)') this%cgs_length / gconst%cm_per_mpc
+  write(lun,unit_fmt) "length [Mpc/h]:", trim(adjustl(n1)) 
+
+  write(n1,'(ES20.6)') this%cgs_mass / gconst%solar_mass
+  write(lun,unit_fmt) "mass [Msolar/h]:", trim(adjustl(n1)) 
+
+  write(n1,'(ES20.6)') this%cgs_velocity / cm_per_km
+  write(lun,unit_fmt) "velocity [km/s]:", trim(adjustl(n1)) 
+
+  write(n1,'(ES20.6)') this%cgs_density / rho_crit_0
+  write(lun,unit_fmt) "density [rho_crit_0 h^2]:", trim(adjustl(n1)) 
+
+  write(n1,'(ES20.6)') this%cgs_energy / E8
+  write(lun,unit_fmt) "energy [E8]:", trim(adjustl(n1)) 
+
+  write(n1,'(ES20.6)') this%cgs_time / gconst%sec_per_megayear
+  write(lun,unit_fmt) "time [Myr/h]:", trim(adjustl(n1)) 
+
+  write(n1,'(ES20.6)') this%cgs_pressure / gconst%boltzmann 
+  write(lun,unit_fmt) "pressure/k_b [cm^-3 K h^2]:", trim(adjustl(n1)) 
+
+  write(lun,star_fmt)
+
+end subroutine print_units_to_lun
+
 
 
 !> forms a snapshot file name from,
@@ -397,14 +535,11 @@ end subroutine read_first_header
 
 
 
-!> reads an hdf5 gadget units
+!> reads gadget units from an HDF5 file
 !-----------------------------------------
-subroutine read_gadget_units(snapfile, gunits, hdf5bool, simname )
+subroutine read_gadget_units_hdf5(snapfile, gunits)
   character(*), intent(in) :: snapfile
   type(gadget_units_type) :: gunits
-  logical, intent(in) :: hdf5bool
-  character(*), intent(in), optional :: simname
-
   integer(i4b) :: fh
   
   if (hdf5bool) then 
@@ -441,36 +576,9 @@ subroutine read_gadget_units(snapfile, gunits, hdf5bool, simname )
 end subroutine read_gadget_units
 
 
-!> sets the gadget units used in the OWLS and GIMIC runs
-!---------------------------------------------------------
-subroutine set_gadget_owls_gimic_units( gunits )
-  type(gadget_units_type) :: gunits
- 
-  gunits%len = 3.0856780d+24
-  gunits%mass = 1.9890000d+43
-  gunits%vel = 1.0d+5
-  gunits%rho = 6.7699112d-31
-  gunits%energy = 1.9890000d+53
-  gunits%prs = 6.7699112d-21 
-  gunits%time = 3.0856780d+19
-
-end subroutine set_gadget_owls_gimic_units
 
 
-!> sets the default gadget units from the users guide 
-!---------------------------------------------------------
-subroutine set_gadget_default_units( gunits )
-  type(gadget_units_type) :: gunits
- 
-  gunits%len = 3.0856780d+21
-  gunits%mass = 1.9890000d+43
-  gunits%vel = 1.0d+5 
-  gunits%time = gunits%len / gunits%vel
-  gunits%rho = gunits%mass / gunits%len**3
-  gunits%energy = gunits%mass * gunits%len**2 / gunits%time**2
-  gunits%prs = gunits%mass / gunits%len / gunits%time**2
 
-end subroutine set_gadget_default_units
 
 
 
@@ -535,36 +643,7 @@ subroutine read_gadget_constants(snapfile, gconst, hdf5bool, simname)
 end subroutine read_gadget_constants
 
 
-!> sets the gadget constants used in the OWLS and GIMIC runs
-!-------------------------------------------------------------
-subroutine set_gadget_owls_gimic_constants( gconst )
-  type(gadget_constants_type) :: gconst
 
-  gconst%pi = 3.1415927d0
-  gconst%gamma = 1.6666667d0
-  gconst%gravity = 6.6720000d-08
-  gconst%solar_mass = 1.9890000d+33
-  gconst%solar_lum = 3.8260000d+33 
-  gconst%rad_const = 7.5650000d-15 
-  gconst%avogadro = 6.0222000d+23
-  gconst%boltzmann = 1.3806000d-16
-  gconst%gas_const = 83142500.d0
-  gconst%c = 2.9979000d+10
-  gconst%planck = 6.6262000d-27
-  gconst%cm_per_mpc = 3.0856780d+24
-  gconst%protonmass = 1.6726000d-24
-  gconst%electronmass = 9.1095300d-28 
-  gconst%electroncharge = 4.8032000d-10 
-  gconst%hubble = 3.2407789d-18
-  gconst%t_cmb0 = 2.7280000d0
-  gconst%sec_per_megayear = 3.1550000d+13
-  gconst%sec_per_year = 31550000.d0 
-  gconst%stefan = 7.5657000d-15
-  gconst%thompson = 6.6524587d-25
-  gconst%ev_to_erg = 1.6021765d-12
-  gconst%z_solar = 0.012663729d0
-
-end subroutine set_gadget_owls_gimic_constants
 
 
 
@@ -630,17 +709,14 @@ subroutine broadcast_gadget_header( head )
   count = 6
   call mpi_bcast( head%npar_file, count, mpi_integer, root, mpi_comm_world, ierr )
   call mpi_bcast( head%mass, count, mpi_double_precision, root, mpi_comm_world, ierr )
+  call mpi_bcast( head%npar_all, count, mpi_integer, root, mpi_comm_world, ierr )
+  call mpi_bcast( head%npar_hw, count, mpi_integer, root, mpi_comm_world, ierr )
 
   count = 1
   call mpi_bcast( head%a, count, mpi_double_precision, root, mpi_comm_world, ierr )
   call mpi_bcast( head%z, count, mpi_double_precision, root, mpi_comm_world, ierr )
   call mpi_bcast( head%flag_sfr, count, mpi_integer, root, mpi_comm_world, ierr )
   call mpi_bcast( head%flag_feedback, count, mpi_integer, root, mpi_comm_world, ierr )
-
-  count = 6
-  call mpi_bcast( head%npar_all, count, mpi_integer, root, mpi_comm_world, ierr )
-
-  count = 1
   call mpi_bcast( head%flag_cooling, count, mpi_integer, root, mpi_comm_world, ierr )
   call mpi_bcast( head%nfiles, count, mpi_integer, root, mpi_comm_world, ierr )
   call mpi_bcast( head%boxlen, count, mpi_double_precision, root, mpi_comm_world, ierr )
@@ -649,11 +725,6 @@ subroutine broadcast_gadget_header( head )
   call mpi_bcast( head%h, count, mpi_double_precision, root, mpi_comm_world, ierr )
   call mpi_bcast( head%flag_age, count, mpi_integer, root, mpi_comm_world, ierr )
   call mpi_bcast( head%flag_metals, count, mpi_integer, root, mpi_comm_world, ierr )
-
-  count = 6
-  call mpi_bcast( head%npar_hw, count, mpi_integer, root, mpi_comm_world, ierr )
-
-  count = 1
   call mpi_bcast( head%flag_entr_ics, count, mpi_integer, root, mpi_comm_world, ierr )
   call mpi_bcast( head%OmegaB, count, mpi_double_precision, root, mpi_comm_world, ierr )
 

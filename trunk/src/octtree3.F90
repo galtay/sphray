@@ -6,7 +6,7 @@
 
 !> oct-tree construction and types
 module oct_tree_mod
-use myf90_mod
+use myf03_mod
 use particle_system_mod, only: particle_system_type
 use particle_system_mod, only: adjustbox
 implicit none

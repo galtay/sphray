@@ -6,7 +6,7 @@
 
 !> physical constants module
 module physical_constants_mod
-use myf90_mod
+use myf03_mod
 implicit none
 
 ! famous numbers

@@ -4,7 +4,7 @@
 !<
 
 module output_mod
-use myf90_mod
+use myf03_mod
 use gadget_header_class, only: gadget_header_type 
 use gadget_header_class, only: write_gadget_header_lun
 use gadget_input_hdf5_mod

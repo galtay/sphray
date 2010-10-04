@@ -6,7 +6,7 @@
 
 !> particle, source, and box descriptions
 module particle_system_mod
-use myf90_mod
+use myf03_mod
 use atomic_rates_mod, only: calc_colion_eq_fits
 use mt19937_mod, only: genrand_real1
 use m_mrgrnk, only: mrgrnk

@@ -1,0 +1,42 @@
+#
+# Configuration file for HDF5 wrapper library makefile for
+# Linux - Portland pgf90 Fortran compiler and gcc C compiler 
+#
+
+# -------- HDF5 information --------
+
+# Path to directory with HDF5 lib/ and include/ subdirectories
+HDF5 = /gal/perm/jch/HDF5/hdf5-1.6.4/hdf5
+
+
+# -------- C Compiler information --------
+
+# Name of the C compiler
+CC = gcc
+
+# C compiler flags
+CFLAGS = -g -fpic
+
+# Compiler flag to add an include file path
+INCFLAG = -I
+
+# -------- Fortran Compiler information --------
+
+# Name of the Fortran compiler
+FC = pgf90
+
+# Fortran compiler flags
+FFLAGS = -Mextend -g -C -fpic
+
+# Compiler flag to add a library path
+LIBFLAG = -L
+
+# Compiler flag to add search path for F90 module (.mod) files
+# (some compilers look in the include file path so -I may work)
+MODFLAG = -I
+
+# Compiler flag to specify path to run-time libraries
+RFLAG = -R
+
+# Compiler flag to make a shared library
+SHARED = -shared

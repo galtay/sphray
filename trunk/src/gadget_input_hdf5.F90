@@ -4,7 +4,7 @@
 !<
 
 module gadget_input_hdf5_mod
-use myf90_mod
+use myf03_mod
 use gadget_header_class
 use ion_table_class
 use particle_system_mod, only: set_ye
@@ -24,6 +24,8 @@ public :: get_planning_data_gadget_hdf5
 public :: read_Ghdf5_particles
 public :: gadget_output_hdf5
 
+logical :: crash = .true.
+
 contains
 
 #ifndef useHDF5
@@ -32,19 +34,19 @@ contains
 ! dont have to be wrapped with pre processor macros.
 
 subroutine read_gadget_header_hdf5()
-  call myerr("this routine shuold not have been called","hdf5dummy",crash=.true.)
+  call myerr("this routine shuold not have been called","hdf5dummy",crash)
 end subroutine read_gadget_header_hdf5
 
 subroutine get_planning_data_gadget_hdf5()
-  call myerr("this routine shuold not have been called","hdf5dummy",crash=.true.)
+  call myerr("this routine shuold not have been called","hdf5dummy",crash)
 end subroutine get_planning_data_gadget_hdf5
 
 subroutine read_Ghdf5_particles()
-  call myerr("this routine shuold not have been called","hdf5dummy",crash=.true.)
+  call myerr("this routine shuold not have been called","hdf5dummy",crash)
 end subroutine read_Ghdf5_particles
 
 subroutine gadget_output_hdf5()
-  call myerr("this routine shuold not have been called","hdf5dummy",crash=.true.)
+  call myerr("this routine shuold not have been called","hdf5dummy",crash)
 end subroutine gadget_output_hdf5
 
 
