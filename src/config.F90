@@ -3,7 +3,7 @@
 !> \brief the module that handles the config file
 !<
 module config_mod
-use myf90_mod
+use myf03_mod
 use global_mod, only: GV
 
 
@@ -18,12 +18,14 @@ subroutine read_config_file(config_file)
   character(clen) :: keyword
   character(clen) :: str
   logical :: file_exists
+  integer :: verb
 
   character(clen), parameter :: myname="read_config_file"
   logical, parameter :: crash = .true.
 
     write(str,'(A,A)') 'using configuration file: ', trim(config_file)
-    call mywrite(str,verb=0) 
+    verb = 0
+    call mywrite(str,verb) 
 
     inquire( file=config_file, exist=file_exists )
     if (.not. file_exists) then
@@ -232,15 +234,18 @@ subroutine dummy_check_config_variables()
   Mwarning = "please edit Makefile"
   config_good = .true. 
 
-  if (GV%InputType /= 1 .and. GV%InputType /= 2 .and. GV%InputType /= 3 .and. GV%InputType /= 4) then
+  if ( GV%InputType /= 1 .and. GV%InputType /= 2 .and. &
+       GV%InputType /= 3 .and. GV%InputType /= 4) then
      write(*,*) "Input Type ", GV%InputType, " not recognized"
-     write(*,*) "must be 1 (Gadget2 Public Standard), 2 (Gadget w/ xHI), 3 (Gadget HDF5), or 4 (Gadget Bromm)"
+     write(*,*) "must be 1 (Gadget2 Public Standard), &
+          2 (Gadget CosmoBH), 3 (Gadget OWLS/GIMIC HDF5), &
+          or 4 (Gadget V. Bromm)"
      config_good = .false. 
   end if
 
   if (GV%OutputType /= 1 .and. GV%OutputType /= 2) then
      write(*,*) "Output Type ", GV%OutputType, " not recognized"
-     write(*,*) "must be 1 (Standard Gadget) or 2 (HDF5)"
+     write(*,*) "must be 1 (Standard Binary Gadget) or 2 (HDF5)"
      config_good = .false. 
   end if
 

@@ -4,7 +4,7 @@
 !! http://adsabs.harvard.edu/abs/1994MNRAS.268..109H
 !<
 module hummer_atomic_rates_mod
-use myf90_mod
+use myf03_mod
 implicit none
 private
 

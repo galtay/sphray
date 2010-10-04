@@ -3,7 +3,7 @@
 !> \brief the module that handles atomic rates interpolation tables
 
 module atomic_rates_mod
-use myf90_mod
+use myf03_mod
 use hui_gnedin_atomic_rates_mod
 use cen_atomic_rates_mod
 implicit none

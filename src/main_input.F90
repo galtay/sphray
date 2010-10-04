@@ -4,7 +4,7 @@
 !<
 
 module main_input_mod
-use myf90_mod
+use myf03_mod
 use gadget_input_mod
 use gadget_input_hdf5_mod
 use source_input_mod
@@ -66,6 +66,7 @@ subroutine readin_snapshot()
   logical, parameter :: crash=.true.
   integer, parameter :: verb=2
   character(clen) :: str,fmt
+
   
   logical :: first
   real(r8b) :: MB

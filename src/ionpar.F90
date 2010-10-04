@@ -4,7 +4,7 @@
 !<
 
 module ionpar_mod
-use myf90_mod
+use myf03_mod
 use physical_constants_mod, only: HI_th_Hz, HI_th_erg, HeI_th_erg, HeII_th_erg
 use atomic_rates_mod, only: atomic_rates_type
 use particle_system_mod, only: particle_type

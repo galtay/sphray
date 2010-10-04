@@ -3,7 +3,7 @@
 !> \brief the module that handles global variables
 !<
 module global_mod
-use myf90_mod 
+use myf03_mod 
 use gadget_header_class, only: gadget_header_type
 use gadget_header_class, only: gadget_units_type
 use gadget_header_class, only: gadget_constants_type

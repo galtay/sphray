@@ -5,7 +5,7 @@
 !<
 
 module ion_table_class
-use myf90_mod
+use myf03_mod
 
 #ifdef useHDF5
 use hdf5_wrapper

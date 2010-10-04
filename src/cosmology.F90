@@ -3,7 +3,7 @@
 !> \brief Module contains simple analytic cosmological functions
 !<
 module cosmology_mod
-use myf90_mod
+use myf03_mod
 implicit none
 
   contains

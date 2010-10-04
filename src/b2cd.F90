@@ -3,7 +3,7 @@
 !> \brief Handles the impact parameter to column depth table
 
 module b2cd_mod
-use myf90_mod
+use myf03_mod
 implicit none
 private
 

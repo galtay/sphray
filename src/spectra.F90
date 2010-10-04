@@ -4,7 +4,7 @@
 !<
 
 module spectra_mod
-use myf90_mod
+use myf03_mod
 implicit none
 private
 

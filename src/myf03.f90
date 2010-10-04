@@ -1,47 +1,81 @@
-!> \file myf90.F90
+!> \file myf03.f90
 
-!> \brief My Fortran 90 module
+!> \brief My Fortran 2003/8 module
 !!
-!! Contains preconnected logical unit numbers (lun), 
+!! Makes use of the Fortran 2003 and 2008 standards.  The features I've 
+!! included here are supported by version 4.5 of the GNU Fortran compiler. 
+!! The module contains several useful variables and subroutines. 
+!! 1. preconnected logical unit numbers (lun) for standard in, out and error.
+!! 2. portable kind type parameters for 1/2/4/8 byte integers 
+!! 3. portable kind type parameters for 4/8/16 byte reals. 
+!! 4. default character length
+!! 5. a verbosity variable to be used with write wrapper
+!! 6. a command line type to standardize recieving arguments
 !! portable precision definitions and subroutines for reading and 
 !! parsing files 
 !<
 
-module myf90_mod
+module myf03_mod
 use iso_fortran_env    
 implicit none
+private
 
-  public
+public :: stderr, stdin, stdout
+public :: i1b, i2b, i4b, i8b
+public :: r4b, r8b, r16b
+public :: clen 
+public :: command_line_type
+
+public :: myf03_verbosity  
+public :: myf03_initialize_command_line
+public :: get_free_lun
+public :: get_env
+
+public :: open_formatted_file_r
+public :: open_unformatted_file_r
+public :: open_unformatted_file_sr
+
+public :: open_formatted_file_w
+public :: open_unformatted_file_w
+public :: open_unformatted_file_sw
+
+public :: scanfile
+public :: mywrite
+public :: myerr
 
   interface scanfile
      module procedure scanfile_r4b, scanfile_r8b, scanfile_i4b, &
                       scanfile_i8b, scanfile_chr, scanfile_log
   end interface
 
+! pre connected logical unit numbers
+!------------------------------------------------------------------------
 
   integer, parameter :: stderr = error_unit  !< preconnected std error lun 
   integer, parameter :: stdin  = input_unit  !< preconnected std in lun
   integer, parameter :: stdout = output_unit !< preconnected std out lun
 
-! selected_int_kind(r)     -10^r < n < 10^r
+! integer kind type parameters 
 !------------------------------------------------------------------------
 
-  integer, parameter :: i1b = selected_int_kind(2)  !< 1 byte integer type
-  integer, parameter :: i2b = selected_int_kind(4)  !< 2 byte integer type
-  integer, parameter :: i4b = selected_int_kind(9)  !< 4 byte integer type
-  integer, parameter :: i8b = selected_int_kind(18) !< 8 byte integer type
+  integer, parameter :: i1b = int8   !< 1 byte integer type
+  integer, parameter :: i2b = int16  !< 2 byte integer type
+  integer, parameter :: i4b = int32  !< 4 byte integer type
+  integer, parameter :: i8b = int64  !< 8 byte integer type
 
-! selected_real_kind(p,r)  p is decimal precision, r is exponent range
+! real kind type parameters
 !------------------------------------------------------------------------
-  integer, parameter :: r4b  = selected_real_kind(p=6,r=37)    !< 4 byte real type
-  integer, parameter :: r8b  = selected_real_kind(p=15,r=307)  !< 8 byte real type
+  integer, parameter :: r4b  = real32  !< 4 byte real type
+  integer, parameter :: r8b  = real64  !< 8 byte real type
+  integer, parameter :: r16b = real128 !< 16 byte real type
 
-  integer, parameter :: clen  = 500 !< default character variable length
 
-  integer :: myf90_verbosity        !< global verbosity threshold
+  integer, parameter :: clen  = 512 !< default character variable length
+
+  integer :: myf03_verbosity=3        !< global verbosity threshold
 
 !> command line type. 
-!=========================
+!----------------------------
   type command_line_type
      integer :: nargs       !< number of arguments excluding executable
      integer :: len         !< number of chars in whole command line 
@@ -54,71 +88,26 @@ implicit none
 contains
 
 
-!> tests selected precision kinds for correct bit sizes
-!---------------------------------------------------------
-function myf90_test_var_sizes() result( err )
-  integer :: err
-  
-  integer(i1b) :: i_one_byte
-  integer(i2b) :: i_two_byte
-  integer(i4b) :: i_four_byte
-  integer(i8b) :: i_eight_byte
-
-  real(r4b)  :: r_four_byte
-  real(r8b)  :: r_eight_byte
-
-  err = 0     
-
-
-  if ( bit_size(i_one_byte)     /= 8   .or. &
-       bit_size(i_two_byte)     /= 16  .or. &
-       bit_size(i_four_byte)    /= 32  .or. &
-       bit_size(i_eight_byte)   /= 64       ) then
-
-     write(*,*) 'bytes i1b:    ', bit_size(i_one_byte)
-     write(*,*) 'bytes i2b:    ', bit_size(i_two_byte)
-     write(*,*) 'bytes i4b:    ', bit_size(i_four_byte)
-     write(*,*) 'bytes i8b:    ', bit_size(i_eight_byte)
-
-     err = -1
-
-  endif
-
-
-  if ( digits(r_four_byte)    /= 24  .or. &
-       digits(r_eight_byte)   /= 53        ) then
-
-     write(*,*) 'digits r4b: ',  digits(r_four_byte)
-     write(*,*) 'digits r8b: ',  digits(r_eight_byte)
-
-     err = -1
-     
-  endif
-
-
-end function myf90_test_var_sizes
-
 
 !> fills in the command line variable
 !-----------------------------------------------
-  function myf90_initialize_command_line(verb) result(cmnd)
+  function myf03_initialize_command_line(verb) result(cmnd)
     type(command_line_type) :: cmnd
     integer :: verb 
     integer :: stat
     integer :: i
     character(clen) :: str
 
-    character(clen), parameter :: myname="initialize_command_line"
+    character(clen), parameter :: myname="myf03_initialize_command_line"
     logical, parameter :: crash = .true.
 
 
     cmnd%nargs = command_argument_count()
-    call get_command( command=cmnd%str, length=cmnd%len, status=stat )
-    if (stat /= 0) call myerr("stat /= 0 after get_command", myname, crash)
+    call get_command( command=cmnd%str, length=cmnd%len )
 
-    call mywrite(' ', verb) 
-    call mywrite('[cmnd line] string: ' // trim(cmnd%str), verb)
-    write(str,'(A,I5)') '[cmnd line] nargs :', cmnd%nargs
+    call mywrite('', verb) 
+    call mywrite('command string: ' // trim(cmnd%str), verb)
+    write(str,'(A,I5)') 'command nargs :', cmnd%nargs
     call mywrite( str, verb) 
     
     allocate( cmnd%args( 0:cmnd%nargs ), cmnd%arglens( 0:cmnd%nargs ) )
@@ -126,26 +115,27 @@ end function myf90_test_var_sizes
     do i = 0,cmnd%nargs
        call get_command_argument( i, &
             value=cmnd%args(i), &
-            length=cmnd%arglens(i), &
-            status=stat)
+            length=cmnd%arglens(i) )
 
-       if (stat /= 0) then
-          call myerr("stat /= 0 after get_command_argument", myname, crash)
-       end if
-
-       write(str,'(A,I2,A,A)') '[cmnd line] arg ', i, ': ', trim(cmnd%args(i))
+       if (i==0) then
+          write(str,'(A,A)') 'exe: ', trim(cmnd%args(i))
+       else
+          write(str,'(A,I2,A,A)') 'arg ', i, ': ', trim(cmnd%args(i))
+       endif
        call mywrite(str, verb)
 
+       call mywrite('', verb)
     end do
     
-  end function myf90_initialize_command_line
+  end function myf03_initialize_command_line
 
 
-!-----------------------------------------------
+
 !> reports an error message and stops execution
+!-----------------------------------------------
    subroutine myerr(str,routine,crash)
-     character(*), intent(in) :: str
-     character(*), intent(in) :: routine
+     character(len=*), intent(in) :: str
+     character(len=*), intent(in) :: routine
      logical, intent(in) :: crash
 
      write(*,*) "*****************************"
@@ -158,10 +148,11 @@ end function myf90_test_var_sizes
    end subroutine myerr
 
 
-!-----------------------------------------------
+
 !> verbosity dependent write
+!-----------------------------------------------
    subroutine mywrite( str, verb, lun, adv )
-     character(*), intent(in) :: str
+     character(len=*), intent(in) :: str
      integer, intent(in) :: verb
      integer, optional, intent(in) :: lun
      logical, optional, intent(in) :: adv
@@ -184,23 +175,24 @@ end function myf90_test_var_sizes
      fmt='(A)'
 
      if (present(lun)) then
-        if (verb <= myf90_verbosity) write(lun,fmt,advance=sadv) trim(str)
+        if (verb <= myf03_verbosity) write(lun,fmt,advance=sadv) trim(str) 
      else
-        if (verb <= myf90_verbosity) write(stdout,fmt,advance=sadv) trim(str)
+        if (verb <= myf03_verbosity) write(stdout,fmt,advance=sadv) trim(str)
      endif
 
    end subroutine mywrite
 
 
-!------------------------------------
+
 !> returns a free logical unit number
+!------------------------------------
    function get_free_lun() result(lun)
 
     integer(i4b) :: lun                        !< free lun
     integer(i4b) :: i                          !< loop counter
     integer(i4b), parameter :: minlun = 110    !< min lun to check
     integer(i4b), parameter :: maxlun = 1000   !< max lun to check
-    logical :: badlun                          !< true if lun is already connected
+    logical :: badlun                          !< true if lun already connected
 
     character(clen), parameter :: myname="get_free_lun"
  
@@ -221,32 +213,25 @@ end function myf90_test_var_sizes
   end function get_free_lun
 
 
+
+!> returns an environment variable
 !----------------------------------------
-!> returns the current working directory
-  function get_current_dir() result(path)
-    character(clen) :: path  !< the current working dir
+  function get_env(env) result(var)
+    character(len=*) :: env !< name of environment variable requested
+    character(clen) :: var  !< value of environment variable requested
 
-    call get_environment_variable('PWD',  value=path,  trim_name=.true.)
+    call get_environment_variable(env,  value=var,  trim_name=.true.)
 
-  end function get_current_dir
+  end function get_env
 
 
-!--------------------------------------------------------
+
 !> opens a formatted file for reading and returns the lun
+!--------------------------------------------------------
   subroutine open_formatted_file_r(filename,lun)
   
-    character(*), intent(in) :: filename !< name of file to open
+    character(len=*), intent(in) :: filename !< name of file to open
     integer(i4b), intent(out) :: lun     !< lun 
-    logical :: fthere
-
-    character(clen), parameter :: myname="open_formatted_file_r"
-    character(clen) :: str
-
-    inquire(file=filename,exist=fthere)
-    if (.not. fthere) then
-       write(str,"(A,A)") "cant find file: ",  trim(filename)
-       call myerr(str, myname, .true.)
-    end if
 
     lun = get_free_lun() 
     open(unit=lun, file=filename, action="read")
@@ -254,44 +239,25 @@ end function myf90_test_var_sizes
   end subroutine open_formatted_file_r
 
 
-!-------------------------------------------------------------
+
 !> opens an unformatted file for reading and returns the lun
+!-------------------------------------------------------------
   subroutine open_unformatted_file_r(filename,lun)
   
-    character(*), intent(in) :: filename  !< name of file to open
-    integer(i4b), intent(out)  :: lun          !< lun
-    logical :: fthere
-
-    character(clen), parameter :: myname="open_unformatted_file_r"
-    character(clen) :: str
-
-    inquire(file=filename,exist=fthere)
-    if (.not. fthere) then
-       write(str,"(A,A)") "cant find file: ",  trim(filename)
-       call myerr(str, myname, .true.)
-    end if
+    character(len=*), intent(in) :: filename  !< name of file to open
+    integer(i4b), intent(out)  :: lun     !< lun
 
     lun = get_free_lun()
     open(unit=lun, file=filename, form='unformatted', action="read")
 
   end subroutine open_unformatted_file_r
 
-!--------------------------------------------------------------------
 !> opens an unformatted file for stream reading and returns the lun
+!--------------------------------------------------------------------
   subroutine open_unformatted_file_sr(filename,lun)
   
-    character(*), intent(in) :: filename  !< name of file to open
-    integer(i4b), intent(out)  :: lun          !< lun
-    logical :: fthere
-
-    character(clen), parameter :: myname="open_unformatted_file_sr"
-    character(clen) :: str
-
-    inquire(file=filename,exist=fthere)
-    if (.not. fthere) then
-       write(str,"(A,A)") "cant find file: ",  trim(filename)
-       call myerr(str, myname, .true.)
-    end if
+    character(len=*), intent(in) :: filename  !< name of file to open
+    integer(i4b), intent(out)  :: lun     !< lun
 
     lun = get_free_lun()
     open(unit=lun, file=filename, form="unformatted", &
@@ -300,11 +266,12 @@ end function myf90_test_var_sizes
   end subroutine open_unformatted_file_sr
 
 
-!--------------------------------------------------------
+
 !> opens a formatted file for writing and returns the lun
+!--------------------------------------------------------
   subroutine open_formatted_file_w(filename,lun)
   
-    character(*), intent(in) :: filename !< name of file to open
+    character(len=*), intent(in) :: filename !< name of file to open
     integer(i4b), intent(out) :: lun     !< lun 
 
     lun = get_free_lun()
@@ -313,11 +280,11 @@ end function myf90_test_var_sizes
   end subroutine open_formatted_file_w
 
 
-!------------------------------------------------------------
 !> opens an unformatted file for writing and returns the lun
+!------------------------------------------------------------
   subroutine open_unformatted_file_w(filename,lun)
   
-    character(*), intent(in) :: filename  !< name of file to open
+    character(len=*), intent(in) :: filename  !< name of file to open
     integer(i4b), intent(out)  :: lun             !< lun
 
     lun = get_free_lun()
@@ -326,11 +293,12 @@ end function myf90_test_var_sizes
    
   end subroutine open_unformatted_file_w
 
-!-------------------------------------------------------------------
+
 !> opens an unformatted file for stream writing and returns the lun
+!-------------------------------------------------------------------
   subroutine open_unformatted_file_sw(filename,lun)
   
-    character(*), intent(in) :: filename  !< name of file to open
+    character(len=*), intent(in) :: filename  !< name of file to open
     integer(i4b), intent(out)  :: lun             !< lun
 
     lun = get_free_lun()
@@ -344,8 +312,8 @@ end function myf90_test_var_sizes
   ! scan file routines, one for each type
   !==================================================================
   subroutine scanfile_r4b(filename,keyword,var) 
-    character(*), intent(in) :: filename
-    character(*), intent(in) :: keyword
+    character(len=*), intent(in) :: filename
+    character(len=*), intent(in) :: keyword
     real(r4b), intent(out) :: var
 
     integer :: keylen
@@ -387,8 +355,8 @@ end function myf90_test_var_sizes
 
 
   subroutine scanfile_r8b(filename,keyword,var) 
-    character(*), intent(in) :: filename
-    character(*), intent(in) :: keyword
+    character(len=*), intent(in) :: filename
+    character(len=*), intent(in) :: keyword
     real(r8b), intent(out) :: var
 
     integer :: keylen
@@ -430,8 +398,8 @@ end function myf90_test_var_sizes
 
 
   subroutine scanfile_i4b(filename,keyword,var) 
-    character(*), intent(in) :: filename
-    character(*), intent(in) :: keyword
+    character(len=*), intent(in) :: filename
+    character(len=*), intent(in) :: keyword
     integer(i4b), intent(out) :: var
 
     integer :: keylen
@@ -474,8 +442,8 @@ end function myf90_test_var_sizes
 
 
   subroutine scanfile_i8b(filename,keyword,var) 
-    character(*), intent(in) :: filename
-    character(*), intent(in) :: keyword
+    character(len=*), intent(in) :: filename
+    character(len=*), intent(in) :: keyword
     integer(i8b), intent(out) :: var
 
     integer :: keylen
@@ -518,8 +486,8 @@ end function myf90_test_var_sizes
 
 
   subroutine scanfile_chr(filename,keyword,var)
-    character(*), intent(in) :: filename
-    character(*), intent(in) :: keyword
+    character(len=*), intent(in) :: filename
+    character(len=*), intent(in) :: keyword
     character(clen), intent(out) :: var
 
     integer :: keylen
@@ -562,8 +530,8 @@ end function myf90_test_var_sizes
 
 
   subroutine scanfile_log(filename,keyword,var)
-    character(*), intent(in) :: filename
-    character(*), intent(in) :: keyword
+    character(len=*), intent(in) :: filename
+    character(len=*), intent(in) :: keyword
     logical, intent(out) :: var
 
     integer :: keylen
@@ -607,6 +575,6 @@ end function myf90_test_var_sizes
 
 
 
-end module myf90_mod
+end module myf03_mod
 
 

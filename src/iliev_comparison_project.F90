@@ -4,7 +4,7 @@
 !! Iliev Comparison Project (ICP) tests
 !<
 module iliev_comparison_project_mod
-use myf90_mod
+use myf03_mod
 use raylist_mod, only: raylist_type
 use ray_mod, only: ray_type
 use particle_system_mod, only: particle_system_type

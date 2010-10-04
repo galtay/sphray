@@ -6,7 +6,7 @@
 !<
 
 module mainloop_mod
-  use myf90_mod
+  use myf03_mod
 
   ! routines
   use main_input_mod, only: readin_snapshot

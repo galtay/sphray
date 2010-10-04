@@ -4,7 +4,7 @@
 !<
 
 module source_input_mod
-use myf90_mod
+use myf03_mod
 use particle_system_mod, only: particle_system_type
 use particle_system_mod, only: source_type
 use global_mod, only: psys, GV, PLAN

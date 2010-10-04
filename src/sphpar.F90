@@ -4,7 +4,7 @@
 !<
 
 module sphpar_mod
-use myf90_mod
+use myf03_mod
 use particle_system_mod, only: particle_type
 use particle_system_mod, only: transformation_type
 

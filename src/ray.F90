@@ -5,7 +5,7 @@
 !<
 
 module ray_mod
-use myf90_mod
+use myf03_mod
 use particle_system_mod
 use oct_tree_mod
 use mt19937_mod, only: genrand_real1

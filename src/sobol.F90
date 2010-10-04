@@ -1,5 +1,5 @@
 module sobol_mod
-use myf90_mod, only: i8b, r8b
+use myf03_mod, only: i8b, r8b
 implicit none
 private
 

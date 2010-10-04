@@ -1,0 +1,331 @@
+
+HDF5 Wrapper library for Fortran 90
+-----------------------------------
+
+This assumes that you already have HDF5 installed, and that you know where
+it is. You'll probably need to compile HDF5, the HDF5 wrapper and any
+programs that use the wrapper using the same Fortran 90 compiler.
+
+
+1. Introduction:
+----------------
+
+This library is intended to provide a simple way to read and write HDF5
+data files. It can:
+
+* Create HDF5 files or open existing files
+
+* Read and write 0-7 dimensional HDF5 datasets and/or attributes of the
+  following Fortran types:
+
+  - REAL
+  - DOUBLE PRECISION
+  - INTEGER*4
+  - INTEGER*8
+  - CHARACTER
+
+* Create HDF5 groups and read/write attributes or datasets stored in groups
+
+* Use gzip compression for large datasets
+
+There is currently no support for user defined datatypes.
+
+
+2. Compilation:
+---------------
+
+Go to the ./src subdirectory and copy the config.* file corresponding to
+your system to 'config' - e.g. if you have the Portland f90 compiler do
+
+cd src
+cp config.Portland config
+
+Edit the line that starts
+
+HDF5 = ...
+
+to show the path where HDF5 is installed. This directory should contain the
+HDF5 lib/ and include/ subdirectories.
+
+The config file specifies the name of the Fortran and C compilers and the 
+flags needed to compile the HDF5 wrapper and link with HDF5. If none of the
+existing config files are appropriate you'll need to copy one of them and
+modify it as necessary.
+
+The existing configuration files are:
+
+config.Portland  - to use the Portland(pgf90) and gcc compilers on Linux
+config.NAGWare   - to use the NAGWare(f90) and gcc compilers on Linux
+config.Solaris32 - to compile 32 bit code on Solaris (using Sun f90 and cc)
+config.Solaris64 - to compile 64 bit code on Solaris (using Sun f90 and cc)
+config.Intel     - to compile using the Intel(ifort) and gcc compilers on linux
+config.Gfortran  - to compile using the GNU gfortran and gcc compilers on linux
+
+Next, type 'make' in the src directory and the wrapper library will be
+compiled. This will create a lib directory containing the file
+'libhdfwrapper.so'.
+
+
+3. Example programs:
+--------------------
+
+There are two small example programs in the 'test' subdirectory.
+'test_write.exe' writes an HDF5 file and 'test_read.exe' reads it back in.
+
+When the wrapper library is compiled a Makefile for these programs is also
+created (as ./test/Makefile) so you should be able to compile the programs
+just by typing 'make' in the ./test subdirectory.
+
+The simplest way to link the HDF5 wrapper into your own programs is to
+copy or modify this Makefile.
+
+
+4. Using the HDF5 Wrapper library:
+----------------------------------
+
+To use the wrapper you need to link in the HDF5 and wrapper libraries
+when you compile your program. See the Makefile in the test/ directory
+for an example of how to do this. In your Fortran 90 source file you'll
+need to 'USE' the hdf5_wrapper module:
+
+USE hdf5_wrapper
+
+The HDF5 wrapper provides the following routines. Optional parameters
+are shown in square brackets.
+
+Parameters shown as 'any allowed type' - e.g.
+
+ (any allowed type) :: data
+
+may be scalars or 1-7 dimensional arrays of REAL, DOUBLE PRECISION, INTEGER*4,
+INTEGER*8 or CHARACTER.
+
+HDF5 differentiates between strings and arrays of characters:
+
+CHARACTER :: str(10)
+
+would be written as a ten element array of single characters, whereas
+
+CHARACTER(LEN=10) :: str
+
+or
+
+CHARACTER*10 : str
+
+would be written as a string of length 10. 
+
+CHARACTER(LEN=10) :: str(3,5)
+
+would be a 3x5 element array of strings, each with length 10.
+
+--------------------------------------------------------------------------
+
+SUBROUTINE hdf5_open_file(ifile, filename, [readonly])  
+
+INTEGER :: ifile
+CHARACTER(LEN=*) :: filename
+LOGICAL :: readonly
+
+This opens an existing file. The name of the file to open is given by the
+'filename' parameter. An integer file handle is returned in 'ifile'. This
+file handle is used to identify the file in any subsequent read, write or
+close operations - its similar to the unit number in normal Fortran IO
+statements. If the parameter 'readonly' is set to .TRUE. any attempt to
+write to the file will cause an error.
+If the file does not exist an error occurs and the program aborts.
+
+--------------------------------------------------------------------------
+
+SUBROUTINE hdf5_create_file(ifile, fname)
+
+INTEGER :: ifile
+CHARACTER(LEN=*) :: filename
+
+This creates a new HDF5 file. The name of the file is given by the 
+'filename' parameter and an integer file handle is returned in 'ifile'. Any
+existing file with the same name is overwritten.
+
+--------------------------------------------------------------------------
+
+SUBROUTINE hdf5_get_dimensions(ifile, name, rank, dims)
+
+INTEGER :: ifile
+CHARACTER(LEN=*) :: name
+INTEGER :: rank
+INTEGER, DIMENSION(*) :: dims
+
+Return the size of an HDF5 dataset in the file with integer handle 'ifile'.
+The name of the dataset is specified by the 'name' parameter. The number of
+dimensions of the dataset is returned in 'rank' and the number of elements
+in each dimension is returned in dims(1:rank).
+
+--------------------------------------------------------------------------
+
+SUBROUTINE hdf5_read_data(ifile, name, data[, start, count])
+
+INTEGER :: ifile
+CHARACTER(LEN=*) :: name
+(any allowed type) :: data
+INTEGER, DIMENSION(:) :: start, count
+
+Read an HDF5 dataset with pathname 'name' from the file with handle 'ifile'.
+The contents of the dataset are returned in the variable 'data', which must
+have the same rank as the dataset. If the dataset is an array, 'data' must
+be an array which is at least as large as the dataset in every dimension. If
+the dataset doesn't exist an error occurs.
+
+The start and count parameters allow reading of parts of a dataset and must
+be dimensioned to at least the rank of the dataset in the file. start(i)
+specifies the first element to read in the i'th dimension and count(i)
+specifies how many elements to read in the i'th dimension. start and count
+must always be declared as arrays (not scalars), even when reading a 1D
+dataset.
+
+--------------------------------------------------------------------------
+
+
+SUBROUTINE hdf5_write_data(ifile, name, data[, gzip] [, initial_size]
+                           [, start, count] [, overwrite] [, extensible])
+
+INTEGER :: ifile
+CHARACTER(LEN=*) :: name
+(any allowed type) :: data
+INTEGER :: gzip
+INTEGER, DIMENSION(:) :: start, count, initial_size
+LOGICAL :: overwrite, extensible
+
+Write the contents of 'data' to a HDF5 dataset with pathname 'name' in the
+file with handle 'ifile'. If the path contains the names of groups which
+do not exist, these groups are created. If the dataset does not exist
+it will be created. If overwrite=.true., any existing dataset at this
+location is deleted and a new one is created.
+
+The start and count parameters specify which part of the dataset the
+data should be written to and have the same meaning as in hdf5_read_data().
+If the elements specified by start and count lie outside the dataset
+and the dataset was created with extensible=.true., the dataset will be
+extended.
+
+initial_size allows you to specify the size of the dataset in each
+dimension when it is created. This means you can create a dataset which is
+larger than the array you're writing out and then fill in the rest of the
+elements later using the start and count parameters.
+
+If the gzip parameter is present the data will be compressed. The value
+of gzip is the compression level, as used in the Unix gzip command.
+Scalar data cannot be compressed. Adding 10 to the gzip value activates
+HDF5's 'shuffle' filter which can improve compression on datasets with
+lots of similar values.
+
+
+--------------------------------------------------------------------------
+
+SUBROUTINE hdf5_write_attribute(ifile, name, data [, overwrite])
+
+INTEGER :: ifile
+CHARACTER(LEN=*) :: name
+(any allowed type) :: data
+LOGICAL :: overwrite
+
+Write the contents of 'data' to a HDF5 attribute with pathname 'name' in the
+file with handle 'ifile'. Attributes must be attached to a group or a dataset.
+If the parent object in the pathname is not a group or a dataset, or doesn't
+exist, an error occurs.
+
+If overwrite=.true. and the attribute already exists, it will be deleted
+and recreated with the new value.
+
+--------------------------------------------------------------------------
+
+SUBROUTINE hdf5_read_attribute(ifile, name, data)
+
+INTEGER :: ifile
+CHARACTER(LEN=*) :: name
+(any allowed type) :: data
+
+Read the attribute given by the pathname 'name' and return the contents of
+the attribute in 'data'. The variable 'data' must have the same rank as the
+attribute and must be at least as large as the attribute in every dimension.
+If the attribute doesn't exist an error occurs.
+
+BUG: For multidimensional attributes the data array must be EXACTLY the same
+size as the attribute being read in all dimensions otherwise the elements
+get scrambled.
+
+--------------------------------------------------------------------------
+
+SUBROUTINE hdf5_create_group(ifile, name)
+
+INTEGER :: ifile
+CHARACTER(LEN=*) :: name
+
+Create a new HDF5 group in the file with handle 'ifile'. The pathname of the
+new group is specified by the 'name' parameter. If the pathname contains
+parent groups which do not exist these groups will be created.
+
+--------------------------------------------------------------------------
+
+SUBROUTINE hdf5_close_file(ifile)
+
+INTEGER :: ifile
+
+Closes the file specified by the file handle 'ifile'.
+
+--------------------------------------------------------------------------
+
+SUBROUTINE hdf5_get_dimensions(ifile,name,rank,dims)
+
+INTEGER :: ifile
+CHARACTER(len=*) :: name
+INTEGER :: rank
+INTEGER, DIMENSION(:) :: dims
+
+This returns the rank and dimensions of the specified dataset or
+attribute.
+
+--------------------------------------------------------------------------
+
+SUBROUTINE hdf5_get_type(ifile,name,datatype,size)
+
+INTEGER :: ifile
+CHARACTER(len=*) :: name
+CHARACTER(len=*) :: datatype
+INTEGER :: size
+
+Returns information about the type of data in a dataset. The string
+parameter 'datatype' will return "REAL", "INTEGER", "STRING", or "OTHER".
+"OTHER" indicates that the dataset contains a datatype which cannot be
+read using the wrapper (e.g. a compound data type.)
+
+The integer 'size' gives the number of bytes used to store one element in the
+dataset. For example, a dataset containing Fortran default reals will
+usually return datatype="REAL" and size=4. Double precision data will
+return datatype="REAL" and size=8. For string data, size gives the 
+length of the string(s).
+
+--------------------------------------------------------------------------
+
+INTEGER(kind=hid_t) FUNCTION hdf5_get_file_id(ifile)
+
+INTEGER :: ifile
+
+Given an integer file handle, this returns the corresponding HDF5 file
+identifier. This can be used for direct calls to HDF5 in cases where
+facilities not provided by the wrapper are required.
+
+--------------------------------------------------------------------------
+
+SUBROUTINE hdf5_list_datasets  (ifile, name, ndatasets, dataset_names)
+SUBROUTINE hdf5_list_groups    (ifile, name, ngroups,   group_names  )
+SUBROUTINE hdf5_list_attributes(ifile, name, nattribs,  attrib_names)
+
+INTEGER :: ifile
+CHARACTER(len=*) :: name
+INTEGER                        :: ndatasets, ngroups, nattrib
+CHARACTER(len=*), DIMENSION(:) :: dataset_names, group_names, attrib_names
+
+These routines return the number of datasets/groups/attributes at the
+specified location and an array of strings containing their names.
+For hdf5_list_datasets and hdf5_list_groups, 'name' must be the location
+of a group. For hdf5_list_attributes, 'name' must be the location of a
+group or a dataset.

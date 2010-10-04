@@ -6,7 +6,7 @@
 !! particle system variables.     
 !<
 module initialize_mod
-use myf90_mod
+use myf03_mod
 use config_mod, only: read_config_file
 use mt19937_mod, only: init_mersenne_twister
 use b2cd_mod, only: read_b2cd_file
