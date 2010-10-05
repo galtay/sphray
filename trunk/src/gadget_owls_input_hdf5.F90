@@ -1,30 +1,30 @@
-!> \file gadget_input_hdf5.F90
+!> \file gadget_owls_input_hdf5.F90
 
-!> \brief Handles readin of GADGET HDF5 formatted files
+!> \brief Handles readin of GADGET OWLS/GIMIC HDF5 formatted files
 !<
 
-module gadget_input_hdf5_mod
+module gadget_owls_input_hdf5_mod
 use myf03_mod
-use gadget_header_class
+use gadget_public_header_class
+use gadget_owls_header_class_hdf5
+use gadget_sphray_header_class
 use ion_table_class
 use particle_system_mod, only: set_ye
 use atomic_rates_mod, only: calc_colion_eq_fits
 use global_mod, only: psys, PLAN, GV
-use global_mod, only: saved_gheads, gconst
-
+use global_mod, only: saved_gheads
 
 #ifdef useHDF5
 use hdf5_wrapper
 #endif
+
 implicit none
 private
 
 
-public :: get_planning_data_gadget_hdf5
-public :: read_Ghdf5_particles
-public :: gadget_output_hdf5
+public :: get_planning_data_gadget_owls_hdf5
+public :: read_Gowlshdf5_particles
 
-logical :: crash = .true.
 
 contains
 
@@ -33,57 +33,41 @@ contains
 ! these are dummy subroutines so that the calls outside this file
 ! dont have to be wrapped with pre processor macros.
 
-subroutine read_gadget_header_hdf5()
+subroutine get_planning_data_gadget_owls_hdf5()
+  logical :: crash = .true.
   call myerr("this routine shuold not have been called","hdf5dummy",crash)
-end subroutine read_gadget_header_hdf5
+end subroutine get_planning_data_gadget_owls_hdf5
 
-subroutine get_planning_data_gadget_hdf5()
+subroutine read_Gowlshdf5_particles()
+  logical :: crash = .true.
   call myerr("this routine shuold not have been called","hdf5dummy",crash)
-end subroutine get_planning_data_gadget_hdf5
+end subroutine read_Gowlshdf5_particles
 
-subroutine read_Ghdf5_particles()
-  call myerr("this routine shuold not have been called","hdf5dummy",crash)
-end subroutine read_Ghdf5_particles
-
-subroutine gadget_output_hdf5()
-  call myerr("this routine shuold not have been called","hdf5dummy",crash)
-end subroutine gadget_output_hdf5
 
 
 #else
 
 
 
-!>   gets run planning data from Gadget Headers
-!===============================================
-subroutine get_planning_data_gadget_hdf5()
+!>   gets run planning data from Gadget OWLS/GIMIC Headers
+!============================================================
+subroutine get_planning_data_gadget_owls_hdf5()
 
-  character(clen), parameter :: myname = 'get_planning_data_gadget_hdf5'
+  character(clen), parameter :: myname = 'get_planning_data_gadget_owls_hdf5'
   logical, parameter :: crash = .true.
   integer, parameter :: verb = 2
 
-  type(gadget_header_type) :: ghead
-  type(gadget_units_type) :: gunits
+  type(gadget_owls_header_type) :: ghead
+  type(gadget_owls_units_type) :: gunits
+  type(gadget_owls_constants_type) :: gconst
 
-  integer(i4b) :: fh      !< hdf5 file handle
-  integer(i4b) :: iSnap   !< first snap number
-  integer(i4b) :: fSnap   !< last snap number
-  integer(i4b) :: pfiles  !< nfiles for particle snapshots
-  integer(i4b) :: i,j     !< counters
+  integer(i4b) :: iSnap, fSnap    ! initial and final snapshot numbers
+  integer(i4b) :: pfiles          ! files/snap for particles    
+  integer(i4b) :: i,j             ! counters
+  character(clen) :: snapfile     ! snapshot file name
 
-  character(clen) :: snapfile
-
-  real(r8b) :: Time_GYR
-  integer(i4b) :: lun
   integer(i4b) :: loglun
   character(clen) :: logfile
-  real(r8b) :: kpc2cm
-  real(r8b) :: km2cm
-  logical :: hdf5bool
-
-  ! set hdf5 boolean
-  !======================================================
-  hdf5bool = .true.
  
   ! open up the planning data log file
   !======================================================
@@ -100,24 +84,34 @@ subroutine get_planning_data_gadget_hdf5()
   if ( allocated(saved_gheads) ) deallocate(saved_gheads)
   allocate( saved_gheads(iSnap:fSnap, 0:pfiles-1) )
 
+  ! set global units and read constants
+  !===================================================
+  call form_gadget_snapshot_file_name(GV%SnapPath,GV%ParFileBase,iSnap,0,snapfile,hdf5bool=.true.)
+  call gunits%read_file_hdf5(snapfile)
+  call gconst%read_file_hdf5(snapfile)
+  GV%cgs_len  = gunits%cgs_length
+  GV%cgs_mass = gunits%cgs_mass
+  GV%cgs_vel  = gunits%cgs_velocity
+  GV%cgs_time = gunits%cgs_time
+  GV%cgs_rho  = gunits%cgs_density
+  GV%cgs_prs  = gunits%cgs_pressure
+  GV%cgs_enrg = gunits%cgs_energy
 
   ! read all particle headers and write to log file
   !===================================================
-  write(loglun,'(A)') "reading all GADGET particle header(s) ... "
+  write(loglun,'(A)') "reading all GADGET OWLS/GIMIC particle header(s) ... "
   do i = iSnap,fSnap
      do j = 0,pfiles-1
 
-
-        call form_gadget_snapshot_file_name(GV%SnapPath,GV%ParFileBase,i,j,snapfile,hdf5bool)
+        call form_gadget_snapshot_file_name(GV%SnapPath,GV%ParFileBase,i,j,snapfile,hdf5bool=.true.)
         write(loglun,'(I3,"  ",A)') i,trim(snapfile)
-        call mywrite('   snapfile = '//trim(snapfile) , verb)
 
-        call read_gadget_header_file_hdf5(snapfile, ghead)
-        call gadget_header_to_file(ghead,loglun)
-        saved_gheads(i,j) = ghead
+        call ghead%read_file_hdf5(snapfile)
+        call ghead%print_lun(loglun)
+        call saved_gheads(i,j)%copy_ghead_owls(ghead)
 
         ! make sure there is gas in this snapshot
-        if (.not. ghead%npar_all(1) > 0) then
+        if (.not. ghead%npar_all(0) > 0) then
            write(*,*) "Gadget snapshot does not contain any gas particles"
            write(*,*) "Sphray cannot read dark matter particles directly, "
            write(*,*) "please calculate smoothing lengths for these particles"
@@ -125,82 +119,37 @@ subroutine get_planning_data_gadget_hdf5()
            stop
         end if
         
-        ! IsoTemp comes from config file
-
-        GV%BoxLwrsComoh(:) = 0.0d0
-        GV%BoxUprsComoh(:) = ghead%boxlen
-                
-        GV%OmegaM = ghead%OmegaM
-        GV%OmegaL = ghead%OmegaL
-        GV%OmegaB = ghead%OmegaB
-        GV%LittleH = ghead%h
-
-        call read_gadget_units( snapfile, gunits, hdf5bool )
-        call read_gadget_constants( snapfile, gconst, hdf5bool )
-
-        GV%cgs_len  = gunits%len
-        GV%cgs_mass = gunits%mass
-        GV%cgs_vel  = gunits%vel
-
-        GV%cgs_time = gunits%time
-        GV%cgs_rho  = gunits%rho
-        GV%cgs_prs  = gunits%prs
-        GV%cgs_enrg = gunits%energy
-
-
-        call hdf5_open_file( fh, snapfile, readonly=.true. )
-        call hdf5_read_attribute(fh,'Header/Time_GYR', Time_GYR)
-        call hdf5_close_file( fh )
-
-                
-        if (GV%Comoving) then
-           PLAN%snap(i)%ScalefacAt = ghead%a
-           PLAN%snap(i)%TimeAt = Time_GYR * gconst%sec_per_megayear * 1.0d3      ! in seconds
-           PLAN%snap(i)%TimeAt = PLAN%snap(i)%TimeAt * GV%LittleH / GV%cgs_time  ! in code units
-        else
-           PLAN%snap(i)%ScalefacAt = 1.0d0 / (1.0d0 + ghead%z)
-           PLAN%snap(i)%TimeAt = Time_GYR * gconst%sec_per_megayear * 1.0d3      ! in seconds
-           PLAN%snap(i)%TimeAt = PLAN%snap(i)%TimeAt * GV%LittleH / GV%cgs_time  ! in code units
-        end if
+        PLAN%snap(i)%ScalefacAt = ghead%a
+        PLAN%snap(i)%TimeAt = ghead%time_gyr * (gconst%SEC_PER_MEGAYEAR * 1.0d3) ! in seconds
+        PLAN%snap(i)%TimeAt = PLAN%snap(i)%TimeAt * GV%LittleH / GV%cgs_time ! in code units
         
      end do
   end do
-
-
 
   ! close headers log file
   !========================
   close(loglun)
 
-
-
-
-
+  ! use one header to set global variables
+  !--------------------------------------------
+  GV%BoxLwrs(:) = 0.0d0
+  GV%BoxUprs(:) = saved_gheads(iSnap,0)%boxlen
+  
+  GV%OmegaM = saved_gheads(iSnap,0)%OmegaM
+  GV%OmegaL = saved_gheads(iSnap,0)%OmegaL
+  GV%OmegaB = saved_gheads(iSnap,0)%OmegaB 
+  
+  GV%LittleH = saved_gheads(iSnap,0)%h
+  
   ! write units to log file
   !===================================================
 
   logfile = trim(GV%OutputDir) // "/" // "code_units.log"
   call open_formatted_file_w(logfile,loglun)
-
-  kpc2cm = gconst%cm_per_mpc * 1.0d-3
-  km2cm = 1.0d5
-
-  106    format(A,ES12.5,A)
-  write(loglun,*) 
-  write(loglun,'(A)') "setting code units ..."
-  write(loglun,106) "  Hubble:     ", GV%LittleH, " = H0[km/s/Mpc] / 100 "
-  write(loglun,106) "  length:     ", GV%cgs_len / kpc2cm, " [kpc/h]"
-  write(loglun,106) "  mass:       ", GV%cgs_mass / gconst%solar_mass, " [Msun/h]"
-  write(loglun,106) "  velocity    ", GV%cgs_vel / km2cm, " [km/s]"
-  write(loglun,106) "  time:       ", GV%cgs_time / gconst%sec_per_megayear, " [Myr/h]"
-  write(loglun,106) "  density:    ", GV%cgs_rho / (gconst%solar_mass / kpc2cm**3), " [Msun/kpc^3 h^2]"
-  write(loglun,106) "  pressure:   ", GV%cgs_prs, " [dyne/cm^2 h^2]"
-  write(loglun,106) "  energy:     ", GV%cgs_enrg, " [ergs/h]"
-  write(loglun,*) 
-  
+  call gunits%print_lun(loglun,saved_gheads(iSnap,0)%h)
   close(loglun)
 
-end subroutine get_planning_data_gadget_hdf5
+end subroutine get_planning_data_gadget_owls_hdf5
 
 
 
@@ -208,11 +157,11 @@ end subroutine get_planning_data_gadget_hdf5
 
 
 
-!> reads a Gadget HDF5 snapshot into a particle array  
+!> reads a Gadget OWLS/GIMIC HDF5 snapshot into a particle array  
 !========================================================================
-subroutine read_Ghdf5_particles()
+subroutine read_Gowlshdf5_particles()
 
-  character(clen), parameter :: myname="read_Ghdf5_particles" 
+  character(clen), parameter :: myname="read_Gowlshdf5_particles" 
   logical, parameter :: crash=.true.
   integer, parameter :: verb=2
   character(clen) :: str,fmt
@@ -222,25 +171,29 @@ subroutine read_Ghdf5_particles()
   integer(i4b), allocatable :: iblck(:)
   integer(i8b) :: ngasread
 
-  type(gadget_header_type) :: ghead
+  type(gadget_owls_header_type) :: ghead
+  type(gadget_sphray_header_type) :: shead
   character(clen) :: snapfile, VarName, GroupName
+  integer(i4b) :: fh
   integer(i8b) :: i
-  integer(i4b) :: err,fh
+  integer(i4b) :: err
 
   integer(i8b) :: npar, ngas, nmass
   integer(i8b) :: npar1, ngas1, nmass1
-  logical :: varmass(6)
+  logical :: varmass(0:5)
   integer(i4b) :: fn
 
   real(r8b) :: meanweight
   logical :: caseA(2)
-  real(r8b) :: Tdum
   real(r8b) :: MB
+
+  real(r8b) :: Tdum
   real(r8b) :: Hmf
   real(r8b) :: nH8
   real(r8b) :: T8
   real(r8b) :: xvec(5)
 
+  type(gadget_public_constants_type) :: gconst
   type(ion_table_type) :: itab
   real(r8b) :: redshift
 
@@ -252,11 +205,12 @@ subroutine read_Ghdf5_particles()
 
   ! set local particle numbers
   !============================
-  ghead = saved_gheads( GV%CurSnapNum, 0 )
-  varmass = (ghead%npar_all > 0 .and. ghead%mass == 0)
-  npar = sum(ghead%npar_all)
-  ngas = ghead%npar_all(1)
-  nmass = sum(ghead%npar_all, mask=varmass)
+  shead = saved_gheads( GV%CurSnapNum, 0 )
+  varmass = (shead%npar_all > 0 .and. shead%mass == 0)
+  npar = sum(shead%npar_all)
+  ngas = shead%npar_all(0)
+  nmass = sum(shead%npar_all, mask=varmass)
+
 
   ! do Gadget dummy checks
   !============================
@@ -264,7 +218,7 @@ subroutine read_Ghdf5_particles()
 
   ! calculate bytes per particle and allocate particle array
   !===========================================================
-  MB = GV%bytesperpar * real(ngas) / 2.**20
+  MB = GV%bytesperpar * real(ngas) / 2.0d0**20
   GV%MB = GV%MB + MB
 
   fmt="(A,F10.4,A,I10,A)"
@@ -284,11 +238,11 @@ subroutine read_Ghdf5_particles()
 
      ! recall the header info
      !-----------------------------------------------------------!  
-     ghead   = saved_gheads( GV%CurSnapNum, fn )
-     varmass = (ghead%npar_file > 0 .and. ghead%mass == 0)
-     npar1   = sum(ghead%npar_file)
-     ngas1   = ghead%npar_file(1)
-     nmass1  = sum(ghead%npar_file, mask=varmass)
+     shead   = saved_gheads( GV%CurSnapNum, fn )
+     varmass = (shead%npar_file > 0 .and. shead%mass == 0)
+     npar1   = sum(shead%npar_file)
+     ngas1   = shead%npar_file(0)
+     nmass1  = sum(shead%npar_file, mask=varmass)
      if (ngas1 == 0) cycle
 
 
@@ -297,7 +251,7 @@ subroutine read_Ghdf5_particles()
      call form_gadget_snapshot_file_name(GV%SnapPath,GV%ParFileBase,GV%CurSnapNum,fn,snapfile,hdf5bool)
      call mywrite("   reading particle snapshot file: "//trim(snapfile), verb)
      call hdf5_open_file(fh, snapfile, readonly=.true.)
-
+     call ghead%read_lun_hdf5(fh)
 
      ! read positions 
      !-----------------------------------------------------------!  
@@ -490,8 +444,6 @@ subroutine read_Ghdf5_particles()
 
 
 
-
-
   ! if Helium, initialize ionization fractions to collisional equilibrium
   !------------------------------------------------------------------------
 #ifdef incHe
@@ -505,20 +457,12 @@ subroutine read_Ghdf5_particles()
 
 
 
-end subroutine read_Ghdf5_particles
+end subroutine read_Gowlshdf5_particles
 
-
-
-
-subroutine gadget_output_hdf5()
-
-  stop "gadget_output_hdf5 not implemented"
-
-end subroutine gadget_output_hdf5
 
 
 
 #endif
 
 
-end module gadget_input_hdf5_mod
+end module gadget_owls_input_hdf5_mod

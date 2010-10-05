@@ -5,9 +5,9 @@
 
 module output_mod
 use myf03_mod
-use gadget_header_class, only: gadget_header_type 
-use gadget_header_class, only: write_gadget_header_lun
-use gadget_input_hdf5_mod
+use gadget_public_header_class
+use gadget_public_input_hdf5_mod
+use gadget_sphray_header_class
 use particle_system_mod, only: particle_system_type
 use particle_system_mod, only: particle_type
 use particle_system_mod, only: set_ye_pars
@@ -17,7 +17,7 @@ use particle_system_mod, only: volume_weight_ionfrac
 use oct_tree_mod, only: oct_tree_type
 use physical_constants_mod
 use global_mod, only: PLAN, GV
-use global_mod, only: saved_gheads, gconst
+use global_mod, only: saved_gheads
 implicit none
 
 contains
@@ -40,13 +40,13 @@ contains
 
 
     integer, intent(in) :: fnum                    !< which snapshot file
-    type(gadget_header_type), intent(out) :: ghead !< gadget header
+    type(gadget_sphray_header_type), intent(out) :: ghead !< gadget header
 
     ghead%npar_all = 0
-    ghead%npar_all(1) = saved_gheads(GV%CurSnapNum,fnum)%npar_all(1)     
+    ghead%npar_all(0) = saved_gheads(GV%CurSnapNum,fnum)%npar_all(0)     
 
     ghead%npar_file = 0
-    ghead%npar_file(1) = saved_gheads(GV%CurSnapNum,fnum)%npar_file(1)     
+    ghead%npar_file(0) = saved_gheads(GV%CurSnapNum,fnum)%npar_file(0)     
 
     ghead%mass = 0.0
 
@@ -60,11 +60,12 @@ contains
        ghead%z = saved_gheads(GV%CurSnapNum,fnum)%z
     end if
 
-    ghead%boxlen  = saved_gheads(GV%CurSnapNum,fnum)%boxlen
-    ghead%OmegaM  = saved_gheads(GV%CurSnapNum,fnum)%OmegaM
-    ghead%OmegaL  = saved_gheads(GV%CurSnapNum,fnum)%OmegaL
-    ghead%h       = saved_gheads(GV%CurSnapNum,fnum)%h
-
+    ghead%boxlen   = saved_gheads(GV%CurSnapNum,fnum)%boxlen
+    ghead%OmegaM   = saved_gheads(GV%CurSnapNum,fnum)%OmegaM
+    ghead%OmegaL   = saved_gheads(GV%CurSnapNum,fnum)%OmegaL
+    ghead%OmegaB   = saved_gheads(GV%CurSnapNum,fnum)%OmegaB
+    ghead%time_gyr = saved_gheads(GV%CurSnapNum,fnum)%time_gyr
+    ghead%h        = saved_gheads(GV%CurSnapNum,fnum)%h
 
     ghead%npar_hw = 0
     ghead%npar_hw(1) = saved_gheads(GV%CurSnapNum,fnum)%npar_hw(1)
@@ -75,12 +76,9 @@ contains
     ghead%flag_age      = saved_gheads(GV%CurSnapNum,fnum)%flag_age
     ghead%flag_metals   = saved_gheads(GV%CurSnapNum,fnum)%flag_metals
     ghead%flag_entr_ics = saved_gheads(GV%CurSnapNum,fnum)%flag_entr_ics
-
     
-    ghead%OmegaB = GV%OmegaB
+
     ghead%rays_traced = GV%src_rayn
-
-
 
 #ifdef incHmf
     ghead%flag_Hmf = 1
@@ -118,6 +116,12 @@ contains
     ghead%flag_eos = 0
 #endif
 !-------------------------
+#ifdef incSFR
+    ghead%flag_incsfr = 1
+#else
+    ghead%flag_incsfr = 0
+#endif
+!-------------------------
 
     ghead%unused = 0
 
@@ -134,7 +138,8 @@ contains
      logical, parameter :: crash = .true.
 
      type(particle_type), intent(inout) :: pars(:)     !< particles 
-     type(gadget_header_type) :: ghead
+     type(gadget_sphray_header_type) :: ghead
+     type(gadget_public_constants_type) :: gconst
 
      character(3) :: label
      character(4) :: ext
@@ -200,7 +205,7 @@ contains
 
            Nfile = ghead%npar_file(1)
 
-           call write_gadget_header_lun(lun, ghead) 
+           call ghead%write_lun(lun)
 
            allocate( rblock3(3,Nfile) )
            rblock3(1,:) = pars(Nread+1:Nread+Nfile)%pos(1) 
@@ -295,6 +300,10 @@ contains
            write(lun) pars(Nread+1:Nread+Nfile)%eos
 #endif
 
+#ifdef incSFR
+           write(lun) pars(Nread+1:Nread+Nfile)%sfr
+#endif
+
            write(lun) pars(Nread+1:Nread+Nfile)%lasthit
 
 
@@ -312,7 +321,7 @@ contains
      !================================================================
      if (GV%OutputType == 2) then
         
-        call gadget_output_hdf5()
+
 
      end if
  

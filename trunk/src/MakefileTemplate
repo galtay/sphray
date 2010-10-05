@@ -21,16 +21,14 @@
 #OPT += -DincHmf     # if you want individual Hydrogen mass fractions
 #OPT += -DincHemf    # if you want individual Helium mass fractions
 
-#OPT += -DincHrec  # if you want seperate rays traced for H recomb. radiation
-#OPT += -DincHerec # if you want seperate rays traced for He recomb. radiation
+#OPT += -DincEOS     # store equation of state variable 
+#OPT += -DincSFR     # store star formation rate
+#OPT += -Dcloudy     # store CLOUDY eq. ionization values for particles
 
-#OPT += -DincEOS  # track the equation of state variable
+#OPT += -DuseHDF5    # if you are using the hdf5 library for anything
 
-#OPT += -DuseHDF5     # if you are using the hdf5
-
-
-#OPT += -DOWLS     # selects input as an OWLS snapshot
-#OPT += -DGIMIC    # selects input as a GIMIC snapshot
+#OPT += -DOWLS       # selects input as an OWLS snapshot
+#OPT += -DGIMIC      # selects input as a GIMIC snapshot
 
 
 ifeq (OWLS,$(findstring OWLS, $(OPT)))	
@@ -57,12 +55,16 @@ endif
 #
 # In order for the Makefile to work you have to design an include file
 # for your system that sets certain variables.  Please look in the 
-# makes directory for examples. 
+# makes directory for examples.  Right now, I have examples for three 
+# fortran compilers.  gfortran is in make.blue-velvet.serial.opt, ifort
+# is in make.santabuntu.serial.opt, and the sun compiler is in 
+# make.icc-graphics.serial.opt
+#
 
 #include makes/make.icc-graphics.serial.debug
 #include makes/make.icc-graphics.serial.opt
 
-include makes/make.xgpc.serial.debug
+#include makes/make.xgpc.serial.debug
 #include makes/make.xgpc.serial.opt
 
 #include makes/make.ferrari.serial.opt
@@ -73,6 +75,8 @@ include makes/make.xgpc.serial.debug
 #include makes/make.santabuntu.serial.opt
 #include makes/make.santabuntu.serial.debug
 
+include makes/make.blue-velvet.serial.opt
+#include makes/make.santabuntu.serial.debug
 
 
 
@@ -82,13 +86,11 @@ CC= gcc
 CFLAGS= -O3
 
 
-
-
 APPS= screen sphray 
 
 #--------------------
 
-SRC= 	myf90.o \
+SRC= 	myf03.o \
 	sobol.o \
 	physical_constants.o \
 	mt19937.o \
@@ -98,7 +100,10 @@ SRC= 	myf90.o \
 	hummer_atomic_rates.o  \
 	atomic_rates.o \
 	ion_table_class.o \
-	gadget_header_class.o \
+	gadget_public_header_class.o \
+	gadget_public_header_class_hdf5.o \
+        gadget_owls_header_class_hdf5.o \
+        gadget_sphray_header_class.o \
 	pluecker.o \
 	cosmology.o \
 	particle_system.o \
@@ -111,8 +116,12 @@ SRC= 	myf90.o \
 	global.o \
 	config.o \
 	source_input.o \
-	gadget_input_hdf5.o \
-	gadget_input.o \
+	gadget_public_input.o \
+        gadget_cosmoBH_input.o \
+        gadget_vbromm_input.o \
+        gadget_public_input_hdf5.o \
+        gadget_owls_input_hdf5.o \
+        update_particles.o \
 	main_input.o \
 	ionpar.o \
 	euler.o \
@@ -130,16 +139,14 @@ SRC= 	myf90.o \
 # include files specified above.
 #
 
-OPTHDF= 
 
 ifeq (useHDF5,$(findstring useHDF5, $(OPT)))
    INCHDF= $(ISINC)$(DIRHDF)/include $(ISINC)$(DIRHDF)/lib
-   MODHDF= $(ISMOD)$(DIRHDF)/lib
+   MODHDF= $(ISMOD)$(DIRHDF)/include
    RLIBHDF= $(ISRLIB)$(DIRHDF)/lib
    LIBHDF= $(ISLIB)$(DIRHDF)/lib 
    OPTHDF= $(INCHDF) $(MODHDF) $(RLIBHDF) $(LIBHDF)  -lhdf5 -lhdfwrapper
 endif
-
 OPT += $(OPTHDF)
 
 #=============================================================================
@@ -152,7 +159,6 @@ OPT += $(OPTHDF)
 # Anthony Stone <ajs1 at cam dot ac dot uk> and 
 # Aleksandar Donev <aleks dot donev at gmail dot com>
 #
-# who have done a lot of work to make the fortran wrappers. 
 #
 # http://www-stone.ch.cam.ac.uk/pub/f03gl
 #
@@ -180,7 +186,7 @@ VIEWSRC= $(GLSRC) $(THRDSRC)
 
 #  Comment out for 32-bit architecture
 #-----------------------------------------------------------------------------
-BITS= 64
+#BITS= 64
 
 #  The OpenGL / GLUT libraries 
 #-----------------------------------------------------------------------------
