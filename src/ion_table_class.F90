@@ -1,7 +1,7 @@
 !> \file ion_table_class.F90
 
-!> \brief Handles the CLOUDY ionization rate table used in some versions of 
-!! Gadget simulations.
+!> \brief Handles the CLOUDY ionization rate table used in some 
+!! versions of Gadget simulations.
 !<
 
 module ion_table_class
@@ -46,7 +46,6 @@ public :: broadcast_ion_table
 
 
 type ion_spectrum_type
-   sequence
    integer :: s_gammaHI
    integer :: s_z
    integer :: s_logryd
@@ -59,14 +58,12 @@ type ion_spectrum_type
 end type ion_spectrum_type
 
 type ion_header_type
-   sequence
    character(clen) :: cloudy_version
    type(ion_spectrum_type) :: ispec
 end type ion_header_type
 
 
 type ion_table_type
-   sequence
    type(ion_header_type) :: ihead
    integer :: s_ibal
    integer :: s_z
@@ -184,7 +181,8 @@ contains
     real(r8b) :: gammaHI
 
     gammaHI = int_tabulated_trap_rule( mini_spec%logryd, &
-         four_pi * log(10.d0) * mini_spec%flux * mini_spec%sigmaHI / PLANCK * exp(-tauHI * mini_spec%sigma_ratio) )   
+         four_pi * log(10.d0) * mini_spec%flux * mini_spec%sigmaHI / PLANCK * &
+         exp(-tauHI * mini_spec%sigma_ratio) )   
 
   end function gammaHI_from_mini_spec_shield
 

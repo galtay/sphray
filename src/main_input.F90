@@ -5,8 +5,12 @@
 
 module main_input_mod
 use myf03_mod
-use gadget_input_mod
-use gadget_input_hdf5_mod
+use gadget_public_input_mod
+use gadget_public_input_hdf5_mod
+use gadget_cosmoBH_input_mod
+use gadget_vbromm_input_mod
+use gadget_owls_input_hdf5_mod
+use update_particles_mod
 use source_input_mod
 use particle_system_mod, only: particle_type
 use particle_system_mod, only: source_type
@@ -40,18 +44,20 @@ subroutine get_planning_data()
   if (allocated(PLAN%snap)) deallocate(PLAN%snap)
   allocate( PLAN%snap(GV%StartSnapNum : GV%EndSnapNum) )
 
-  ! these three input type expect a standard 256 byte Gadget Header
+ 
+  ! branch on input type
   !-------------------------------------------------------------------
-  if (GV%InputType == 1 .or. GV%InputType == 2 .or. GV%InputType == 4) then
-     call get_planning_data_gadget()
-
-  ! this input type expects an OWLS/GIMIC style hdf5 header
-  !-------------------------------------------------------------------
+  if (GV%InputType == 1) then
+     call get_planning_data_gadget_public()
+  else if (GV%InputType == 2) then
+     call get_planning_data_gadget_cosmoBH()
   else if (GV%InputType == 3) then
-     call get_planning_data_gadget_hdf5()
-
-  end if
-
+     call get_planning_data_gadget_owls()
+  else if (GV%InputType == 4) then
+     call get_planning_data_gadget_vbromm()
+  else if (GV%InputType == 5) then
+     call get_planning_data_gadget_public_hdf5()
+  endif
 
   call get_planning_data_sources()
 
@@ -93,11 +99,13 @@ subroutine readin_snapshot()
   if (GV%InputType==1) then
      call mywrite(" Gadget-2 public (SnapFormat=1)", verb)
   else if (GV%InputType==2) then
-     call mywrite(" Gadget w/ ye and xHI (SnapFormat=1)", verb)
+     call mywrite(" Gadget CosmoBH w/ ye and xHI (SnapFormat=1)", verb)
   else if (GV%InputType==3) then
-     call mywrite(" Gadget HDF5", verb)
+     call mywrite(" Gadget OWLS/GIMIC HDF5", verb)
   else if (GV%InputType==4) then
-     call mywrite(" Gadget Bromm", verb)
+     call mywrite(" Gadget Volker Bromm", verb)
+  else if (GV%InputType==5) then
+     call mywrite(" Gadget-2 Public HDF5", verb)
   end if
 
 
@@ -112,7 +120,7 @@ subroutine readin_snapshot()
   end if
 
 
-  ! public gadget
+  ! gadget public 
   !---------------------------------------------------------------
   if (GV%InputType == 1) then
 
@@ -123,23 +131,23 @@ subroutine readin_snapshot()
         call update_particles()
      end if
 
-  ! gadget w/ cooling (i.e. ye and xHI)
+  ! gadget cosmoBH w/ cooling (i.e. ye and xHI)
   !---------------------------------------------------------------
   else if (GV%InputType == 2) then
 
      if (first) then
-        call read_Gcool_particles()
+        call read_GcosmoBH_particles()
         psys%par(:)%lasthit = 0
      else
         call update_particles()
      end if
      
-  ! gadget w/ HDF5
+  ! gadget OWLS/GIMIC HDF5
   !---------------------------------------------------------------
   else if (GV%InputType == 3) then 
      
      if (first) then
-        call read_Ghdf5_particles()
+        call read_Gowlshdf5_particles()
         psys%par(:)%lasthit = 0
      else
         call update_particles()
@@ -150,7 +158,18 @@ subroutine readin_snapshot()
   else if (GV%InputType == 4) then
 
      if (first) then
-        call read_Gbromm_particles()
+        call read_Gvbromm_particles()
+        psys%par(:)%lasthit = 0
+     else
+        call update_particles()
+     end if
+
+  ! gadget public HDF5
+  !---------------------------------------------------------------
+  else if (GV%InputType == 5) then
+
+     if (first) then
+        call read_Gpubhdf5_particles()
         psys%par(:)%lasthit = 0
      else
         call update_particles()
@@ -321,7 +340,7 @@ subroutine readin_snapshot()
   if (first) then
      do i = 1, size(psys%par(:))
         if (GV%EOStemp > 0.0) then
-           if (psys%par(i)%eos == 1.0) then
+           if (psys%par(i)%eos > 0.0) then
               psys%par(i)%T = GV%EOStemp
            endif
         endif
@@ -329,6 +348,20 @@ subroutine readin_snapshot()
   endif
 #endif
 
+
+  ! set SFR particles to EOS temp if you want
+  !=======================================================
+#ifdef incSFR
+  if (first) then
+     do i = 1, size(psys%par(:))
+        if (GV%EOStemp > 0.0) then
+           if (psys%par(i)%sfr > 0.0) then
+              psys%par(i)%T = GV%EOStemp
+           endif
+        endif
+     enddo
+  endif
+#endif
 
 
 

@@ -86,7 +86,11 @@ type particle_type
 #endif
 
 #ifdef incEOS
-   real(r4b)    :: eos        !< equation of state variable
+   real(r4b)    :: eos        !< equation of state variable 
+#endif
+
+#ifdef incSFR
+   real(r4b)    :: sfr        !< star formation rate
 #endif
 
    integer(i8b) :: lasthit    !< * indx of last ray to cross this particle
