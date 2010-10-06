@@ -625,8 +625,8 @@ function starscale() result(scale_factor)
   real :: maxcor,maxcor1,maxcor2,scale_factor
   !  real :: top(3), bot(3)
   ! schaal:
-  top=psys%box%top
-  bot=psys%box%bot
+  top=psys%box%tops
+  bot=psys%box%bots
   maxcor1=maxval(top)	
   maxcor2=maxval(bot)	
   if(maxcor1.le.0) maxcor1=1.
@@ -640,8 +640,8 @@ end function starscale
 function starcentre() result(centre)
   use global_mod, only: psys
   real :: centre(3)
-  top=psys%box%top
-  bot=psys%box%bot
+  top=psys%box%tops
+  bot=psys%box%bots
   centre=top/2+bot/2
   return
 end function starcentre
@@ -953,7 +953,7 @@ end subroutine itos
 
 
 subroutine drawtext
-  use global_mod, only: GV, PLAN, gconst
+  use global_mod, only: GV, PLAN
   use viewermod
   character*3 rs3
   character*8 rs

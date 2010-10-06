@@ -75,9 +75,10 @@ endif
 #include makes/make.santabuntu.serial.opt
 #include makes/make.santabuntu.serial.debug
 
-
 #include makes/make.blue-velvet.serial.gfortran.debug
-include makes/make.blue-velvet.serial.intel.debug
+
+#include makes/make.blue-velvet.serial.intel.debug
+include makes/make.blue-velvet.serial.intel.opt
 
 
 
@@ -209,8 +210,7 @@ DIRTHRD = ${ISLIB}./$(LCLGLDIR)
 LIBTHRD = -lpthread -lpt
 
 DIRSVIEW = $(DIROGL) $(DIRX11) $(DIRTHRD) 
-
-LIBSVIEW = ${LIBOGL} ${LIBX11} $(LIBTHRD) -lg2c -ldl
+LIBSVIEW = ${LIBOGL} ${LIBX11} $(LIBTHRD) -ldl
 
 
 # Targets
