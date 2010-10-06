@@ -6,7 +6,7 @@
 !! extra subroutine to launch a thread that calls the OpenGL viewer.  
 !<
 program glsphray
-use myf90_mod
+use myf03_mod
 use initialize_mod, only: initialize
 use mainloop_mod, only: mainloop
 use viewermod
@@ -22,18 +22,13 @@ implicit none
    ! set initial myf90_verbosity (will be changed once config file is read)
    ! 3 lets any statement with verbosity 3 or less through
    !========================================================================
-   myf90_verbosity = verb
+   myf03_verbosity = verb
 
-   ! test user defined variables sizes
-   !========================================================================
-   if (myf90_test_var_sizes() /= 0) then
-      call mywrite('  ** warning selected____kind sizes are off', verb )
-      call system( 'sleep(2)' )     
-   endif
+
 
    ! initialize command line variable
    !========================================================================
-   cmnd = myf90_initialize_command_line(verb)
+   cmnd = myf03_initialize_command_line(verb)
 
    ! check command line arguments
    !========================================================================

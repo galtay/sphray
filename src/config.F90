@@ -239,7 +239,7 @@ subroutine dummy_check_config_variables()
      write(*,*) "Input Type ", GV%InputType, " not recognized"
      write(*,*) "must be 1 (Gadget2 Public Standard), &
           2 (Gadget CosmoBH), 3 (Gadget OWLS/GIMIC HDF5), &
-          or 4 (Gadget V. Bromm)"
+          4 (Gadget V. Bromm), or 5 (Gadget Public HDF5)"
      config_good = .false. 
   end if
 
