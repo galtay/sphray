@@ -5,6 +5,7 @@
 
 module output_mod
 use myf03_mod
+use gadget_general_class
 use gadget_public_header_class
 use gadget_public_input_hdf5_mod
 use gadget_sphray_header_class
@@ -139,7 +140,7 @@ contains
 
      type(particle_type), intent(inout) :: pars(:)     !< particles 
      type(gadget_sphray_header_type) :: ghead
-     type(gadget_public_constants_type) :: gconst
+     type(gadget_constants_type) :: gconst
 
      character(3) :: label
      character(4) :: ext
@@ -205,7 +206,7 @@ contains
 
            Nfile = ghead%npar_file(1)
 
-           call ghead%write_lun(lun)
+           call ghead%write_Gsphray_header_lun(lun)
 
            allocate( rblock3(3,Nfile) )
            rblock3(1,:) = pars(Nread+1:Nread+Nfile)%pos(1) 

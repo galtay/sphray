@@ -22,7 +22,7 @@ use euler_mod, only: eulerint, recombeulerint
 use bdf_mod, only: bdfint
 use atomic_rates_mod, only: get_atomic_rates
 use physical_constants_mod
-use global_mod, only: GV, saved_gheads, gconst, rtable
+use global_mod, only: GV, saved_gheads, rtable
 implicit none
 
 private
@@ -286,7 +286,7 @@ subroutine update_no_hits(psys, tree)
   integer :: pindx_last
   integer :: itravel
 
-
+  type(gadget_constants_type) :: gconst
  
 
   photo=.true.

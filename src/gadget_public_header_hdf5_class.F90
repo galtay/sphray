@@ -1,12 +1,13 @@
-!> \file gadget_public_header_class_hdf5.f90
+!> \file gadget_public_header_hdf5_class.F90
 
 !> \brief Handles HDF5 GADGET 2.0 Public version style headers.  
 !!
 !! Contains the means to read/write headers from a file.  
 !< 
 
-module gadget_public_header_class_hdf5
+module gadget_public_header_hdf5_class
 use myf03_mod
+use gadget_general_class
 use gadget_public_header_class
 #ifdef useHDF5
 use hdf5_wrapper
@@ -19,10 +20,9 @@ public :: gadget_public_header_hdf5_type
 
 type, extends(gadget_public_header_type) :: gadget_public_header_hdf5_type
  contains
-   procedure :: read_lun_hdf5 => read_header_from_lun_hdf5
-   procedure :: read_file_hdf5 => read_header_from_file_hdf5
-   procedure :: read_file1_hdf5 => read_header_from_file1_hdf5
-   procedure :: write_lun_hdf5 => write_header_to_lun_hdf5
+   procedure :: read_Gpublic_header_hdf5_lun
+   procedure :: read_Gpublic_header_hdf5_file
+   procedure :: write_Gpublic_header_hdf5_lun
 end type gadget_public_header_hdf5_type
 
 
@@ -33,8 +33,8 @@ contains
 
 !> reads a gadget header from an hdf5 file
 !--------------------------------------------------------------
-subroutine read_header_from_lun_hdf5(this, fh)
-  class(gadget_public_header_hdf5_type), intent(out) :: this
+subroutine read_Gpublic_header_hdf5_lun(this, fh)
+  class(gadget_public_header_hdf5_type) :: this
   integer, intent(in) :: fh
 
 #ifdef useHDF5
@@ -59,29 +59,29 @@ subroutine read_header_from_lun_hdf5(this, fh)
   call hdf5_read_attribute(fh,'Header/Flag_Entropy_ICs',this%flag_entr_ics)
 #endif
 
-end subroutine read_header_from_lun_hdf5
+end subroutine read_Gpublic_header_hdf5_lun
 
 
 !> reads a gadget header from an hdf5 file
 !--------------------------------------------------------------
-subroutine read_header_from_file_hdf5(this, snapfile)
+subroutine read_Gpublic_header_hdf5_file(this, snapfile)
   class(gadget_public_header_hdf5_type) :: this
   character(*), intent(in) :: snapfile
   integer :: fh
 
 #ifdef useHDF5
   call hdf5_open_file( fh, snapfile, readonly=.true. )
-  call read_header_from_lun_hdf5(this, fh)
+  call read_Gpublic_header_hdf5_lun(this, fh)
   call hdf5_close_file( fh )
 #endif
 
-end subroutine read_header_from_file_hdf5
+end subroutine read_Gpublic_header_hdf5_file
 
 
 
 !> writes a gadget header to an hdf5 file
 !--------------------------------------------------------------
-subroutine write_header_to_lun_hdf5(this, fh)
+subroutine write_Gpublic_header_hdf5_lun(this, fh)
   class(gadget_public_header_hdf5_type), intent(in) :: this
   integer, intent(in) :: fh
 
@@ -107,34 +107,8 @@ subroutine write_header_to_lun_hdf5(this, fh)
   call hdf5_write_attribute(fh,'Header/Flag_Entropy_ICs',this%flag_entr_ics)
 #endif
 
-end subroutine write_header_to_lun_hdf5
-
-
-!> reads the first header in a snapshot. snapbase is everything up until 
-!! the snapshot number so that for /data/snapshot_009/snap_009[.0][.hdf5], 
-!! snapbase = /data/snapshot_009/snap
-!---------------------------------------------------------------------------
-subroutine read_header_from_file1_hdf5(this, snapbase)
-
-  character(*), intent(in) :: snapbase
-  class(gadget_public_header_hdf5_type) :: this
-
-  character(len(snapbase)+10) :: snapfile
-  logical :: fthere
-
-  snapfile = trim(snapbase) // ".hdf5"
-  inquire(file=snapfile, exist=fthere)
-  if (.not. fthere) then
-     snapfile = trim(snapbase) // ".0.hdf5"
-  endif
-
-  call this%read_file_hdf5(snapfile)
-  call this%print_lun(stdout)
-
-end subroutine read_header_from_file1_hdf5
+end subroutine write_Gpublic_header_hdf5_lun
 
 
 
-
-
-end module gadget_public_header_class_hdf5
+end module gadget_public_header_hdf5_class

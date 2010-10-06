@@ -5,6 +5,7 @@
 
 module gadget_public_input_mod
 use myf03_mod
+use gadget_general_class
 use gadget_public_header_class
 use gadget_sphray_header_class
 use particle_system_mod, only: particle_system_type
@@ -16,7 +17,7 @@ implicit none
 private
 
 public :: get_planning_data_gadget_public
-public :: read_Gpub_particles
+public :: read_Gpublic_particles
 public :: set_temp_from_u
 public :: set_u_from_temp
 
@@ -33,8 +34,8 @@ subroutine get_planning_data_gadget_public()
   integer, parameter :: verb = 2
 
   type(gadget_public_header_type) :: ghead
-  type(gadget_public_units_type) :: gunits
-  type(gadget_public_constants_type) :: gconst
+  type(gadget_units_type) :: gunits
+  type(gadget_constants_type) :: gconst
 
   integer(i4b) :: iSnap, fSnap    ! initial and final snapshot numbers
   integer(i4b) :: pfiles          ! files/snap for particles    
@@ -77,9 +78,9 @@ subroutine get_planning_data_gadget_public()
         call form_gadget_snapshot_file_name(GV%SnapPath, GV%ParFileBase, i, j, snapfile, hdf5bool=.false.)
         write(loglun,'(I3,"  ",A)') i, trim(snapfile)
 
-        call ghead%read_file(snapfile)
-        call ghead%print_lun(loglun)
-        call saved_gheads(i,j)%copy_ghead_public(ghead)
+        call ghead%read_Gpublic_header_file(snapfile)
+        call ghead%print_Gpublic_header_lun(loglun)
+        call saved_gheads(i,j)%copy_Gpublic_header(ghead)
 
         saved_gheads(i,j)%OmegaB = 0.045 ! this should be moved to the config file
                                          ! but its not used in the code now
@@ -138,9 +139,9 @@ end subroutine get_planning_data_gadget_public
 
 !> reads a Gadget-2 (public version) snapshot into a particle array  
 !========================================================================
-subroutine read_Gpub_particles()
+subroutine read_Gpublic_particles()
 
-  character(clen), parameter :: myname="read_Gpub_particles"
+  character(clen), parameter :: myname="read_Gpublic_particles"
   logical, parameter :: crash=.true.
   integer, parameter :: verb=2
   character(clen) :: str,fmt
@@ -190,7 +191,7 @@ subroutine read_Gpub_particles()
   GV%MB = GV%MB + MB
 
   fmt="(A,F10.4,A,I10,A)"
-  write(str,fmt) "  allocating ", MB, " MB for ", ngas, " particles"
+  write(str,fmt) "   allocating ", MB, " MB for ", ngas, " particles"
   call mywrite(str,verb)
 
   allocate (psys%par(ngas), stat=err)
@@ -216,7 +217,7 @@ subroutine read_Gpub_particles()
      call form_gadget_snapshot_file_name(GV%SnapPath,GV%ParFileBase,GV%CurSnapNum,fn,snapfile,hdf5bool)
      call mywrite("   reading public gadget particle snapshot file "//trim(snapfile), verb)
      call open_unformatted_file_r( snapfile, lun )
-     call ghead%read_lun(lun)
+     call ghead%read_Gpublic_header_lun(lun)
 
      ! read positions
      !-----------------------------------------------------------!  
@@ -342,7 +343,7 @@ subroutine read_Gpub_particles()
 
 
 
-end subroutine read_Gpub_particles
+end subroutine read_Gpublic_particles
 
  
 
@@ -370,7 +371,7 @@ subroutine set_temp_from_u(psys, dfltH_mf, cgs_enrg, cgs_mass)
   real(r8b) :: Hmf
   real(r8b) :: mu
   real(r8b) :: Tdum
-  type(gadget_public_constants_type) :: gconst
+  type(gadget_constants_type) :: gconst
 
   do i = 1,size(psys%par)
 
@@ -406,7 +407,7 @@ subroutine set_u_from_temp(psys, dfltH_mf, cgs_enrg, cgs_mass)
   real(r8b) :: Hmf
   real(r8b) :: mu
   real(r8b) :: Udum
-  type(gadget_public_constants_type) :: gconst
+  type(gadget_constants_type) :: gconst
 
   do i = 1,size(psys%par)
 

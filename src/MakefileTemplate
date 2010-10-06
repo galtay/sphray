@@ -75,8 +75,9 @@ endif
 #include makes/make.santabuntu.serial.opt
 #include makes/make.santabuntu.serial.debug
 
-include makes/make.blue-velvet.serial.opt
-#include makes/make.santabuntu.serial.debug
+
+#include makes/make.blue-velvet.serial.gfortran.debug
+include makes/make.blue-velvet.serial.intel.debug
 
 
 
@@ -100,9 +101,10 @@ SRC= 	myf03.o \
 	hummer_atomic_rates.o  \
 	atomic_rates.o \
 	ion_table_class.o \
+        gadget_general_class.o \
 	gadget_public_header_class.o \
-	gadget_public_header_class_hdf5.o \
-        gadget_owls_header_class_hdf5.o \
+        gadget_owls_header_class.o \
+	gadget_public_header_hdf5_class.o \
         gadget_sphray_header_class.o \
 	pluecker.o \
 	cosmology.o \
@@ -118,9 +120,9 @@ SRC= 	myf03.o \
 	source_input.o \
 	gadget_public_input.o \
         gadget_cosmoBH_input.o \
+        gadget_owls_input.o \
         gadget_vbromm_input.o \
         gadget_public_input_hdf5.o \
-        gadget_owls_input_hdf5.o \
         update_particles.o \
 	main_input.o \
 	ionpar.o \

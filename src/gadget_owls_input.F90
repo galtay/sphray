@@ -1,12 +1,13 @@
-!> \file gadget_owls_input_hdf5.F90
+!> \file gadget_owls_input.F90
 
 !> \brief Handles readin of GADGET OWLS/GIMIC HDF5 formatted files
 !<
 
-module gadget_owls_input_hdf5_mod
+module gadget_owls_input_mod
 use myf03_mod
+use gadget_general_class
 use gadget_public_header_class
-use gadget_owls_header_class_hdf5
+use gadget_owls_header_class
 use gadget_sphray_header_class
 use ion_table_class
 use particle_system_mod, only: set_ye
@@ -22,8 +23,8 @@ implicit none
 private
 
 
-public :: get_planning_data_gadget_owls_hdf5
-public :: read_Gowlshdf5_particles
+public :: get_planning_data_gadget_owls
+public :: read_Gowls_particles
 
 
 contains
@@ -33,15 +34,15 @@ contains
 ! these are dummy subroutines so that the calls outside this file
 ! dont have to be wrapped with pre processor macros.
 
-subroutine get_planning_data_gadget_owls_hdf5()
+subroutine get_planning_data_gadget_owls()
   logical :: crash = .true.
   call myerr("this routine shuold not have been called","hdf5dummy",crash)
-end subroutine get_planning_data_gadget_owls_hdf5
+end subroutine get_planning_data_gadget_owls
 
-subroutine read_Gowlshdf5_particles()
+subroutine read_Gowls_particles()
   logical :: crash = .true.
   call myerr("this routine shuold not have been called","hdf5dummy",crash)
-end subroutine read_Gowlshdf5_particles
+end subroutine read_Gowls_particles
 
 
 
@@ -51,7 +52,7 @@ end subroutine read_Gowlshdf5_particles
 
 !>   gets run planning data from Gadget OWLS/GIMIC Headers
 !============================================================
-subroutine get_planning_data_gadget_owls_hdf5()
+subroutine get_planning_data_gadget_owls()
 
   character(clen), parameter :: myname = 'get_planning_data_gadget_owls_hdf5'
   logical, parameter :: crash = .true.
@@ -87,8 +88,8 @@ subroutine get_planning_data_gadget_owls_hdf5()
   ! set global units and read constants
   !===================================================
   call form_gadget_snapshot_file_name(GV%SnapPath,GV%ParFileBase,iSnap,0,snapfile,hdf5bool=.true.)
-  call gunits%read_file_hdf5(snapfile)
-  call gconst%read_file_hdf5(snapfile)
+  call gconst%read_Gowls_constants_file(snapfile)
+  call gunits%read_Gowls_units_file(snapfile)
   GV%cgs_len  = gunits%cgs_length
   GV%cgs_mass = gunits%cgs_mass
   GV%cgs_vel  = gunits%cgs_velocity
@@ -106,9 +107,9 @@ subroutine get_planning_data_gadget_owls_hdf5()
         call form_gadget_snapshot_file_name(GV%SnapPath,GV%ParFileBase,i,j,snapfile,hdf5bool=.true.)
         write(loglun,'(I3,"  ",A)') i,trim(snapfile)
 
-        call ghead%read_file_hdf5(snapfile)
-        call ghead%print_lun(loglun)
-        call saved_gheads(i,j)%copy_ghead_owls(ghead)
+        call ghead%read_Gowls_header_file(snapfile)
+        call ghead%print_Gowls_header_lun(loglun)
+        call saved_gheads(i,j)%copy_Gowls_header(ghead)
 
         ! make sure there is gas in this snapshot
         if (.not. ghead%npar_all(0) > 0) then
@@ -149,7 +150,7 @@ subroutine get_planning_data_gadget_owls_hdf5()
   call gunits%print_lun(loglun,saved_gheads(iSnap,0)%h)
   close(loglun)
 
-end subroutine get_planning_data_gadget_owls_hdf5
+end subroutine get_planning_data_gadget_owls
 
 
 
@@ -159,9 +160,9 @@ end subroutine get_planning_data_gadget_owls_hdf5
 
 !> reads a Gadget OWLS/GIMIC HDF5 snapshot into a particle array  
 !========================================================================
-subroutine read_Gowlshdf5_particles()
+subroutine read_Gowls_particles()
 
-  character(clen), parameter :: myname="read_Gowlshdf5_particles" 
+  character(clen), parameter :: myname="read_Gowls_particles" 
   logical, parameter :: crash=.true.
   integer, parameter :: verb=2
   character(clen) :: str,fmt
@@ -193,7 +194,7 @@ subroutine read_Gowlshdf5_particles()
   real(r8b) :: T8
   real(r8b) :: xvec(5)
 
-  type(gadget_public_constants_type) :: gconst
+  type(gadget_constants_type) :: gconst
   type(ion_table_type) :: itab
   real(r8b) :: redshift
 
@@ -251,7 +252,7 @@ subroutine read_Gowlshdf5_particles()
      call form_gadget_snapshot_file_name(GV%SnapPath,GV%ParFileBase,GV%CurSnapNum,fn,snapfile,hdf5bool)
      call mywrite("   reading particle snapshot file: "//trim(snapfile), verb)
      call hdf5_open_file(fh, snapfile, readonly=.true.)
-     call ghead%read_lun_hdf5(fh)
+     call ghead%read_Gowls_header_lun(fh)
 
      ! read positions 
      !-----------------------------------------------------------!  
@@ -413,7 +414,7 @@ subroutine read_Gowlshdf5_particles()
 
      ! if we have EOS particles set their temperature if we need to
 #ifdef incEOS
-     if (psys%par(i)%eos == 1.0) then
+     if (psys%par(i)%eos > 0.0) then
         if (GV%EOStemp > 0.0) then
            T8 = GV%EOStemp
            psys%par(i)%T = T8
@@ -457,7 +458,7 @@ subroutine read_Gowlshdf5_particles()
 
 
 
-end subroutine read_Gowlshdf5_particles
+end subroutine read_Gowls_particles
 
 
 
@@ -465,4 +466,4 @@ end subroutine read_Gowlshdf5_particles
 #endif
 
 
-end module gadget_owls_input_hdf5_mod
+end module gadget_owls_input_mod

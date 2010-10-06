@@ -7,6 +7,7 @@
 !<
 module initialize_mod
 use myf03_mod
+use gadget_general_class
 use config_mod, only: read_config_file
 use mt19937_mod, only: init_mersenne_twister
 use b2cd_mod, only: read_b2cd_file
@@ -15,9 +16,12 @@ use atomic_rates_mod, only: read_atomic_rates_file, get_atomic_rates
 use atomic_rates_mod, only: write_atomic_rates_to_log_file
 use iliev_comparison_project_mod, only: initialize_iliev_tests
 use main_input_mod, only: get_planning_data
-use global_mod, only: GV, PLAN, rtable, xHII_k, cmbT_k, isoT_k, gconst
+use global_mod, only: GV, PLAN, rtable, xHII_k, cmbT_k, isoT_k
 use ray_mod, only: init_background_source_variables
 implicit none
+
+
+
 
   contains
 
@@ -83,6 +87,8 @@ subroutine do_output_planning()
   integer(i8b) :: Ni, Nf
   logical :: fthere
   integer(i4b) :: lun
+
+  type(gadget_constants_type) :: gconst
 
   call mywrite("   doing output planning",verb) 
   
@@ -234,6 +240,7 @@ subroutine do_ray_planning()
   real(r8b) :: code2Myr
   integer(i4b) :: lun
 
+  type(gadget_constants_type) :: gconst
 
   call mywrite("   doing raytracing planning",verb) 
 
@@ -338,6 +345,8 @@ subroutine initialize_global_variables()
   real, parameter :: zero = 0.0d0
   integer(i8b) :: nrays
   integer(i8b) :: i
+
+  type(gadget_constants_type) :: gconst
 
   call mywrite("   initializing global variables",verb) 
 
