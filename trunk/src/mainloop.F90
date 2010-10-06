@@ -9,6 +9,7 @@ module mainloop_mod
   use myf03_mod
 
   ! routines
+  use gadget_general_class, only: gadget_constants_type
   use main_input_mod, only: readin_snapshot
   use oct_tree_mod, only: buildtree, setparticleorder
   use raylist_mod, only: prepare_raysearch, kill_raylist, trace_ray
@@ -25,7 +26,7 @@ module mainloop_mod
   use global_mod, only: tree
   use global_mod, only: GV
   use global_mod, only: PLAN
-  use global_mod, only: gconst
+
 
   
   implicit none
@@ -49,6 +50,7 @@ contains
 
     type(raystat_type) :: raystats(raystatbuffsize)
     integer(i8b) :: raystatcnt
+    type(gadget_constants_type) :: gconst
 
     !  local counters 
     !-----------------

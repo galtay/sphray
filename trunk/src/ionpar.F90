@@ -5,6 +5,7 @@
 
 module ionpar_mod
 use myf03_mod
+use gadget_general_class
 use physical_constants_mod, only: HI_th_Hz, HI_th_erg, HeI_th_erg, HeII_th_erg
 use atomic_rates_mod, only: atomic_rates_type
 use particle_system_mod, only: particle_type
@@ -17,7 +18,6 @@ use cen_atomic_rates_mod, only: Osterbrok_HeII_photo_cs
 use cen_atomic_rates_mod, only: Haiman_Bremss_cool
 use cen_atomic_rates_mod, only: Haiman_Comp_Heol
 use global_mod, only: GV
-use global_mod, only: gconst
 use hui_gnedin_atomic_rates_mod
 implicit none
 
@@ -240,7 +240,8 @@ function initialize_tau_particle( par, intersection ) result( tpar )
   type(particle_type), intent(in) :: par
   type(intersection_type), intent(in) :: intersection
   type(tau_particle_type) :: tpar
-
+  
+  type(gadget_constants_type) :: gconst
   logical, save :: first = .true.
   real(r8b), save :: sigmaHI_th
 
@@ -286,6 +287,7 @@ function initialize_bckgnd_particle( par, gammaHI ) result( bpar )
   type(particle_type), intent(in) :: par
   real(r8b), intent(in) :: gammaHI
   type(bckgnd_particle_type) :: bpar
+  type(gadget_constants_type) :: gconst
 
 #ifdef incHmf
   bpar%H_mf   = par%Hmf
@@ -460,7 +462,8 @@ subroutine initialize_ionpar(ipar,par,index,srcray,He,raylist,impact)
   logical, intent(in) :: He                           !< update Helium ?
   type(raylist_type), intent(in), optional :: raylist !< optional raylist
   integer(i8b), intent(in), optional :: impact        !< optional impact number
-  
+
+  type(gadget_constants_type) :: gconst  
   real(r8b) :: mass_cgs
   real(r8b) :: rho_cgs
 

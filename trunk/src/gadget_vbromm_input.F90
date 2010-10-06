@@ -1,10 +1,12 @@
 !> \file gadget_vbromm_input.F90
 
 !> \brief Handles readin of GADGET 2.0 raw binary formatted files
+!! from Volker Bromm's group
 !<
 
 module gadget_vbromm_input_mod
 use myf03_mod
+use gadget_general_class
 use gadget_public_header_class
 use gadget_sphray_header_class
 use particle_system_mod, only: particle_system_type
@@ -29,8 +31,8 @@ contains
 subroutine get_planning_data_gadget_vbromm()
 
   type(gadget_public_header_type) :: ghead
-  type(gadget_public_units_type) :: gunits
-  type(gadget_public_constants_type) :: gconst
+  type(gadget_units_type) :: gunits
+  type(gadget_constants_type) :: gconst
 
   integer(i4b) :: iSnap, fSnap    ! initial and final snapshot numbers
   integer(i4b) :: pfiles          ! files/snap for particles    
@@ -73,9 +75,9 @@ subroutine get_planning_data_gadget_vbromm()
         call form_gadget_snapshot_file_name(GV%SnapPath, GV%ParFileBase, i, j, snapfile, hdf5bool=.false.)
         write(loglun,'(I3,"  ",A)') i, trim(snapfile)
 
-        call ghead%read_file(snapfile)
-        call ghead%print_lun(loglun)
-        call saved_gheads(i,j)%copy_ghead_public(ghead)
+        call ghead%read_Gpublic_header_file(snapfile)
+        call ghead%print_Gpublic_header_lun(loglun)
+        call saved_gheads(i,j)%copy_Gpublic_header(ghead)
 
         saved_gheads(i,j)%OmegaB = 0.045 ! this should be moved to the config file
                                          ! but its not used in the code now
@@ -214,7 +216,7 @@ subroutine read_Gvbromm_particles()
      call form_gadget_snapshot_file_name(GV%SnapPath,GV%ParFileBase,GV%CurSnapNum,fn,snapfile,hdf5bool)
      call mywrite("reading vbromm gadget snapshot file "//trim(snapfile), verb)
      call open_unformatted_file_r( snapfile, lun )
-     read(lun) ghead
+     call ghead%read_Gpublic_header_lun(lun)
 
 
      ! read positions 
@@ -395,7 +397,7 @@ subroutine set_temp_from_u_vbromm(psys, dfltH_mf, cgs_enrg, cgs_mass)
   real(r8b) :: Hmf
   real(r8b) :: mu
   real(r8b) :: Tdum
-  type(gadget_public_constants_type) :: gconst
+  type(gadget_constants_type) :: gconst
 
   do i = 1,size(psys%par)
 

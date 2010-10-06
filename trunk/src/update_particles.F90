@@ -6,10 +6,10 @@
 module update_particles_mod
 use myf03_mod
 use gadget_public_input_mod
-use gadget_public_input_hdf5_mod
-use gadget_owls_input_hdf5_mod
 use gadget_cosmoBH_input_mod
+use gadget_owls_input_mod
 use gadget_vbromm_input_mod
+use gadget_public_input_hdf5_mod
 use global_mod, only: psys, GV
 implicit none
 private
@@ -102,11 +102,11 @@ subroutine update_particles()
   !==================================================================
   deallocate( psys%par )
   if (GV%InputType == 1) then
-     call read_Gpub_particles()
+     call read_Gpublic_particles()
   else if (GV%InputType == 2) then
      call read_GcosmoBH_particles()
   else if (GV%InputType == 3) then
-     call read_Gowlshdf5_particles()
+     call read_Gowls_particles()
   else if (GV%InputType == 4) then
      call read_Gvbromm_particles()
   else if (GV%InputType == 5) then

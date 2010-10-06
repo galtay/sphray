@@ -5,11 +5,13 @@
 
 module main_input_mod
 use myf03_mod
+use gadget_general_class
 use gadget_public_input_mod
-use gadget_public_input_hdf5_mod
 use gadget_cosmoBH_input_mod
+use gadget_owls_input_mod
 use gadget_vbromm_input_mod
-use gadget_owls_input_hdf5_mod
+use gadget_public_input_hdf5_mod
+
 use update_particles_mod
 use source_input_mod
 use particle_system_mod, only: particle_type
@@ -22,7 +24,7 @@ use particle_system_mod, only: enforce_x_and_T_minmax
 use particle_system_mod, only: particle_info_to_screen
 use atomic_rates_mod, only: get_atomic_rates
 use global_mod, only: PLAN, GV, rtable, cmbT_k
-use global_mod, only: psys, gconst, saved_gheads
+use global_mod, only: psys, saved_gheads
 use global_mod, only: set_dt_from_dtcode
 implicit none
 
@@ -82,8 +84,7 @@ subroutine readin_snapshot()
   real(r8b) :: Flux  !< photons / s from planar sources
   character(clen) :: snpbase
   character(clen) :: srcbase
-  real :: cm2kpc
-
+  type(gadget_constants_type) :: gconst
   
   call mywrite("reading in particle and source snapshots:", verb-1)
   call mywrite("",verb-1) 
@@ -97,7 +98,7 @@ subroutine readin_snapshot()
   !======================
   call mywrite('   input type = ', verb, adv=.false.)
   if (GV%InputType==1) then
-     call mywrite(" Gadget-2 public (SnapFormat=1)", verb)
+     call mywrite(" Gadget-2 Public (SnapFormat=1)", verb)
   else if (GV%InputType==2) then
      call mywrite(" Gadget CosmoBH w/ ye and xHI (SnapFormat=1)", verb)
   else if (GV%InputType==3) then
@@ -125,7 +126,7 @@ subroutine readin_snapshot()
   if (GV%InputType == 1) then
 
      if (first) then
-        call read_Gpub_particles()
+        call read_Gpublic_particles()
         psys%par(:)%lasthit = 0
      else
         call update_particles()
@@ -147,7 +148,7 @@ subroutine readin_snapshot()
   else if (GV%InputType == 3) then 
      
      if (first) then
-        call read_Gowlshdf5_particles()
+        call read_Gowls_particles()
         psys%par(:)%lasthit = 0
      else
         call update_particles()

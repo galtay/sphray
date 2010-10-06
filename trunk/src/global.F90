@@ -4,9 +4,8 @@
 !<
 module global_mod
 use myf03_mod 
-use gadget_sphray_header_class, only: gadget_sphray_header_type
-use gadget_public_header_class, only: gadget_public_units_type
-use gadget_public_header_class, only: gadget_public_constants_type
+use gadget_general_class
+use gadget_sphray_header_class
 use particle_system_mod, only: particle_system_type
 use oct_tree_mod, only: oct_tree_type
 use raylist_mod, only: raylist_type
@@ -50,7 +49,7 @@ type(atomic_rates_type) :: xHII_k         !< static rates for xHII-temperature
 type(run_planning_type) :: PLAN           !< run plan
 
 type(gadget_sphray_header_type), allocatable :: saved_gheads(:,:) !< all headers (nsnaps,nfiles)
-type(gadget_public_constants_type) :: gconst                      !< gadget constants
+
 
  
 !> global variables type. 
@@ -275,6 +274,7 @@ contains
 
 subroutine set_dt_from_dtcode( GV )
   type(global_variables_type), intent(inout) :: GV
+  type(gadget_constants_type) :: gconst
 
   GV%dt_s    = GV%dt_code * GV%cgs_time / GV%LittleH 
   GV%dt_myr  = GV%dt_s / gconst%sec_per_megayear

@@ -5,8 +5,10 @@
 
 module gadget_cosmoBH_input_mod
 use myf03_mod
+use gadget_general_class
 use gadget_public_header_class
 use gadget_sphray_header_class
+use gadget_public_input_mod, only: set_temp_from_u
 use particle_system_mod, only: particle_system_type
 use particle_system_mod, only: set_collisional_ionization_equilibrium
 use particle_system_mod, only: set_ye
@@ -29,8 +31,8 @@ contains
 subroutine get_planning_data_gadget_cosmoBH()
 
   type(gadget_public_header_type) :: ghead
-  type(gadget_public_units_type) :: gunits
-  type(gadget_public_constants_type) :: gconst
+  type(gadget_units_type) :: gunits
+  type(gadget_constants_type) :: gconst
 
   integer(i4b) :: iSnap, fSnap    ! initial and final snapshot numbers
   integer(i4b) :: pfiles          ! files/snap for particles    
@@ -73,9 +75,9 @@ subroutine get_planning_data_gadget_cosmoBH()
         call form_gadget_snapshot_file_name(GV%SnapPath, GV%ParFileBase, i, j, snapfile, hdf5bool=.false.)
         write(loglun,'(I3,"  ",A)') i, trim(snapfile)
 
-        call ghead%read_file(snapfile)
-        call ghead%print_lun(loglun)
-        call saved_gheads(i,j)%copy_ghead_public(ghead)
+        call ghead%read_Gpublic_header_file(snapfile)
+        call ghead%print_Gpublic_header_lun(loglun)
+        call saved_gheads(i,j)%copy_Gpublic_header(ghead)
 
         saved_gheads(i,j)%OmegaB = 0.045 ! this should be moved to the config file
                                          ! but its not used in the code now
@@ -215,7 +217,7 @@ subroutine read_GcosmoBH_particles()
      call form_gadget_snapshot_file_name(GV%SnapPath,GV%ParFileBase,GV%CurSnapNum,fn,snapfile,hdf5bool)
      call mywrite("   reading cosmoBH gadget particle snapshot file "//trim(snapfile), verb)
      call open_unformatted_file_r( snapfile, lun )
-     call ghead%read_lun(lun)
+     call ghead%read_Gpublic_header_lun(lun)
 
      ! read positions
      !-----------------------------------------------------------!  

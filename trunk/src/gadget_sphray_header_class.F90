@@ -1,4 +1,4 @@
-!> \file gadget_sphray_header_class.f90
+!> \file gadget_sphray_header_class.F90
 
 !> \brief Handles Gadget style headers with extra SPHRAY info.  
 !!
@@ -7,8 +7,9 @@
 
 module gadget_sphray_header_class
 use myf03_mod
+use gadget_general_class
 use gadget_public_header_class
-use gadget_owls_header_class_hdf5
+use gadget_owls_header_class
 implicit none
 private
 
@@ -47,9 +48,9 @@ type gadget_sphray_header_type
    real(r8b)    :: time_gyr        !< time since BB from cosmo variables [Gyr]
    integer(i4b) :: unused(2)       !< spacer
  contains
-   procedure :: copy_ghead_public => ghead_to_gshead
-   procedure :: copy_ghead_owls => ohead_to_gshead
-   procedure :: write_lun => write_header_to_lun
+   procedure :: copy_Gpublic_header
+   procedure :: copy_Gowls_header
+   procedure :: write_Gsphray_header_lun
 end type gadget_sphray_header_type
 
 
@@ -58,8 +59,8 @@ contains
 
 !> writes a gadget header to an open file
 !--------------------------------------------------------------
-subroutine write_header_to_lun(this, lun)
-  class(gadget_sphray_header_type) :: this
+subroutine write_Gsphray_header_lun(this, lun)
+  class(gadget_sphray_header_type), intent(in) :: this
   integer(i4b), intent(in) :: lun
 
   write(lun) this%npar_file(:), this%mass(:), this%a, this%z, &              
@@ -71,61 +72,61 @@ subroutine write_header_to_lun(this, lun)
        this%flag_gammaHI, this%flag_cloudy, this%flag_eos, this%flag_sfr, &
        this%time_gyr, this%unused(:)      
 
-end subroutine write_header_to_lun
+end subroutine write_Gsphray_header_lun
 
 
 
-subroutine ohead_to_gshead( this, ohead )
+subroutine copy_Gowls_header( this, owlshead )
   class(gadget_sphray_header_type) :: this
-  class(gadget_owls_header_type) :: ohead
+  class(gadget_owls_header_type) :: owlshead
 
-  this%npar_file(0:5)   = ohead%npar_file(0:5)   
-  this%mass(0:5)        = ohead%mass(0:5)        
-  this%a                = ohead%a                
-  this%z                = ohead%z                
-  this%flag_sfr         = ohead%flag_sfr         
-  this%flag_feedback    = ohead%flag_feedback    
-  this%npar_all(0:5)    = ohead%npar_all(0:5)    
-  this%flag_cooling     = ohead%flag_cooling     
-  this%nfiles           = ohead%nfiles           
-  this%boxlen           = ohead%boxlen           
-  this%OmegaM           = ohead%OmegaM           
-  this%OmegaL           = ohead%OmegaL           
-  this%h                = ohead%h                
-  this%flag_age         = ohead%flag_age         
-  this%flag_metals      = ohead%flag_metals      
-  this%npar_hw(0:5)     = ohead%npar_hw(0:5)     
+  this%npar_file(0:5)   = owlshead%npar_file(0:5)   
+  this%mass(0:5)        = owlshead%mass(0:5)        
+  this%a                = owlshead%a                
+  this%z                = owlshead%z                
+  this%flag_sfr         = owlshead%flag_sfr         
+  this%flag_feedback    = owlshead%flag_feedback    
+  this%npar_all(0:5)    = owlshead%npar_all(0:5)    
+  this%flag_cooling     = owlshead%flag_cooling     
+  this%nfiles           = owlshead%nfiles           
+  this%boxlen           = owlshead%boxlen           
+  this%OmegaM           = owlshead%OmegaM           
+  this%OmegaL           = owlshead%OmegaL           
+  this%h                = owlshead%h                
+  this%flag_age         = owlshead%flag_age         
+  this%flag_metals      = owlshead%flag_metals      
+  this%npar_hw(0:5)     = owlshead%npar_hw(0:5)     
 
-  this%OmegaB           = ohead%OmegaB
-  this%time_gyr         = ohead%time_gyr
+  this%OmegaB           = owlshead%OmegaB
+  this%time_gyr         = owlshead%time_gyr
 
-end subroutine ohead_to_gshead
+end subroutine copy_Gowls_header
 
 
 
-subroutine ghead_to_gshead( this, ghead )
+subroutine copy_Gpublic_header( this, pubhead )
   class(gadget_sphray_header_type) :: this
-  class(gadget_public_header_type) :: ghead
+  class(gadget_public_header_type) :: pubhead
 
-  this%npar_file(0:5)   = ghead%npar_file(0:5)   
-  this%mass(0:5)        = ghead%mass(0:5)        
-  this%a                = ghead%a                
-  this%z                = ghead%z                
-  this%flag_sfr         = ghead%flag_sfr         
-  this%flag_feedback    = ghead%flag_feedback    
-  this%npar_all(0:5)    = ghead%npar_all(0:5)    
-  this%flag_cooling     = ghead%flag_cooling     
-  this%nfiles           = ghead%nfiles           
-  this%boxlen           = ghead%boxlen           
-  this%OmegaM           = ghead%OmegaM           
-  this%OmegaL           = ghead%OmegaL           
-  this%h                = ghead%h                
-  this%flag_age         = ghead%flag_age         
-  this%flag_metals      = ghead%flag_metals      
-  this%npar_hw(0:5)     = ghead%npar_hw(0:5)     
-  this%flag_entr_ics    = ghead%flag_entr_ics    
+  this%npar_file(0:5)   = pubhead%npar_file(0:5)   
+  this%mass(0:5)        = pubhead%mass(0:5)        
+  this%a                = pubhead%a                
+  this%z                = pubhead%z                
+  this%flag_sfr         = pubhead%flag_sfr         
+  this%flag_feedback    = pubhead%flag_feedback    
+  this%npar_all(0:5)    = pubhead%npar_all(0:5)    
+  this%flag_cooling     = pubhead%flag_cooling     
+  this%nfiles           = pubhead%nfiles           
+  this%boxlen           = pubhead%boxlen           
+  this%OmegaM           = pubhead%OmegaM           
+  this%OmegaL           = pubhead%OmegaL           
+  this%h                = pubhead%h                
+  this%flag_age         = pubhead%flag_age         
+  this%flag_metals      = pubhead%flag_metals      
+  this%npar_hw(0:5)     = pubhead%npar_hw(0:5)     
+  this%flag_entr_ics    = pubhead%flag_entr_ics    
 
-end subroutine ghead_to_gshead
+end subroutine copy_Gpublic_header
 
 
 end module gadget_sphray_header_class

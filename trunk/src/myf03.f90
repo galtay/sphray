@@ -22,7 +22,7 @@ private
 
 public :: stderr, stdin, stdout
 public :: i1b, i2b, i4b, i8b
-public :: r4b, r8b, r16b
+public :: r4b, r8b
 public :: clen 
 public :: command_line_type
 
@@ -55,19 +55,21 @@ public :: myerr
   integer, parameter :: stdin  = input_unit  !< preconnected std in lun
   integer, parameter :: stdout = output_unit !< preconnected std out lun
 
-! integer kind type parameters 
+! selected_int_kind(r)     -10^r < n < 10^r
 !------------------------------------------------------------------------
 
-  integer, parameter :: i1b = int8   !< 1 byte integer type
-  integer, parameter :: i2b = int16  !< 2 byte integer type
-  integer, parameter :: i4b = int32  !< 4 byte integer type
-  integer, parameter :: i8b = int64  !< 8 byte integer type
+  integer, parameter :: i1b = selected_int_kind(2)  !< 1 byte integer type
+  integer, parameter :: i2b = selected_int_kind(4)  !< 2 byte integer type
+  integer, parameter :: i4b = selected_int_kind(9)  !< 4 byte integer type
+  integer, parameter :: i8b = selected_int_kind(18) !< 8 byte integer type
 
-! real kind type parameters
+! selected_real_kind(p,r)  p is decimal precision, r is exponent range
 !------------------------------------------------------------------------
-  integer, parameter :: r4b  = real32  !< 4 byte real type
-  integer, parameter :: r8b  = real64  !< 8 byte real type
-  integer, parameter :: r16b = real128 !< 16 byte real type
+  integer, parameter :: r4b  = selected_real_kind(p=6,r=37)    !< 4 byte real type
+  integer, parameter :: r8b  = selected_real_kind(p=15,r=307)  !< 8 byte real type
+
+
+
 
 
   integer, parameter :: clen  = 512 !< default character variable length
