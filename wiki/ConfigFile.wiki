@@ -16,7 +16,7 @@
 || {{{IntSeed}}} || Integer || Seed for random number generator. ||
 || {{{StaticFieldSimTime}}} || Real || For single snapshot runs, determines time to ray trace. ||
 || {{{StaticSimTimeUnit}}} || Character || {{{{codetime, myr}}}} ||
-|| {{{InputType}}} || Integer || {{{{1=Gadget Public,2=Gadget CosmoBH,3=Gadget HDF5 OWLS/GIMIC,4=Gadget Bromm}}}} || 
+|| {{{InputType}}} || Integer || {{{{1=Gadget Public,2=Gadget CosmoBH,3=Gadget HDF5 OWLS/GIMIC,4=Gadget VBromm, 5=Gadget Public HDF5}}}} || 
 || {{{SnapPath}}} || Character || Path to directory containing particle snapshots. ||
 || {{{SourcePath}}} || Character || Path to directory containing source snapshots. ||
 || {{{SpectraFile}}} || Character || Path to spectra file. ||
