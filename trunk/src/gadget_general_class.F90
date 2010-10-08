@@ -233,7 +233,8 @@ subroutine set_data_attributes(gunits)
   xHeII_attrs%VarDescription = "Helium II fraction = n_HeII / n_He"
   Hemf_attrs%VarDescription = "Helium mass fraction = mass in atomic Helium / particle mass"
   gammaHI_attrs%VarDescription = "Hydrogen photoionization rate [1/s]"
-  eos_attrs%VarDescription = "Flag for effective equation os state. 1 if currently on EoS, 0 if has never been on EoS, -ExpansionFactor if left the EoS at ExpansionFactor"
+  eos_attrs%VarDescription = "Flag for effective equation os state. 1 if currently on EoS" // &
+       ", 0 if has never been on EoS, -ExpansionFactor if left the EoS at ExpansionFactor"
   sfr_attrs%VarDescription = "Star formation rate. Physical sfr = StarformationRate SOLAR_MASS SEC_PER_YEAR^-1 [g/s]"
 
 
