@@ -82,12 +82,12 @@ contains
     snaps: do snapn = GV%StartSnapNum, GV%EndSnapNum
 
        !  read in particle and source snapshot
-       !----------------------------------------------------------------              
+       !----------------------------------------------------------------      
        call readin_snapshot()
        
 
        !  if tracking recombinations do some initializations
-       !----------------------------------------------------------------              
+       !----------------------------------------------------------------   
 #ifdef incHrec
        if (snapn == GV%StartSnapNum) then
           allocate( reclist(psys%npar) )
@@ -121,7 +121,7 @@ contains
        
        if (GV%DoInitialOutput) then
           GV%OutputIndx = 0
-          call output_total_snap(psys%par)      
+          call output_total_snap(psys)      
           GV%OutputIndx = 1
        end if
        
@@ -278,7 +278,7 @@ contains
              
              ! check outmark against tabulated output "times"
              if ( outmark >= PLAN%OutputTimes(GV%OutputIndx) ) then
-                call output_total_snap(psys%par)
+                call output_total_snap(psys)
                 GV%OutputIndx = GV%OutputIndx + 1 
              end if
              
@@ -291,7 +291,7 @@ contains
              if ( GV%OutputIndx <= GV%NumTotOuts ) then
                 if ( GV%src_rayn==PLAN%snap(snapn)%SrcRays ) then
                    write(*,*) "doing an output on the last ray"
-                   call output_total_snap(psys%par)
+                   call output_total_snap(psys)
                 end if
              end if
           end if

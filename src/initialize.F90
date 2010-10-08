@@ -18,6 +18,8 @@ use iliev_comparison_project_mod, only: initialize_iliev_tests
 use main_input_mod, only: get_planning_data
 use global_mod, only: GV, PLAN, rtable, xHII_k, cmbT_k, isoT_k
 use ray_mod, only: init_background_source_variables
+use particle_system_mod, only: return_bytes_per_particle
+use particle_system_mod, only: return_bytes_per_source
 implicit none
 
 
@@ -335,12 +337,12 @@ end subroutine do_ray_planning
 !> when a new particle snapshot is read in, this routine should be called
 !! to initialize some global variables.
 subroutine initialize_global_variables()
-  use particle_system_mod, only: calc_bytes_per_particle_and_source
   use ray_mod, only: raystatbuffsize
 
   character(clen), parameter :: myname="initialize_global_variables"
   logical, parameter :: crash=.true.
   integer, parameter :: verb=2
+  character(clen) :: str
 
   real, parameter :: zero = 0.0d0
   integer(i8b) :: nrays
@@ -367,7 +369,14 @@ subroutine initialize_global_variables()
      call mywrite("   using Backwards Difference ionization solver",verb)
   end if
 
-  call calc_bytes_per_particle_and_source(GV%bytesperpar, GV%bytespersrc)
+  GV%bytesperpar = return_bytes_per_particle()
+  GV%bytespersrc = return_bytes_per_source()
+
+  write(str,'(A,I4)') "   bytes per particle = ", GV%bytesperpar
+  call mywrite(str, verb)
+
+  write(str,'(A,I4)') "   bytes per source = ", GV%bytespersrc
+  call mywrite(str, verb)
 
   ! open log files
   !-----------------

@@ -10,8 +10,7 @@ use gadget_public_header_class
 use gadget_sphray_header_class
 use gadget_public_input_mod, only: set_temp_from_u
 use particle_system_mod, only: particle_system_type
-use particle_system_mod, only: set_collisional_ionization_equilibrium
-use particle_system_mod, only: set_ye
+
 use global_mod, only: psys, PLAN, GV
 use global_mod, only: saved_gheads
 implicit none
@@ -372,7 +371,7 @@ subroutine read_GcosmoBH_particles()
   ! if Helium, initialize ionization fractions to collisional equilibrium
   !------------------------------------------------------------------------
 #ifdef incHe
-  call set_collisional_ionization_equilibrium(psys, caseA, GV%IsoTemp, DoHydrogen=.false., fit="hui")
+  call psys%set_ci_eq(caseA, DoH=.false., DoHe=.true., fit="hui")
 #endif
 
 

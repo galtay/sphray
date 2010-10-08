@@ -8,7 +8,6 @@
 module oct_tree_mod
 use myf03_mod
 use particle_system_mod, only: particle_system_type
-use particle_system_mod, only: adjustbox
 implicit none
  
  integer, private, parameter :: nsubcell = 2**3  !< number of daughter cells 
@@ -45,23 +44,21 @@ implicit none
  contains
 
 
-!-----------------------------------------------------------------------------
-!> puts the particles in the particle system into the order described by the 
-!> tree
-subroutine setparticleorder(psys,tree)
-  use particle_system_mod, only: orderpsys
 
-  type(oct_tree_type)    :: tree     !< the oct-tree
+!> puts the particles in the particle system into the 
+!! order described by the tree
+!-----------------------------------------------------------------------------
+subroutine setparticleorder(psys,tree)
+  type(oct_tree_type) :: tree     !< the oct-tree
   type(particle_system_type) :: psys !< the particle system
- 
   call check(psys,tree)
-  call orderpsys(psys,tree%partorder) 
-  
+  call psys%order_particles(tree%partorder)
 end subroutine setparticleorder
 
-!-----------------------------------------------------------------------------
+
 !> makes sure the tree and the particle system know about the same number of 
 !> particles
+!-----------------------------------------------------------------------------
 subroutine check(psys,tree)
   type(oct_tree_type), intent(in) :: tree  !< the oct-tree
   type(particle_system_type), intent(in) :: psys !< the particle system

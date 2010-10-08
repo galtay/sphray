@@ -4,7 +4,6 @@
 !! 
 !<
 
-!> particle, source, and box descriptions
 module particle_system_mod
 use myf03_mod
 use atomic_rates_mod, only: calc_colion_eq_fits
@@ -19,48 +18,28 @@ public :: box_type
 public :: particle_system_type
 public :: transformation_type
 
-public :: orderparticles
-public :: orderpsys
-public :: calc_bytes_per_particle_and_source
-public :: scale_comoving_to_physical
-public :: scale_physical_to_comoving
-
-public :: number_weight_ionfrac_pars
-public :: mass_weight_ionfrac_pars
-public :: volume_weight_ionfrac_pars
-
-public :: number_weight_ionfrac
-public :: mass_weight_ionfrac
-public :: volume_weight_ionfrac
-
-public :: set_ye
-public :: set_ye_pars
-public :: set_collisional_ionization_equilibrium
-public :: enforce_x_and_T_minmax
-public :: particle_info_to_screen
-public :: adjustbox
-public :: create_particle_random_access_list
-public :: create_particle_density_access_list
+public :: return_bytes_per_particle
+public :: return_bytes_per_source
 
 
 !> Particle type. 
 !=========================
 type particle_type
 
-   real(r4b)    :: pos(3)     !< x,y,z coordinates
-
-#ifdef incVel
-   real(r4b)    :: vel(3)     !< x,y,z velocities
-#endif
-
+   real(r4b), dimension(3) :: pos !< x,y,z coordinates
    integer(i4b) :: id         !< particle id
    real(r4b)    :: mass       !< particle mass
    real(r4b)    :: T          !< temperature in K       
    real(r4b)    :: rho        !< density 
    real(r4b)    :: ye         !< electron fraction
    real(r4b)    :: xHI        !< nHI/nH 
-   real(r4b)    :: xHII       !< * nHII/nH
+   real(r4b)    :: xHII       !< nHII/nH
    real(r4b)    :: hsml       !< smoothing length
+   integer(i8b) :: lasthit    !< indx of last ray to cross this particle
+
+#ifdef incVel
+   real(r4b), dimension(3) :: vel !< x,y,z velocities
+#endif
 
 #ifdef cloudy
    real(r4b)    :: xHI_cloudy !< cloudy eq solutions
@@ -71,9 +50,9 @@ type particle_type
 #endif
 
 #ifdef incHe
-   real(r4b)    :: xHeI       !< * nHeI/nHe 
-   real(r4b)    :: xHeII      !< * nHeII/nHe
-   real(r4b)    :: xHeIII     !< * nHeIII/nHe
+   real(r4b)    :: xHeI       !< nHeI/nHe 
+   real(r4b)    :: xHeII      !< nHeII/nHe
+   real(r4b)    :: xHeIII     !< nHeIII/nHe
 #endif
 
 #ifdef incHemf
@@ -81,8 +60,8 @@ type particle_type
 #endif
 
 #ifdef outGammaHI
-   real(r4b)    :: gammaHI    !< * time averaged HI photoionization rate
-   real(r4b)    :: time       !< * elapsed time in seconds - reset at outputs
+   real(r4b)    :: gammaHI    !< time averaged HI photoionization rate
+   real(r4b)    :: time       !< elapsed time in seconds - reset at outputs
 #endif
 
 #ifdef incEOS
@@ -93,8 +72,11 @@ type particle_type
    real(r4b)    :: sfr        !< star formation rate
 #endif
 
-   integer(i8b) :: lasthit    !< * indx of last ray to cross this particle
-  
+ contains
+   procedure :: copy_particle
+   procedure :: transform_particle
+   procedure :: set_ye => set_ye_particle
+   procedure :: set_ci_eq => set_ci_eq_particle
 end type particle_type
 
 
@@ -126,21 +108,33 @@ type box_type
    real(r8b)    :: vol          !< box volume [code] (xlen*ylen*zlen)
    real(r8b)    :: vol_cm       !< box volume [cm^3] (xlen*ylen*zlen) 
 
-   integer(i8b) :: bbound(1:3)  !< BCs for upper faces (0:vac 1:per -1: ref) 
-   integer(i8b) :: tbound(1:3)  !< BCs for lower faces (0:vac 1:per -1: ref) 
+   integer(i8b) :: bbound(1:3)  !< BCs for upper faces (0:vac 1:per -1:ref) 
+   integer(i8b) :: tbound(1:3)  !< BCs for lower faces (0:vac 1:per -1:ref) 
+ contains 
+   procedure :: adjust_box
 end type box_type
 
 
-
-
-
-!----------------------------
 !> particles, sources, and box
+!=========================================
   type particle_system_type
-     type(box_type) :: box                           !< the simulation box     
-     type(particle_type), allocatable :: par(:)      !< all particles
-     type(source_type), allocatable :: src(:)        !< all sources
+     type(box_type) :: box                          !< the simulation box     
+     type(particle_type), allocatable :: par(:)     !< all particles
+     type(source_type), allocatable :: src(:)       !< all sources
      integer(i4b), allocatable :: acc_list(:)       !< access list
+   contains
+     procedure :: scale_comoving_to_physical
+     procedure :: scale_physical_to_comoving
+     procedure :: create_particle_random_access_list
+     procedure :: create_particle_density_access_list
+     procedure :: order_particles
+     procedure :: mean_xHII_number_weight
+     procedure :: mean_xHII_mass_weight
+     procedure :: mean_xHII_volume_weight
+     procedure :: set_ye => set_ye_psys
+     procedure :: set_ci_eq => set_ci_eq_psys
+     procedure :: enforce_x_and_T_minmax
+     procedure :: print_particle_info_lun
   end type particle_system_type
 
 
@@ -158,586 +152,12 @@ end type transformation_type
 contains
 
 
-!> allows for accessing the particles in a random order
-!------------------------------------------------------
-subroutine create_particle_random_access_list( psys )
-  type(particle_system_type) :: psys
-
-  integer(i4b) :: i
-  integer(i4b) :: n
-  real(r4b), allocatable :: randoms(:)
-
-  n = size( psys%par )
-  if (.not. allocated(psys%acc_list) ) allocate( psys%acc_list(n) )
-  allocate( randoms(n) )
-
-  do i = 1, size(randoms)
-     randoms(i) = genrand_real1()
-  end do
-  
-  call mrgrnk( randoms, psys%acc_list )
-
-  deallocate( randoms )
-
-
-end subroutine create_particle_random_access_list
-
-
-
-!> allows for accessing the particles from least to most dense
-!--------------------------------------------------------------
-subroutine create_particle_density_access_list( psys )
-  type(particle_system_type) :: psys
-
-  integer(i4b) :: i
-  integer(i4b) :: n
-  real(r4b), allocatable :: rhos(:)
-
-  n = size( psys%par )
-  if (.not. allocated(psys%acc_list) ) allocate( psys%acc_list(n) )
-  allocate( rhos(n) )
-
-  do i = 1,n     
-     rhos(i) = psys%par(i)%rho
-  end do
-  call mrgrnk( rhos, psys%acc_list )
-  
-  deallocate( rhos )
-
-end subroutine create_particle_density_access_list
-
-
-
-
-! this routine rearranges the particles in pars so that they are stored
-! in the sequence given by the array order.  ie order = [3,1,2] takes the 
-! third particle to the first position, the first particle to the second
-! position, and the second particle to the third position.  the array 
-! order is not preserved during the routine
-!> reorders the particles according to the array order
-!===========================================================================
-subroutine orderparticles(pars,order)
-  type(particle_type), intent(inout) :: pars(:) !< input particles
-  integer(i4b), intent(inout) :: order(:)       !< desired order
-
-  type(particle_type) :: par
-  integer(i8b) :: i
-  integer(i8b) :: goal
-  integer(i8b) :: npar
-  
-  if (size(pars) /= size(order)) stop "size(pars) /= size(order)"
-  npar = size(pars)
-  
-  do i=1,npar 
-     par=pars(i)
-     goal=order(i)
-     do while(goal < i)
-        goal=order(goal)
-        order(i)=goal
-     enddo
-     pars(i)=pars(goal)
-     pars(goal)=par 
-  enddo
-  do i=1,npar
-     order(i)=i
-  enddo
-
-end subroutine orderparticles
-
-!-------------------------------------------------------------------------- 
-! this routine rearranges the particles in a particle system  according to 
-! the array order as in the routine above
-!> reorders the particles in a particle system
-    subroutine orderpsys(psys,order)
-      type(particle_system_type), intent(inout) :: psys  !< inout particle sys
-      integer(i4b), intent(inout) :: order(1:size(psys%par))  !< desired order
-
-      type(particle_type) :: par
-      integer(i8b) :: i
-      integer(i8b) :: goal
-
-        do i=1,size(psys%par)
-           par=psys%par(i)
-           goal=order(i)
-           do while(goal < i)
-              goal=order(goal)
-              order(i)=goal
-           enddo
-           psys%par(i)=psys%par(goal)
-           psys%par(goal)=par 
-        enddo
-        do i=1,size(psys%par)
-           order(i)=i
-        enddo
-
-      end subroutine orderpsys
-
-!> creates a transformed particle from an input particle
-!============================================================
-subroutine copypart(parclone,par,transform)
-  type(particle_type), intent(out) :: parclone  !< particle copy
-  type(particle_type), intent(in)  :: par       !< input particle
-  type(transformation_type), intent(in), optional :: transform !< optional transformation
-  parclone = par
-  if(present(transform)) parclone%pos = transform%fac * (par%pos - transform%shift)
-end subroutine copypart
-
-
-!> resets the box limits where the BCs are vacuum
-!==================================================================
-subroutine adjustbox(box,bot,top)
-  type(box_type), intent(inout) :: box !< input box
-  real(r4b), intent(in) :: bot(3)      !< new bottoms
-  real(r4b), intent(in) :: top(3)      !< new tops
-
-  where (box%bbound==0) box%bots = bot
-  where (box%tbound==0) box%tops = top
-
-end subroutine adjustbox
-
-
-!> scales particles, sources, and the box from comoving to physical values
-!==========================================================================
-subroutine scale_comoving_to_physical(a, h, par, src, box)
-
-  character(clen), parameter :: myname="scale_comoving_to_physical"
-  integer, parameter :: verb=2
-  character(clen) :: str,fmt
-
-  real(r8b), intent(in) :: a                           !< scale factor
-  real(r8b), intent(in) :: h                           !< hubble parameter (little h)
-  type(particle_type), intent(inout) :: par(:)         !< particles
-  type(source_type), optional, intent(inout) :: src(:) !< sources
-  type(box_type), optional, intent(inout) :: box       !< box 
-
-
-  call mywrite("   scaling comoving to physical coordinates", verb)
-  fmt = "(A,F12.5,T22,A,T25,F12.5)"
-  write(str,fmt) "   a = ", a, "h = ", h
-  call mywrite(str,verb)
-
-  
-  par%pos(1) = par%pos(1) * a / h
-  par%pos(2) = par%pos(2) * a / h
-  par%pos(3) = par%pos(3) * a / h
-
-#ifdef incVel
-  par%vel(1) = par%vel(1) * sqrt(a) 
-  par%vel(2) = par%vel(2) * sqrt(a) 
-  par%vel(3) = par%vel(3) * sqrt(a) 
-#endif
-
-  par%mass = par%mass / h
-  par%hsml = par%hsml * a / h
-  par%rho  = ( par%rho / (a*a*a) ) * (h*h)
-
-  if (present(src)) then  
-     src%pos(1) = src%pos(1) * a / h
-     src%pos(2) = src%pos(2) * a / h
-     src%pos(3) = src%pos(3) * a / h
-
-#ifdef incVel
-     src%vel(1) = src%vel(1) * sqrt(a) 
-     src%vel(2) = src%vel(2) * sqrt(a)
-     src%vel(3) = src%vel(3) * sqrt(a)
-#endif
-
-  end if
-
-  if (present(box)) then
-     box%tops = box%tops * a / h
-     box%bots = box%bots * a / h
-
-     box%lens    = box%lens * a / h
-     box%lens_cm = box%lens_cm * a / h
-
-     box%vol    = product( box%lens )
-     box%vol_cm = product( box%lens_cm )
-  end if
-
-end subroutine scale_comoving_to_physical
-
-
-!> scales particles, sources, and the box from physical to comoving  values
-!==========================================================================
-subroutine scale_physical_to_comoving(a,h,par,src,box)
-
-  character(clen), parameter :: myname="scale_physical_to_comoving"
-  integer, parameter :: verb=2
-  character(clen) :: str,fmt
-
-  real(r8b), intent(in) :: a                            !< scale factor 
-  real(r8b), intent(in) :: h                            !< hubble parameter (little h)
-  type(particle_type), intent(inout) :: par(:)          !< particles
-  type(source_type), optional, intent(inout) :: src(:)  !< sources
-  type(box_type), optional, intent(inout) :: box        !< box 
-
-  call mywrite("   scaling physical to comoving coordinates", verb)
-  fmt = "(A,F12.5,T22,A,T25,F12.5)"
-  write(str,fmt) "   a = ", a, "h = ", h
-  call mywrite(str,verb)
-
-  
-  par%pos(1) = par%pos(1) / a * h
-  par%pos(2) = par%pos(2) / a * h
-  par%pos(3) = par%pos(3) / a * h
-
-#ifdef incVel
-  par%vel(1) = par%vel(1) / sqrt(a)
-  par%vel(2) = par%vel(2) / sqrt(a)
-  par%vel(3) = par%vel(3) / sqrt(a)
-#endif
-
-  par%mass = par%mass * h
-  par%hsml = par%hsml / a * h
-  par%rho = par%rho * (a*a*a) / (h*h)
-
-  if (present(src)) then
-     src%pos(1) = src%pos(1) / a * h
-     src%pos(2) = src%pos(2) / a * h
-     src%pos(3) = src%pos(3) / a * h
-
-#ifdef incVel
-     src%vel(1) = src%vel(1) / sqrt(a)
-     src%vel(2) = src%vel(2) / sqrt(a)
-     src%vel(3) = src%vel(3) / sqrt(a)
-#endif
-
-  end if
-
-  if (present(box)) then
-     box%tops = box%tops / a * h
-     box%bots = box%bots / a * h
-
-     box%lens    = box%lens / a * h
-     box%lens_cm = box%lens_cm / a * h
-
-     box%vol    = product( box%lens )
-     box%vol_cm = product( box%lens_cm )
-  end if
-
-end subroutine scale_physical_to_comoving
-
-
-
-
-
-!> calculates the number weighted ionization fraction
-!========================================================
-
-  function number_weight_ionfrac_pars(pars) result(numionfrac)
-     type(particle_type), intent(in) :: pars(:)   !< particle system
-     real(r8b) :: numionfrac                      !< ion fraction n weighted
-
-     integer :: i
-
-!      because the ionization fractions are stored as single
-!      precision variables, the intrinsic sum function returns 
-!      a single precision answer.  I think it is better to use 
-!      the loop here.
-
-       numionfrac = 0.0d0
-       do i = 1,size(pars)
-          numionfrac = numionfrac + pars(i)%xHII 
-       end do
-       numionfrac = numionfrac / size(pars)
-
-  end function number_weight_ionfrac_pars
-
-!> calculates the mass weighted ionization fraction
-!========================================================
-
-  function mass_weight_ionfrac_pars(pars) result(massionfrac)
-     type(particle_type), intent(in) :: pars(:) !< particle system
-     real(r8b) :: massionfrac                   !< ion fraction m weighted
-     real(r8b) :: masstot                       !< total volume
-     integer :: i
-
-     massionfrac = 0.0d0
-     masstot = 0.0d0
-     do i = 1,size(pars)
-        massionfrac = massionfrac + pars(i)%mass * pars(i)%xHII
-        masstot = masstot + pars(i)%mass
-     end do
-     massionfrac = massionfrac / masstot
-
-
-  end function mass_weight_ionfrac_pars
-
-
-!> calculates the volume weighted ionization fraction
-!========================================================
-
-  function volume_weight_ionfrac_pars(pars) result(volionfrac)
-     type(particle_type), intent(in) :: pars(:) !< particle system
-     real(r8b) :: volionfrac                    !< ion fraction v weighted
-     real(r8b) :: voltot                        !< total volume
-     real(r8b) :: h3                            !< hsml^3
-     integer :: i
-
-     volionfrac = 0.0d0
-     voltot = 0.0d0
-     do i = 1,size(pars)
-        h3 = pars(i)%hsml * pars(i)%hsml * pars(i)%hsml
-        volionfrac = volionfrac + h3 * pars(i)%xHII
-        voltot = voltot + h3
-     end do
-     volionfrac = volionfrac / voltot
-
-   end function volume_weight_ionfrac_pars
-
-
-
-
-
-
-   !> function to calculate the global number weighted ionization fraction
-   !========================================================================
-   function number_weight_ionfrac(psys) result(numionfrac)
-     type(particle_system_type), intent(in) :: psys !< input particle system  
-     real(r8b) :: numionfrac !< number weighted global ionization fraction
-     integer :: i
-     
-     numionfrac = 0.0d0
-     do i = 1,size(psys%par)
-        numionfrac = numionfrac + psys%par(i)%xHII
-     end do
-     numionfrac = numionfrac / size(psys%par)
-     
-   end function number_weight_ionfrac
-   
-   
-  !> calculates the mass weighted ionization fraction
-  !========================================================
-  
-  function mass_weight_ionfrac(psys) result(massionfrac)
-    type(particle_system_type), intent(in) :: psys !< input particle system  
-    real(r8b) :: massionfrac                   !< ion fraction m weighted
-    real(r8b) :: masstot                       !< total volume
-    integer :: i
-    
-    massionfrac = 0.0d0
-    masstot = 0.0d0
-    do i = 1,size(psys%par)
-       massionfrac = massionfrac + psys%par(i)%mass * psys%par(i)%xHII
-       masstot = masstot + psys%par(i)%mass
-    end do
-    massionfrac = massionfrac / masstot
-        
-  end function mass_weight_ionfrac
-  
-  
-  !> calculates the volume weighted ionization fraction
-  !========================================================
-  
-  function volume_weight_ionfrac(psys) result(volionfrac)
-    type(particle_system_type), intent(in) :: psys !< input particle system  
-    real(r8b) :: volionfrac                    !< ion fraction v weighted
-    real(r8b) :: voltot                        !< total volume
-    real(r8b) :: h3                            !< hsml^3
-    integer :: i
-    
-    volionfrac = 0.0d0
-    voltot = 0.0d0
-    do i = 1,size(psys%par)
-       h3 = psys%par(i)%hsml * psys%par(i)%hsml * psys%par(i)%hsml
-       volionfrac = volionfrac + h3 * psys%par(i)%xHII
-       voltot = voltot + h3
-    end do
-    volionfrac = volionfrac / voltot
-    
-  end function volume_weight_ionfrac
-  
-
-
-
-!> set electron fraction from ionization fractions
-!=======================================================================================
-subroutine set_ye(psys, dfltH_mf, dfltHe_mf, ne_bckgnd)
-
-  type(particle_system_type) :: psys
-  real(r8b), intent(in) :: dfltH_mf
-  real(r8b), intent(in) :: dfltHe_mf
-  real(r8b), intent(in) :: ne_bckgnd
-  integer(i8b) :: i
-  real(r8b) :: Hmf
-  real(r8b) :: Hemf
-  real(r8b) :: nHe_over_nH
-
-
-  psys%par(:)%ye = psys%par(:)%xHII + ne_bckgnd
-
-
-#ifdef incHe
-
-  do i = 1,size(psys%par)
-     
-!--------------------------
-#ifdef incHmf
-     Hmf = psys%par(i)%Hmf
-#else
-     Hmf = dfltH_mf
-#endif
-!--------------------------
-#ifdef incHemf
-     Hemf = psys%par(i)%Hemf
-#else
-     Hemf = dfltHe_mf
-#endif
-!--------------------------     
-
-     nHe_over_nH = 0.25d0 * Hemf / Hmf
-     psys%par(i)%ye = psys%par(i)%ye + &
-          ( psys%par(i)%xHeII + 2.0d0 * psys%par(i)%xHeIII ) * nHe_over_nH
-     
-  end do
-
-#endif
-
-
-end subroutine set_ye
-
-
-subroutine set_ye_pars(pars, dfltH_mf, dfltHe_mf, ne_bckgnd)
-
-  type(particle_type) :: pars(:)
-  real(r8b), intent(in) :: dfltH_mf
-  real(r8b), intent(in) :: dfltHe_mf
-  real(r8b), intent(in) :: ne_bckgnd
-  integer(i8b) :: i
-  real(r8b) :: Hmf
-  real(r8b) :: Hemf
-  real(r8b) :: nHe_over_nH
-
-
-  pars(:)%ye = pars(:)%xHII + ne_bckgnd
-
-
-#ifdef incHe
-
-  do i = 1,size(pars)
-     
-!--------------------------
-#ifdef incHmf
-     Hmf = pars(i)%Hmf
-#else
-     Hmf = dfltH_mf
-#endif
-!--------------------------
-#ifdef incHemf
-     Hemf = pars(i)%Hemf
-#else
-     Hemf = dfltHe_mf
-#endif
-!--------------------------     
-
-     nHe_over_nH = 0.25d0 * Hemf / Hmf
-     pars(i)%ye = pars(i)%ye + &
-          ( pars(i)%xHeII + 2.0d0 * pars(i)%xHeIII ) * nHe_over_nH
-     
-  end do
-
-#endif
-
-end subroutine set_ye_pars
-
-
-
-
-!> sets ionization fractions to their collisional equilibrium values
-!=======================================================================================
-subroutine set_collisional_ionization_equilibrium(psys, caseA, IsoTemp, DoHydrogen, fit)
-
-  type(particle_system_type) :: psys
-  logical, intent(in) :: caseA(2)   
-  real(r8b), intent(in) :: IsoTemp
-  logical, intent(in) :: DoHydrogen
-  character(*), intent(in) :: fit
-  real(r8b) :: xvec(5)
-  real(r8b) :: Tdum
-  integer(i8b) :: i
-
-
-  ! if we have a single temperature
-  !------------------------------------
-  if (IsoTemp > 0.0) then
-     call calc_colion_eq_fits(fit, IsoTemp, caseA, xvec)
-     if (DoHydrogen) then
-        psys%par(:)%xHI    = xvec(1)
-        psys%par(:)%xHII   = xvec(2)
-     endif
-#ifdef incHe
-     psys%par(:)%xHeI   = xvec(3)
-     psys%par(:)%xHeII  = xvec(4)
-     psys%par(:)%xHeIII = xvec(5)
-#endif
-
-  ! if we have individual temperatures
-  !------------------------------------
-  else
-     do i = 1,size(psys%par)
-        Tdum = psys%par(i)%T
-        call calc_colion_eq_fits(fit, Tdum, caseA, xvec)
-        if (DoHydrogen) then
-           psys%par(i)%xHI    = xvec(1)
-           psys%par(i)%xHII   = xvec(2)
-        endif
-#ifdef incHe
-        psys%par(i)%xHeI   = xvec(3)
-        psys%par(i)%xHeII  = xvec(4)
-        psys%par(i)%xHeIII = xvec(5)
-#endif
-     end do
-
-  end if
-
-end subroutine set_collisional_ionization_equilibrium
-
-
-!>   enforces a minimum and maximum value on the ionization fractions and temperatures
-!=======================================================================================
-subroutine enforce_x_and_T_minmax(par,xmin,xmax,tmin,tmax)
-
-  type(particle_type), intent(inout) :: par(:)  !< inout particle system
-  real(r8b), intent(in) :: xmin, xmax, tmin, tmax
-  integer(i8b) :: i
-
-  do i = 1,size(par)
-     if (par(i)%xHI < xmin) par(i)%xHI = xmin
-     if (par(i)%xHI > xmax) par(i)%xHI = xmax
-#ifdef incHe
-     if (par(i)%xHeI  < xmin) par(i)%xHeI  = xmin
-     if (par(i)%xHeII < xmin) par(i)%xHeII = xmin
-     if (par(i)%xHeI  > xmax) par(i)%xHeI  = xmax
-     if (par(i)%xHeII > xmax) par(i)%xHeII = xmax
-#endif
-
-     if (par(i)%T < tmin) par(i)%T = tmin
-     if (par(i)%T > tmax) par(i)%T = tmax
-
-  end do
-
-end subroutine enforce_x_and_T_minmax
-
-
 !> figures out how many bytes of RAM are needed per particle
-!=================================================================
-subroutine calc_bytes_per_particle_and_source(bpp, bps)
-
-  character(clen), parameter :: myname="calc_bytes_per_particle_and_source"
-  logical, parameter :: crash=.true.
-  integer, parameter :: verb=2
-
-  integer(i4b), intent(out) :: bpp !< bytes per particle
-  integer(i4b), intent(out) :: bps !< bytes per source
-  character(clen) :: str
+!========================================================================
+function return_bytes_per_particle() result(bpp)
+  integer(i4b)  :: bpp   !< bytes per particle
 
   bpp = 12       ! positions
-
-#ifdef incVel
-  bpp = bpp + 12 ! velocities  
-#endif
-
   bpp = bpp + 4  ! ID
   bpp = bpp + 4  ! mass
   bpp = bpp + 4  ! temperature
@@ -745,6 +165,11 @@ subroutine calc_bytes_per_particle_and_source(bpp, bps)
   bpp = bpp + 4  ! ye
   bpp = bpp + 8  ! H ionization fractions
   bpp = bpp + 4  ! hsml
+  bpp = bpp + 8  ! last hit index
+
+#ifdef incVel
+  bpp = bpp + 12 ! velocities  
+#endif
 
 #ifdef cloudy
   bpp = bpp + 4  ! cloudy table xHI
@@ -771,26 +196,539 @@ subroutine calc_bytes_per_particle_and_source(bpp, bps)
   bpp = bpp + 4  ! Equation of State variable
 #endif
 
-  bpp = bpp + 8  ! last hit index
+#ifdef incSFR
+  bpp = bpp + 4  ! Star formation rate
+#endif
+
+end function return_bytes_per_particle
 
 
-  write(str,'(A,I4)') "   bytes per particle = ", bpp
-  call mywrite(str, verb)
+
+!> figures out how many bytes of RAM are needed per source
+!========================================================================
+function return_bytes_per_source() result(bps)
+  integer(i4b)  :: bps   !< bytes per source
+
+  bps = 12       ! positions
+  bps = bps + 4  ! luminosity
+  bps = bps + 4  ! spectral type
+  bps = bps + 4  ! emission profile
+  bps = bps + 4  ! luminosity cumulative distribution function
+  bps = bps + 8  ! last emit index
+
+#ifdef incVel
+  bps = bps + 12 ! velocities  
+#endif
+
+end function return_bytes_per_source
+
+
+
+!********************************************************************
+! Procedures bound to particle type
+!********************************************************************
+
+
+!> creates a copy of a particle
+!============================================================
+function copy_particle(this) result(copy)
+  class(particle_type), intent(in) :: this  !< input particle
+  type(particle_type) :: copy               !< particle copy
+
+  copy%pos = this%pos
+  copy%id = this%id
+  copy%mass = this%mass
+  copy%T = this%T
+  copy%rho = this%rho
+  copy%ye = this%ye
+  copy%xHI = this%xHI
+  copy%xHII = this%xHII
+  copy%hsml = this%hsml
+  copy%lasthit = this%lasthit
+#ifdef incVel
+   copy%vel = this%vel
+#endif
+#ifdef cloudy
+   copy%xHI_cloudy = this%xHI_cloudy
+#endif
+#ifdef incHmf   
+   copy%Hmf = this%Hmf
+#endif
+#ifdef incHe
+   copy%xHeI = this%xHeI
+   copy%xHeII = this%xHeII
+   copy%xHeIII = this%xHeIII
+#endif
+#ifdef incHemf
+   copy%Hemf = this%Hemf
+#endif
+#ifdef outGammaHI
+   copy%gammaHI = this%gammaHI
+   copy%time = this%time
+#endif
+#ifdef incEOS
+   copy%eos = this%eos
+#endif
+#ifdef incSFR
+   copy%sfr = this%sfr
+#endif
+
+ end function copy_particle
+
+
+!> creates a possibly transformed particle copy
+!============================================================
+subroutine transform_particle(this, transform)
+  class(particle_type), intent(inout) :: this        !< input particle
+  type(transformation_type), intent(in) :: transform !< transformation
+  this%pos = transform%fac * (this%pos - transform%shift)
+end subroutine transform_particle
+
+
+!> set electron fraction, ye=ne/nH from ionization fractions
+!==============================================================
+subroutine set_ye_particle(par, dfltH_mf, dfltHe_mf, ne_bckgnd)
+
+  class(particle_type) :: par
+  real(r8b), intent(in) :: dfltH_mf
+  real(r8b), intent(in) :: dfltHe_mf
+  real(r8b), intent(in) :: ne_bckgnd
+  integer(i8b) :: i
+  real(r8b) :: Hmf
+  real(r8b) :: Hemf
+  real(r8b) :: nHe_over_nH
+  
+  par%ye = par%xHII + ne_bckgnd
+  
+#ifdef incHe
+  
+#ifdef incHmf
+  Hmf = par%Hmf
+#else
+  Hmf = dfltH_mf
+#endif
+  
+#ifdef incHemf
+  Hemf = par%Hemf
+#else
+  Hemf = dfltHe_mf
+#endif
+  
+  nHe_over_nH = 0.25d0 * Hemf / Hmf
+  par%ye = par%ye + ( par%xHeII + 2.0d0 * par%xHeIII ) * nHe_over_nH
+  
+#endif
+  
+  
+end subroutine set_ye_particle
+
+
+!> sets ionization fractions to their collisional equilibrium values
+!======================================================================
+subroutine set_ci_eq_particle(par, caseA, DoH, DoHe, fit)
+
+  class(particle_type) :: par
+  logical, intent(in) :: caseA(2)   !<  1st slot for H, 2nd for He  
+  logical, intent(in) :: DoH        !<  set Hydrogen?
+  logical, intent(in) :: DoHe       !<  set Helium?
+  character(*), intent(in) :: fit   !< one of ['hui','cen']
+  real(r8b) :: T                    !< 8 byte temperature
+  real(r8b) :: xvec(5)              !< [xHI,xHII,xHeI,xHeII,xHeIII]
+
+  T = par%T
+  call calc_colion_eq_fits(fit, T, caseA, xvec)
+
+  if (DoH) then
+     par%xHI = xvec(1)
+     par%xHII = xvec(2)
+  endif
+  if (DoHe) then
+#ifdef incHe
+     par%xHeI = xvec(3)
+     par%xHeII = xvec(4)
+     par%xHeIII = xvec(5)
+#endif
+  endif
+
+end subroutine set_ci_eq_particle
+
+
+
+
+!********************************************************************
+! Procedures bound to box type
+!********************************************************************
+
+
+!> resets the box limits where the BCs are vacuum
+!==================================================================
+subroutine adjust_box(box,bot,top)
+  class(box_type), intent(inout) :: box !< input box
+  real(r4b), intent(in) :: bot(3)       !< new bottoms
+  real(r4b), intent(in) :: top(3)       !< new tops
+  where (box%bbound==0) box%bots = bot
+  where (box%tbound==0) box%tops = top
+end subroutine adjust_box
+
+
+
+
+
+
+
+!********************************************************************
+! Procedures bound to particle system type
+!********************************************************************
+
+
+!> scales particles, sources, and the box from comoving to physical values.
+! velocity is taken from Gadget code value to peculiar. 
+!==========================================================================
+subroutine scale_comoving_to_physical(this, a, h)
+
+  character(clen), parameter :: myname="scale_comoving_to_physical"
+  integer, parameter :: verb=2
+  character(clen) :: str,fmt
+
+  class(particle_system_type) :: this
+  real(r8b), intent(in) :: a    !< scale factor
+  real(r8b), intent(in) :: h    !< hubble parameter (little h)
+
+  call mywrite("   scaling comoving to physical coordinates", verb)
+  fmt = "(A,F12.5,T22,A,T25,F12.5)"
+  write(str,fmt) "   a = ", a, "h = ", h
+  call mywrite(str,verb)
+
+  ! particles
+  !------------------------------------------------
+  this%par%pos(1) = this%par%pos(1) * a / h
+  this%par%pos(2) = this%par%pos(2) * a / h
+  this%par%pos(3) = this%par%pos(3) * a / h
+
+#ifdef incVel
+  this%par%vel(1) = this%par%vel(1) * sqrt(a) 
+  this%par%vel(2) = this%par%vel(2) * sqrt(a) 
+  this%par%vel(3) = this%par%vel(3) * sqrt(a) 
+#endif
+
+  this%par%mass = this%par%mass / h
+  this%par%hsml = this%par%hsml * a / h
+  this%par%rho  = ( this%par%rho / (a*a*a) ) * (h*h)
+
+  ! sources
+  !------------------------------------------------
+  this%src%pos(1) = this%src%pos(1) * a / h
+  this%src%pos(2) = this%src%pos(2) * a / h
+  this%src%pos(3) = this%src%pos(3) * a / h
+
+#ifdef incVel
+  this%src%vel(1) = this%src%vel(1) * sqrt(a) 
+  this%src%vel(2) = this%src%vel(2) * sqrt(a)
+  this%src%vel(3) = this%src%vel(3) * sqrt(a)
+#endif
+
+  ! box
+  !------------------------------------------------
+  this%box%tops = this%box%tops * a / h
+  this%box%bots = this%box%bots * a / h
+  
+  this%box%lens    = this%box%lens * a / h
+  this%box%lens_cm = this%box%lens_cm * a / h
+  
+  this%box%vol    = product( this%box%lens )
+  this%box%vol_cm = product( this%box%lens_cm )
+  
+
+end subroutine scale_comoving_to_physical
+
+
+!> scales particles, sources, and the box from physical to comoving values.
+! velocity is taken from peculiar to Gadget code value. 
+!==========================================================================
+subroutine scale_physical_to_comoving(this, a, h)
+
+  character(clen), parameter :: myname="scale_physical_to_comoving"
+  integer, parameter :: verb=2
+  character(clen) :: str,fmt
+
+  class(particle_system_type) :: this
+  real(r8b), intent(in) :: a   !< scale factor 
+  real(r8b), intent(in) :: h   !< hubble parameter (little h)
+
+  call mywrite("   scaling physical to comoving coordinates", verb)
+  fmt = "(A,F12.5,T22,A,T25,F12.5)"
+  write(str,fmt) "   a = ", a, "h = ", h
+  call mywrite(str,verb)
+
+  ! particles
+  !------------------------------------------------
+  this%par%pos(1) = this%par%pos(1) / a * h
+  this%par%pos(2) = this%par%pos(2) / a * h
+  this%par%pos(3) = this%par%pos(3) / a * h
+
+#ifdef incVel
+  this%par%vel(1) = this%par%vel(1) / sqrt(a)
+  this%par%vel(2) = this%par%vel(2) / sqrt(a)
+  this%par%vel(3) = this%par%vel(3) / sqrt(a)
+#endif
+
+  this%par%mass = this%par%mass * h
+  this%par%hsml = this%par%hsml / a * h
+  this%par%rho = this%par%rho * (a*a*a) / (h*h)
+
+  ! particles
+  !------------------------------------------------
+  this%src%pos(1) = this%src%pos(1) / a * h
+  this%src%pos(2) = this%src%pos(2) / a * h
+  this%src%pos(3) = this%src%pos(3) / a * h
+
+#ifdef incVel
+  this%src%vel(1) = this%src%vel(1) / sqrt(a)
+  this%src%vel(2) = this%src%vel(2) / sqrt(a)
+  this%src%vel(3) = this%src%vel(3) / sqrt(a)
+#endif
+
+  ! box
+  !------------------------------------------------
+  this%box%tops = this%box%tops / a * h
+  this%box%bots = this%box%bots / a * h
+  
+  this%box%lens    = this%box%lens / a * h
+  this%box%lens_cm = this%box%lens_cm / a * h
+  
+  this%box%vol    = product( this%box%lens )
+  this%box%vol_cm = product( this%box%lens_cm )
+
+
+end subroutine scale_physical_to_comoving
+
+
+
+!> allows for accessing the particles in a random order
+!------------------------------------------------------
+subroutine create_particle_random_access_list( psys )
+  class(particle_system_type) :: psys
+
+  integer(i4b) :: i
+  integer(i4b) :: n
+  real(r4b), allocatable :: randoms(:)
+
+  n = size( psys%par )
+  if (.not. allocated(psys%acc_list) ) allocate( psys%acc_list(n) )
+  allocate( randoms(n) )
+
+  do i = 1, size(randoms)
+     randoms(i) = genrand_real1()
+  end do
+  
+  call mrgrnk( randoms, psys%acc_list )
+
+  deallocate( randoms )
+
+
+end subroutine create_particle_random_access_list
+
+
+
+!> allows for accessing the particles from least to most dense
+!--------------------------------------------------------------
+subroutine create_particle_density_access_list( psys )
+  class(particle_system_type) :: psys
+
+  integer(i4b) :: i
+  integer(i4b) :: n
+  real(r4b), allocatable :: rhos(:)
+
+  n = size( psys%par )
+  if (.not. allocated(psys%acc_list) ) allocate( psys%acc_list(n) )
+  allocate( rhos(n) )
+
+  do i = 1,n     
+     rhos(i) = psys%par(i)%rho
+  end do
+  call mrgrnk( rhos, psys%acc_list )
+  
+  deallocate( rhos )
+
+end subroutine create_particle_density_access_list
+
+
+! this routine rearranges the particles in the particle system so that 
+! they are stored in the sequence given by the array order.  For example
+! order = [3,1,2] takes the third particle to the first position, the first 
+! particle to the second position, and the second particle to the third 
+! position.  the array order is not preserved during the routine
+
+!> reorders the particles according to the array order
+!===========================================================================
+subroutine order_particles(this, order)
+  class(particle_system_type), intent(inout) :: this !< input particle system
+  integer(i4b), intent(inout) :: order(:)  !< desired order
+
+  type(particle_type) :: par
+  integer(i8b) :: i
+  integer(i8b) :: goal
+  integer(i8b) :: npar
+  
+  if (size(this%par) /= size(order)) stop "size(this%par) /= size(order)"
+  npar = size(this%par)
+  
+  do i=1,npar 
+     par=this%par(i)
+     goal=order(i)
+     do while(goal < i)
+        goal=order(goal)
+        order(i)=goal
+     enddo
+     this%par(i)=this%par(goal)
+     this%par(goal)=par 
+  enddo
+  do i=1,npar
+     order(i)=i
+  enddo
+
+end subroutine order_particles
+
+
+!> calculates the number weighted mean value of xHII
+!========================================================================
+function mean_xHII_number_weight(this) result(numionfrac)
+  class(particle_system_type), intent(in) :: this !< input particle system  
+  real(r8b) :: numionfrac !< number weighted global ionization fraction
+  integer :: i
+     
+  numionfrac = 0.0d0
+  do i = 1,size(this%par)
+     numionfrac = numionfrac + this%par(i)%xHII
+  end do
+  numionfrac = numionfrac / size(this%par)
+  
+end function mean_xHII_number_weight
+   
+   
+!> calculates the mass weighted mean value of xHII
+!========================================================
+function mean_xHII_mass_weight(this, DfltH_mf) result(massionfrac)
+  class(particle_system_type), intent(in) :: this !< input particle system  
+  real(r8b) :: DfltH_mf     !< H_mf if we dont have a value for each par     
+  real(r8b) :: massionfrac  !< ion fraction m weighted
+  real(r8b) :: masstot      !< total volume
+  real(r8b) :: Hmf          !< Hydrogen mass fraction
+  integer :: i
+  
+  massionfrac = 0.0d0
+  masstot = 0.0d0
+  do i = 1,size(this%par)
+#ifdef incHmf
+     Hmf = this%par(i)%Hmf
+#else
+     Hmf = dfltH_mf
+#endif
+     massionfrac = massionfrac + this%par(i)%mass * Hmf * this%par(i)%xHII
+     masstot = masstot + this%par(i)%mass * Hmf
+  end do
+  massionfrac = massionfrac / masstot
+  
+end function mean_xHII_mass_weight
 
   
-  bps = 10 * 4 + 8
-  write(str,'(A,I4)') "   bytes per source = ", bps
-  call mywrite(str, verb)
+!> calculates the volume weighted mean of xHII
+!========================================================
+function mean_xHII_volume_weight(this) result(volionfrac)
+  class(particle_system_type), intent(in) :: this !< input particle system  
+  real(r8b) :: volionfrac                    !< ion fraction v weighted
+  real(r8b) :: voltot                        !< total volume
+  real(r8b) :: h3                            !< hsml^3
+  integer :: i
+  
+  volionfrac = 0.0d0
+  voltot = 0.0d0
+  do i = 1,size(this%par)
+     h3 = this%par(i)%hsml * this%par(i)%hsml * this%par(i)%hsml
+     volionfrac = volionfrac + h3 * this%par(i)%xHII
+     voltot = voltot + h3
+  end do
+  volionfrac = volionfrac / voltot
+  
+end function mean_xHII_volume_weight
 
 
-end subroutine calc_bytes_per_particle_and_source
+!> set electron fraction, ye=ne/nH from ionization fractions
+!==============================================================
+subroutine set_ye_psys(psys, dfltH_mf, dfltHe_mf, ne_bckgnd)
+
+  class(particle_system_type) :: psys
+  real(r8b), intent(in) :: dfltH_mf
+  real(r8b), intent(in) :: dfltHe_mf
+  real(r8b), intent(in) :: ne_bckgnd
+  integer(i8b) :: i
+
+  do i = 1,size(psys%par)
+     call psys%par(i)%set_ye(dfltH_mf, dfltHe_mf, ne_bckgnd)
+  end do
+
+end subroutine set_ye_psys
+
+
+!> sets ionization fractions to their collisional equilibrium values
+!======================================================================
+subroutine set_ci_eq_psys(psys, caseA, DoH, DoHe, fit)
+
+  class(particle_system_type) :: psys
+  logical, intent(in) :: caseA(2)   !<  1st slot for H, 2nd for He  
+  logical, intent(in) :: DoH        !<  set Hydrogen?
+  logical, intent(in) :: DoHe       !<  set Helium?
+  character(*), intent(in) :: fit   !< one of ['hui','cen']
+  real(r8b) :: T                    !< 8 byte temperature
+  real(r8b) :: xvec(5)              !< [xHI,xHII,xHeI,xHeII,xHeIII]
+  integer(i8b) :: i
+  
+  do i = 1, size(psys%par)
+     call psys%par(i)%set_ci_eq(caseA, DoH, DoHe, fit)
+  end do
+
+end subroutine set_ci_eq_psys
+
+
+
+!> enforces a minimum and maximum value on the ionization fractions 
+!! and temperatures
+!=============================================================================
+subroutine enforce_x_and_T_minmax(psys,xmin,xmax,tmin,tmax)
+
+  class(particle_system_type), intent(inout) :: psys !< inout particle system
+  real(r8b), intent(in) :: xmin, xmax, tmin, tmax
+  integer(i8b) :: i
+
+  do i = 1,size(psys%par)
+     if (psys%par(i)%xHI < xmin) psys%par(i)%xHI = xmin
+     if (psys%par(i)%xHI > xmax) psys%par(i)%xHI = xmax
+     if (psys%par(i)%xHII < xmin) psys%par(i)%xHII = xmin
+     if (psys%par(i)%xHII > xmax) psys%par(i)%xHII = xmax
+#ifdef incHe
+     if (psys%par(i)%xHeI < xmin) psys%par(i)%xHeI = xmin
+     if (psys%par(i)%xHeII < xmin) psys%par(i)%xHeII = xmin
+     if (psys%par(i)%xHeIII < xmin) psys%par(i)%xHeIII = xmin
+     if (psys%par(i)%xHeI > xmax) psys%par(i)%xHeI = xmax
+     if (psys%par(i)%xHeII > xmax) psys%par(i)%xHeII = xmax
+     if (psys%par(i)%xHeIII > xmax) psys%par(i)%xHeIII = xmax
+#endif
+
+     if (psys%par(i)%T < tmin) psys%par(i)%T = tmin
+     if (psys%par(i)%T > tmax) psys%par(i)%T = tmax
+  end do
+
+end subroutine enforce_x_and_T_minmax
+
+
+
 
 
 !> outputs currently loaded particle data to the screen
 !=================================================================
-subroutine particle_info_to_screen(psys,str,lun)
+subroutine print_particle_info_lun(psys,str,lun)
 
-  type(particle_system_type), intent(in) :: psys     !< particle system
+  class(particle_system_type), intent(in) :: psys    !< particle system
   character(*), optional, intent(in) :: str          !< arbitrary string
   integer(i4b), optional, intent(in) :: lun          !< if present goes to file
   integer(i4b) :: outlun
@@ -810,101 +748,100 @@ subroutine particle_info_to_screen(psys,str,lun)
   write(outlun,99) 
   if (present(str)) write(outlun,"(A)") trim(str)
   write(outlun,"(A,I15,A)") "particle data for ", size(psys%par), "  particles"
-!  write(outlun,99) 
+
   write(outlun,*) 
 
 
-  write(outlun,100) "xpos", minval(psys%par%pos(1)), maxval(psys%par%pos(1)), &
-       meanval_real(psys%par%pos(1))
+  write(outlun,100) "xpos", minval(psys%par%pos(1)), &
+       maxval(psys%par%pos(1)), meanval_real(psys%par%pos(1))
 
-  write(outlun,100) "ypos", minval(psys%par%pos(2)), maxval(psys%par%pos(2)), &
-       meanval_real(psys%par%pos(2))
+  write(outlun,100) "ypos", minval(psys%par%pos(2)), &
+       maxval(psys%par%pos(2)), meanval_real(psys%par%pos(2))
   
-  write(outlun,100) "zpos", minval(psys%par%pos(3)), maxval(psys%par%pos(3)), &
-       meanval_real(psys%par%pos(3))   
+  write(outlun,100) "zpos", minval(psys%par%pos(3)), &
+       maxval(psys%par%pos(3)), meanval_real(psys%par%pos(3))   
+    
+  write(outlun,102) "id",   minval(psys%par%id), &
+       maxval(psys%par%id)
   
+  write(outlun,100) "mass", minval(psys%par%mass), &
+       maxval(psys%par%mass), meanval_real(psys%par%mass)
+  
+  write(outlun,100) "T",    minval(psys%par(:)%T), &
+       maxval(psys%par(:)%T), meanval_real(psys%par%T)
+  
+  write(outlun,100) "rho",  minval(psys%par%rho), &
+       maxval(psys%par%rho), meanval_real(psys%par%rho)
+  
+  write(outlun,100) "ye",   minval(psys%par%ye), &
+       maxval(psys%par%ye), meanval_real(psys%par%ye)
+  
+  write(outlun,100) "xHI",  minval(psys%par%xHI), &
+       maxval(psys%par%xHI), meanval_real(psys%par%xHI)
+
+  write(outlun,100) "xHII",  minval(psys%par%xHII), &
+       maxval(psys%par%xHII), meanval_real(psys%par%xHII)
+
+  write(outlun,100) "hsml", minval(psys%par%hsml), &
+       maxval(psys%par%hsml), meanval_real(psys%par%hsml)
+
+  write(outlun,101) "lasthit", minval(psys%par%lasthit), &
+       maxval(psys%par%lasthit)
+
 #ifdef incVel
-  write(outlun,100) "xvel", minval(psys%par%vel(1)), maxval(psys%par%vel(1)), &
-       meanval_real(psys%par%vel(1))
+  write(outlun,100) "xvel", minval(psys%par%vel(1)), &
+       maxval(psys%par%vel(1)), meanval_real(psys%par%vel(1))
   
-  write(outlun,100) "yvel", minval(psys%par%vel(2)), maxval(psys%par%vel(2)), &
-       meanval_real(psys%par%vel(2))
+  write(outlun,100) "yvel", minval(psys%par%vel(2)), &
+       maxval(psys%par%vel(2)), meanval_real(psys%par%vel(2))
   
-  write(outlun,100) "zvel", minval(psys%par%vel(3)), maxval(psys%par%vel(3)), &
-       meanval_real(psys%par%vel(3))
+  write(outlun,100) "zvel", minval(psys%par%vel(3)), &
+       maxval(psys%par%vel(3)), meanval_real(psys%par%vel(3))
 #endif
-  
-  write(outlun,102) "id",   minval(psys%par%id), maxval(psys%par%id)
-  
-  write(outlun,100) "mass", minval(psys%par%mass), maxval(psys%par%mass), &
-       meanval_real(psys%par%mass)
-  
-  write(outlun,100) "T",    minval(psys%par(:)%T), maxval(psys%par(:)%T), &
-       meanval_real(psys%par%T)
-  
-  write(outlun,100) "rho",  minval(psys%par%rho), maxval(psys%par%rho), &
-       meanval_real(psys%par%rho)
-  
-  write(outlun,100) "ye",    minval(psys%par%ye), maxval(psys%par%ye), &
-       meanval_real(psys%par%ye)
-  
-  write(outlun,100) "xHI",    minval(psys%par%xHI), maxval(psys%par%xHI), &
-       meanval_real(psys%par%xHI)
-
 
 #ifdef cloudy
-  write(outlun,100) "xHI_cld",    minval(psys%par%xHI_cloudy), maxval(psys%par%xHI_cloudy), &
-       meanval_real(psys%par%xHI_cloudy)
+  write(outlun,100) "xHI_cld", minval(psys%par%xHI_cloudy), &
+       maxval(psys%par%xHI_cloudy), meanval_real(psys%par%xHI_cloudy)
 #endif
   
-
-
-  write(outlun,100) "xHII",   minval(psys%par%xHII), maxval(psys%par%xHII), &
-       meanval_real(psys%par%xHII)
-
 #ifdef incHmf  
-  write(outlun,100) "Hmf",    minval(psys%par%Hmf), maxval(psys%par%Hmf), &
-       meanval_real(psys%par%Hmf)
+  write(outlun,100) "Hmf",    minval(psys%par%Hmf), &
+       maxval(psys%par%Hmf), meanval_real(psys%par%Hmf)
 #endif
 
-  write(outlun,100) "hsml", minval(psys%par%hsml), maxval(psys%par%hsml), &
-       meanval_real(psys%par%hsml)
-  
 #ifdef incHe
-  write(outlun,100) "xHeI",   minval(psys%par%xHeI), maxval(psys%par%xHeI), &
-       meanval_real(psys%par%xHeI)
+  write(outlun,100) "xHeI",   minval(psys%par%xHeI), &
+       maxval(psys%par%xHeI), meanval_real(psys%par%xHeI)
   
-  write(outlun,100) "xHeII",  minval(psys%par%xHeII), maxval(psys%par%xHeII), &
-       meanval_real(psys%par%xHeII)
+  write(outlun,100) "xHeII",  minval(psys%par%xHeII), &
+       maxval(psys%par%xHeII), meanval_real(psys%par%xHeII)
   
-  write(outlun,100) "xHeIII", minval(psys%par%xHeIII), maxval(psys%par%xHeIII), &
-       meanval_real(psys%par%xHeIII)
+  write(outlun,100) "xHeIII", minval(psys%par%xHeIII), &
+       maxval(psys%par%xHeIII), meanval_real(psys%par%xHeIII)
 #endif
-
 
 #ifdef incHemf  
-  write(outlun,100) "Hemf",    minval(psys%par%Hemf), maxval(psys%par%Hemf), &
-       meanval_real(psys%par%Hemf)
+  write(outlun,100) "Hemf",    minval(psys%par%Hemf), &
+       maxval(psys%par%Hemf), meanval_real(psys%par%Hemf)
 #endif
-
 
 #ifdef outGammaHI
-  write(outlun,100) "gammaHI",   minval(psys%par%gammaHI), maxval(psys%par%gammaHI), &
-       meanval_real(psys%par%gammaHI)
+  write(outlun,100) "gammaHI",   minval(psys%par%gammaHI), &
+       maxval(psys%par%gammaHI), meanval_real(psys%par%gammaHI)
   
-  write(outlun,100) "time(s)",   minval(psys%par%time), maxval(psys%par%time), &
-       meanval_real(psys%par%time)
+  write(outlun,100) "time(s)",   minval(psys%par%time), &
+       maxval(psys%par%time), meanval_real(psys%par%time)
 #endif
-
 
 #ifdef incEOS
-  write(outlun,100) "eos",   minval(psys%par%eos), maxval(psys%par%eos), &
-       meanval_real(psys%par%eos)  
+  write(outlun,100) "eos",   minval(psys%par%eos), &
+       maxval(psys%par%eos), meanval_real(psys%par%eos)  
 #endif
 
-
-
-  write(outlun,101) "lasthit", minval(psys%par%lasthit), maxval(psys%par%lasthit)
+#ifdef incSFR
+  write(outlun,100) "sfr",   minval(psys%par%sfr), &
+       maxval(psys%par%sfr), meanval_real(psys%par%sfr)  
+#endif
 
   write(outlun,*)
   
@@ -915,7 +852,8 @@ subroutine particle_info_to_screen(psys,str,lun)
   
   write(outlun,99) 
   
-end subroutine particle_info_to_screen
+end subroutine print_particle_info_lun
+
 
 !> calculates the mean value w/o using the intrinsics
 !=================================================================
@@ -923,13 +861,11 @@ function meanval_real(arr) result (mean)
   real(r4b), dimension(:), intent(in) :: arr  !< array to average
   real(r8b) :: mean                           !< mean value to return
   integer(i8b) :: i
-  
   mean = 0.0d0
   do i = 1,size(arr)
      mean = mean + arr(i)
   end do
   mean = mean / size(arr)
-
 end function meanval_real
 
 

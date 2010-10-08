@@ -1,6 +1,6 @@
 FC= gfortran
-FFLAGS= -g -cpp
-# FFLAGS= -g -cpp -fno-range-check
+FFLAGS= -g -cpp -O5
+
 
 ISLIB= -L
 ISINC= -I

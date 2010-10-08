@@ -10,8 +10,7 @@ use gadget_general_class
 use gadget_public_header_class
 use gadget_sphray_header_class
 use particle_system_mod, only: particle_system_type
-use particle_system_mod, only: set_collisional_ionization_equilibrium
-use particle_system_mod, only: set_ye
+
 use global_mod, only: psys, PLAN, GV
 use global_mod, only: saved_gheads
 implicit none
@@ -135,7 +134,7 @@ end subroutine get_planning_data_gadget_vbromm
 
 
 !> reads a Gadget snapshot from Volker Bromm's group
-!=========================================================================================
+!=================================================================
 subroutine read_Gvbromm_particles()
 
   character(clen), parameter :: myname="read_Gvbromm_particles"
@@ -164,6 +163,7 @@ subroutine read_Gvbromm_particles()
   real(r8b) :: xvec(5)
   real(r8b) :: Tdum
   real(r8b) :: MB 
+  real(r8b) :: nH_over_nHe
 
   logical :: hdf5bool
 
