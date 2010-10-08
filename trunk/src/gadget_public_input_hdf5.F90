@@ -10,9 +10,7 @@ use gadget_public_header_class
 use gadget_public_header_hdf5_class
 use gadget_sphray_header_class
 use gadget_public_input_mod, only: set_temp_from_u
-use particle_system_mod, only: set_collisional_ionization_equilibrium
-use particle_system_mod, only: set_ye
-use atomic_rates_mod, only: calc_colion_eq_fits
+
 use global_mod, only: psys, PLAN, GV
 use global_mod, only: saved_gheads
 
@@ -339,29 +337,27 @@ contains
     end do files
     
     ! There is no cooling in the public version of Gadget-2 so we
-    ! will make some simple assumptions to calculate temperature 
-    ! from the internal energy / unit mass
-    
-    ! assume the particles are neutral to compute the temperature
+    ! will make the same assumptions as were made in the routine
+    ! show_hotgas.pro included in the source distribution when 
+    ! calculating temperature from internal energy / unit mass. 
+    ! Specifically mu = 1.0 * PROTONMASS or fully neutral gas. 
     !---------------------------------------------------------------
-    psys%par(:)%xHI = 1.0d0 - 1.0d-5
-    psys%par(:)%xHII = 1.0d-5
+    psys%par(:)%xHI = 1.0d0
+    psys%par(:)%xHII = 0.0d0
     psys%par(:)%ye = psys%par(:)%xHII
-    
     call set_temp_from_u(psys, GV%H_mf, GV%cgs_enrg, GV%cgs_mass)
     
-    
-    ! set caseA true or false for collisional equilibrium
+
+    ! now we have temperatures, we will set the ionization
+    ! state to collisional equilibrium.
     !-----------------------------------------------------
     caseA = .false.
     if (.not. GV%OnTheSpotH  .or. GV%HydrogenCaseA) caseA(1) = .true.
     if (.not. GV%OnTheSpotHe .or. GV%HeliumCaseA)   caseA(2) = .true.
     
-    
-    call set_collisional_ionization_equilibrium(psys, caseA, GV%IsoTemp, DoHydrogen=.true., fit="hui")
-    call set_ye(psys, GV%H_mf, GV%He_mf, GV%NeBackground)
-    
-    
+    call psys%set_ci_eq(caseA, DoH=.true., DoHe=.true., fit="hui")
+    call psys%set_ye(GV%H_mf, GV%He_mf, GV%NeBackground)
+        
   end subroutine read_Gpubhdf5_particles
   
   

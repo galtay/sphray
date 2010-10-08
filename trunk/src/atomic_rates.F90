@@ -348,7 +348,6 @@ contains
 
     T = Tin
     
-
     select case(trim(fit))
 
        case("cen")

@@ -75,10 +75,10 @@ endif
 #include makes/make.santabuntu.serial.opt
 #include makes/make.santabuntu.serial.debug
 
-#include makes/make.blue-velvet.serial.gfortran.debug
+include makes/make.blue-velvet.serial.gfortran.debug
 
 #include makes/make.blue-velvet.serial.intel.debug
-include makes/make.blue-velvet.serial.intel.opt
+#include makes/make.blue-velvet.serial.intel.opt
 
 
 

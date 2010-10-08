@@ -10,7 +10,7 @@ use gadget_public_header_class
 use gadget_owls_header_class
 use gadget_sphray_header_class
 use ion_table_class
-use particle_system_mod, only: set_ye
+
 use atomic_rates_mod, only: calc_colion_eq_fits
 use global_mod, only: psys, PLAN, GV
 use global_mod, only: saved_gheads
@@ -448,13 +448,13 @@ subroutine read_Gowls_particles()
   ! if Helium, initialize ionization fractions to collisional equilibrium
   !------------------------------------------------------------------------
 #ifdef incHe
-  call set_collisional_ionization_equilibrium(psys, caseA, GV%IsoTemp, DoHydrogen=.false., fit="hui")
+  call psys%set_ci_eq(caseA, DoH=.false., DoHe=.true., fit="hui")
 #endif
 
 
   ! set the electron fractions from the ionization fractions
   !----------------------------------------------------------
-  call set_ye(psys, GV%H_mf, GV%He_mf, GV%NeBackground)
+  call psys%set_ye(GV%H_mf, GV%He_mf, GV%NeBackground)
 
 
 

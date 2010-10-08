@@ -8,9 +8,6 @@ use myf03_mod
 use raylist_mod, only: raylist_type
 use ray_mod, only: ray_type
 use particle_system_mod, only: particle_system_type
-use particle_system_mod, only: number_weight_ionfrac
-use particle_system_mod, only: mass_weight_ionfrac
-use particle_system_mod, only: volume_weight_ionfrac
 use oct_tree_mod, only: oct_tree_type
 use global_mod, only: global_variables_type
 use physical_constants_mod
@@ -95,7 +92,7 @@ contains
     ionRa = rtcpStromRad_kpc * (1.0d0 - exp(-time_ratio) )**(1.0/3.0)
  
 !   compute numerical Stromgren radius (Volume method)
-    VWionfrac = volume_weight_ionfrac(psys)
+    VWionfrac = psys%mean_xHII_volume_weight()
     ionVn = (VWionfrac - rtcpT1xHII) * psys%box%vol
     ionRn = (3.0 * ionVn / (4 * pi) )**(1.0/3.0)
 
@@ -158,7 +155,7 @@ contains
     ionRa = rtcpStromRad_kpc * (1.0d0 - exp(-time_ratio) )**(1.0/3.0)
  
 !   compute numerical Stromgren radius
-    VWionfrac = volume_weight_ionfrac(psys)
+    VWionfrac = psys%mean_xHII_volume_weight()
     ionVn = (VWionfrac - rtcpT2xHII) * psys%box%vol
     ionRn = (3.0 * ionVn / (4 * pi) )**(1.0/3.0)
 
@@ -259,7 +256,7 @@ contains
 
     real(r8b) :: NWionfrac
 
-    NWionfrac = number_weight_ionfrac(psys)
+    NWionfrac = psys%mean_xHII_number_weight()
 
     write(*,*) "=============================================================="
     write(*,*) GV%TestScenario, " Specific Monitoring "

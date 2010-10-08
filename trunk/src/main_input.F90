@@ -17,11 +17,7 @@ use source_input_mod
 use particle_system_mod, only: particle_type
 use particle_system_mod, only: source_type
 use particle_system_mod, only: box_type
-use particle_system_mod, only: scale_comoving_to_physical
-use particle_system_mod, only: scale_physical_to_comoving
-use particle_system_mod, only: set_ye
-use particle_system_mod, only: enforce_x_and_T_minmax
-use particle_system_mod, only: particle_info_to_screen
+
 use atomic_rates_mod, only: get_atomic_rates
 use global_mod, only: PLAN, GV, rtable, cmbT_k
 use global_mod, only: psys, saved_gheads
@@ -108,8 +104,6 @@ subroutine readin_snapshot()
   else if (GV%InputType==5) then
      call mywrite(" Gadget-2 Public HDF5", verb)
   end if
-
-
  
   ! read in the particle data
   !=============================
@@ -120,8 +114,7 @@ subroutine readin_snapshot()
      GV%CurSnapNum = GV%CurSnapNum + 1
   end if
 
-
-  ! gadget public 
+  ! gadget public (no ionization fractions)
   !---------------------------------------------------------------
   if (GV%InputType == 1) then
 
@@ -165,7 +158,7 @@ subroutine readin_snapshot()
         call update_particles()
      end if
 
-  ! gadget public HDF5
+  ! gadget public HDF5 (no ionization fractions)
   !---------------------------------------------------------------
   else if (GV%InputType == 5) then
 
@@ -199,13 +192,11 @@ subroutine readin_snapshot()
   psys%box%bbound = GV%BndryCond
 
 
-
   ! read in the source data
   !============================================
   call read_src_snapshot()
   call order_sources_lum(psys%src)
   psys%src%lastemit = GV%rayn
-
 
   
   ! these quantities track the photoionization rate.  they are 
@@ -229,7 +220,7 @@ subroutine readin_snapshot()
   !========================================================================  
   fmt = "(A,A)"
   write(str,fmt) "Fresh read from ", trim(snpbase)
-  call particle_info_to_screen(psys,str,GV%pardatalun)
+  call psys%print_particle_info_lun(str,GV%pardatalun)
   write(GV%pardatalun,*)
   write(GV%pardatalun,*)
   flush(GV%pardatalun)
@@ -256,14 +247,14 @@ subroutine readin_snapshot()
   ! scale the data if we need to
   !=====================================================================
   if(GV%Comoving) then
-     call scale_comoving_to_physical(a, h, psys%par, psys%src, psys%box)
+     call psys%scale_comoving_to_physical(a, h)
   endif
 
   ! write data after rescaling to the particle_data.log file
   !=====================================================================
   fmt = "(A,F5.3,A,F5.3,A,A)"
   write(str,fmt) "After rescaling (a=",a,",h=",h,") from ", trim(snpbase)
-  call particle_info_to_screen(psys,str,GV%pardatalun)
+  call psys%print_particle_info_lun(str,GV%pardatalun)
   write(GV%pardatalun,*)
   write(GV%pardatalun,*)
   flush(GV%pardatalun)
@@ -370,13 +361,11 @@ subroutine readin_snapshot()
   ! set neutral or ionized if we need to
   !=======================================================
 if (first) then
-
    if (GV%InitxHI > 0.0) then
       psys%par(:)%xHI  = GV%InitxHI
       psys%par(:)%xHII = 1.0d0 - GV%InitxHI
-      call set_ye(psys, GV%H_mf, GV%He_mf, GV%NeBackground)
+      call psys%set_ye(GV%H_mf, GV%He_mf, GV%NeBackground)
    endif
-   
 endif
 
 
@@ -389,14 +378,15 @@ endif
 
   ! cap the ionization fractions and temperatures if we have to
   !================================================================
-  call enforce_x_and_T_minmax(psys%par, GV%xfloor, GV%xceiling, GV%Tfloor, GV%Tceiling)
+  call psys%enforce_x_and_T_minmax(GV%xfloor, GV%xceiling, &
+       GV%Tfloor, GV%Tceiling)
 
 
   ! write data after above conditionals to the particle and source log files
   !==========================================================================
   fmt = "(A,A)"
   write(str,fmt) "After test conditionals from ", trim(snpbase)
-  call particle_info_to_screen(psys,str,GV%pardatalun)
+  call psys%print_particle_info_lun(str,GV%pardatalun)
   write(GV%pardatalun,*)
   write(GV%pardatalun,*)
   flush(GV%pardatalun)

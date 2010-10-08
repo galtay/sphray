@@ -11,10 +11,6 @@ use gadget_public_input_hdf5_mod
 use gadget_sphray_header_class
 use particle_system_mod, only: particle_system_type
 use particle_system_mod, only: particle_type
-use particle_system_mod, only: set_ye_pars
-use particle_system_mod, only: number_weight_ionfrac
-use particle_system_mod, only: mass_weight_ionfrac
-use particle_system_mod, only: volume_weight_ionfrac
 use oct_tree_mod, only: oct_tree_type
 use physical_constants_mod
 use global_mod, only: PLAN, GV
@@ -30,8 +26,6 @@ contains
 !
 !=======================================================================
 !=======================================================================
-
-
 
 
 !> put the config choices in a sphray header for output.
@@ -131,14 +125,12 @@ contains
 !> outputs the whole shebang to a file
 !=======================================
 
-  subroutine output_total_snap(pars)
-  use particle_system_mod, only: scale_comoving_to_physical  
-  use particle_system_mod, only: scale_physical_to_comoving  
+  subroutine output_total_snap(psys)
 
      character(clen), parameter :: myname="output_total_snap"
      logical, parameter :: crash = .true.
 
-     type(particle_type), intent(inout) :: pars(:)     !< particles 
+     type(particle_system_type), intent(inout) :: psys
      type(gadget_sphray_header_type) :: ghead
      type(gadget_constants_type) :: gconst
 
@@ -173,13 +165,13 @@ contains
      write(*,*) "time (elapsed code) ", GV%time_elapsed_code
      write(*,*) "time (elapsed myr)  ", GV%time_elapsed_myr
 
-     if (GV%Comoving) call scale_physical_to_comoving(scale, hub, pars)
+     if (GV%Comoving) call psys%scale_physical_to_comoving(scale, hub)
 
      100 format(I3.3)
      write(label,100) GV%OutputIndx
 
 
-     call set_ye_pars( pars, GV%H_mf, GV%He_mf, GV%NeBackground )
+     call psys%set_ye( GV%H_mf, GV%He_mf, GV%NeBackground )
 
 
      !================================================================
@@ -209,15 +201,15 @@ contains
            call ghead%write_Gsphray_header_lun(lun)
 
            allocate( rblock3(3,Nfile) )
-           rblock3(1,:) = pars(Nread+1:Nread+Nfile)%pos(1) 
-           rblock3(2,:) = pars(Nread+1:Nread+Nfile)%pos(2) 
-           rblock3(3,:) = pars(Nread+1:Nread+Nfile)%pos(3) 
+           rblock3(1,:) = psys%par(Nread+1:Nread+Nfile)%pos(1) 
+           rblock3(2,:) = psys%par(Nread+1:Nread+Nfile)%pos(2) 
+           rblock3(3,:) = psys%par(Nread+1:Nread+Nfile)%pos(3) 
            write(lun) rblock3
 
 #ifdef incVel
-           rblock3(1,:) = pars(Nread+1:Nread+Nfile)%vel(1) 
-           rblock3(2,:) = pars(Nread+1:Nread+Nfile)%vel(2) 
-           rblock3(3,:) = pars(Nread+1:Nread+Nfile)%vel(3) 
+           rblock3(1,:) = psys%par(Nread+1:Nread+Nfile)%vel(1) 
+           rblock3(2,:) = psys%par(Nread+1:Nread+Nfile)%vel(2) 
+           rblock3(3,:) = psys%par(Nread+1:Nread+Nfile)%vel(3) 
 #else
            rblock3 = 0.0e0
 #endif
@@ -225,8 +217,8 @@ contains
            write(lun) rblock3
            deallocate( rblock3 )
 
-           write(lun) pars(Nread+1:Nread+Nfile)%id 
-           write(lun) pars(Nread+1:Nread+Nfile)%mass
+           write(lun) psys%par(Nread+1:Nread+Nfile)%id 
+           write(lun) psys%par(Nread+1:Nread+Nfile)%mass
 
 
            ! do some conversions
@@ -237,13 +229,13 @@ contains
            do i = Nread+1, Nread+Nfile
 !------------------------------
 #ifdef incHmf
-              Hmf=pars(i)%Hmf
+              Hmf=psys%par(i)%Hmf
 #else
               Hmf=GV%H_mf
 #endif     
 !-------------------------------
-              mu      = 4.0d0 / ( 3.0d0 * Hmf + 1.0d0 + 4.0d0 * Hmf * pars(i)%ye )
-              uint(j) = ( gconst%BOLTZMANN * pars(i)%T ) / &
+              mu      = 4.0d0 / ( 3.0d0 * Hmf + 1.0d0 + 4.0d0 * Hmf * psys%par(i)%ye )
+              uint(j) = ( gconst%BOLTZMANN * psys%par(i)%T ) / &
                         ( (gconst%GAMMA - 1.0d0) * mu * gconst%PROTONMASS  )
               uint(j) = uint(j) * GV%cgs_mass / GV%cgs_enrg
 
@@ -254,58 +246,58 @@ contains
            write(lun) uint(1:Nfile)
            deallocate( uint )
 
-           write(lun) pars(Nread+1:Nread+Nfile)%rho         
-           write(lun) pars(Nread+1:Nread+Nfile)%ye
-           write(lun) pars(Nread+1:Nread+Nfile)%xHI
-           write(lun) pars(Nread+1:Nread+Nfile)%hsml 
+           write(lun) psys%par(Nread+1:Nread+Nfile)%rho         
+           write(lun) psys%par(Nread+1:Nread+Nfile)%ye
+           write(lun) psys%par(Nread+1:Nread+Nfile)%xHI
+           write(lun) psys%par(Nread+1:Nread+Nfile)%hsml 
 
-           write(lun) pars(Nread+1:Nread+Nfile)%T
+           write(lun) psys%par(Nread+1:Nread+Nfile)%T
 
 
 #ifdef incHmf
-           write(lun) pars(Nread+1:Nread+Nfile)%Hmf
+           write(lun) psys%par(Nread+1:Nread+Nfile)%Hmf
 #endif
 
 
 #ifdef incHemf
-           write(lun) pars(Nread+1:Nread+Nfile)%Hemf
+           write(lun) psys%par(Nread+1:Nread+Nfile)%Hemf
 #endif
 
 
 #ifdef incHe
-           write(lun) pars(Nread+1:Nread+Nfile)%xHeI
-           write(lun) pars(Nread+1:Nread+Nfile)%xHeII
+           write(lun) psys%par(Nread+1:Nread+Nfile)%xHeI
+           write(lun) psys%par(Nread+1:Nread+Nfile)%xHeII
 #endif
 
 
 #ifdef outGammaHI
            do ipar = Nread+1, Nread+Nfile
-              if (pars(ipar)%time > 0.0) then
-                 pars(ipar)%gammaHI = pars(ipar)%gammaHI / pars(ipar)%time
+              if (psys%par(ipar)%time > 0.0) then
+                 psys%par(ipar)%gammaHI = psys%par(ipar)%gammaHI / psys%par(ipar)%time
               else
-                 pars(ipar)%gammaHI = 0.0
+                 psys%par(ipar)%gammaHI = 0.0
               end if
            end do
-           write(lun) pars(Nread+1:Nread+Nfile)%gammaHI
+           write(lun) psys%par(Nread+1:Nread+Nfile)%gammaHI
 
-           pars(Nread+1:Nread+Nfile)%gammaHI = 0.0
-           pars(Nread+1:Nread+Nfile)%time = 0.0
+           psys%par(Nread+1:Nread+Nfile)%gammaHI = 0.0
+           psys%par(Nread+1:Nread+Nfile)%time = 0.0
 #endif
 
  
 #ifdef cloudy
-           write(lun) pars(Nread+1:Nread+Nfile)%xHI_cloudy
+           write(lun) psys%par(Nread+1:Nread+Nfile)%xHI_cloudy
 #endif
 
 #ifdef incEOS
-           write(lun) pars(Nread+1:Nread+Nfile)%eos
+           write(lun) psys%par(Nread+1:Nread+Nfile)%eos
 #endif
 
 #ifdef incSFR
-           write(lun) pars(Nread+1:Nread+Nfile)%sfr
+           write(lun) psys%par(Nread+1:Nread+Nfile)%sfr
 #endif
 
-           write(lun) pars(Nread+1:Nread+Nfile)%lasthit
+           write(lun) psys%par(Nread+1:Nread+Nfile)%lasthit
 
 
            close(lun)
@@ -330,7 +322,7 @@ contains
      !================================================================
 
 
-     if (GV%Comoving) call scale_comoving_to_physical(scale, hub, pars)
+     if (GV%Comoving) call psys%scale_comoving_to_physical(scale, hub)
 
   end subroutine output_total_snap
 
@@ -371,9 +363,9 @@ contains
 
 
 !    calculate the ionized number, volume, and mass fractions
-     Nionfrac = number_weight_ionfrac(psys)
-     Mionfrac = mass_weight_ionfrac(psys) 
-     Vionfrac = volume_weight_ionfrac(psys)
+     Nionfrac = psys%mean_xHII_number_weight()
+     Mionfrac = psys%mean_xHII_mass_weight(DfltH_mf=GV%H_mf) 
+     Vionfrac = psys%mean_xHII_volume_weight()
 
      GV%nwionfrac = Nionfrac
      GV%mwionfrac = Mionfrac
