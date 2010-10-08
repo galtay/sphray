@@ -10,6 +10,9 @@ use myf03_mod
 use gadget_general_class
 use gadget_public_header_class
 use gadget_owls_header_class
+#ifdef useHDF5
+use hdf5_wrapper
+#endif
 implicit none
 private
 
@@ -51,6 +54,7 @@ type gadget_sphray_header_type
    procedure :: copy_Gpublic_header
    procedure :: copy_Gowls_header
    procedure :: write_Gsphray_header_lun
+   procedure :: write_Gsphray_header_hdf5_lun
 end type gadget_sphray_header_type
 
 
@@ -69,13 +73,57 @@ subroutine write_Gsphray_header_lun(this, lun)
        this%OmegaL, this%h, this%flag_age, this%flag_metals, &    
        this%npar_hw(:), this%flag_entr_ics, this%OmegaB, &
        this%rays_traced, this%flag_Hmf, this%flag_Hemf, this%flag_helium, &
-       this%flag_gammaHI, this%flag_cloudy, this%flag_eos, this%flag_sfr, &
+       this%flag_gammaHI, this%flag_cloudy, this%flag_eos, this%flag_incsfr, &
        this%time_gyr, this%unused(:)      
 
 end subroutine write_Gsphray_header_lun
 
 
+!> writes a gadget header to an open HDF5 file
+!--------------------------------------------------------------
+subroutine write_Gsphray_header_hdf5_lun(this, fh)
+  class(gadget_sphray_header_type), intent(in) :: this
+  integer(i4b), intent(in) :: fh
 
+#ifdef useHDF5
+  call hdf5_write_attribute(fh,'Header/NumPart_ThisFile',this%npar_file)
+  call hdf5_write_attribute(fh,'Header/NumPart_Total',this%npar_all)
+  call hdf5_write_attribute(fh,'Header/NumPart_Total_HW',this%npar_hw)
+  call hdf5_write_attribute(fh,'Header/MassTable',this%mass)
+  call hdf5_write_attribute(fh,'Header/ExpansionFactor',this%a)
+  call hdf5_write_attribute(fh,'Header/Time_GYR',this%time_gyr)
+
+  call hdf5_write_attribute(fh,'Header/Redshift',this%z)
+  call hdf5_write_attribute(fh,'Header/BoxSize',this%boxlen)
+  call hdf5_write_attribute(fh,'Header/NumFilesPerSnapshot',this%nfiles)
+  call hdf5_write_attribute(fh,'Header/Omega0',this%OmegaM)
+  call hdf5_write_attribute(fh,'Header/OmegaBaryon',this%OmegaB)
+  call hdf5_write_attribute(fh,'Header/OmegaLambda',this%OmegaL)
+  call hdf5_write_attribute(fh,'Header/HubbleParam',this%h)
+
+  call hdf5_write_attribute(fh,'Header/Flag_Sfr',this%flag_sfr)
+  call hdf5_write_attribute(fh,'Header/Flag_Cooling',this%flag_cooling)
+  call hdf5_write_attribute(fh,'Header/Flag_StellarAge',this%flag_age)
+  call hdf5_write_attribute(fh,'Header/Flag_Metals',this%flag_metals)
+  call hdf5_write_attribute(fh,'Header/Flag_Feedback',this%flag_feedback)
+  call hdf5_write_attribute(fh,'Header/Flag_Entropy_In_ICs',this%flag_entr_ics)
+  call hdf5_write_attribute(fh,'Header/RaysTraced',this%rays_traced)
+
+  call hdf5_write_attribute(fh,'Header/Flag_Hmf',this%flag_Hmf)
+  call hdf5_write_attribute(fh,'Header/Flag_Hemf',this%flag_Hemf)
+  call hdf5_write_attribute(fh,'Header/Flag_Helium',this%flag_helium)
+  call hdf5_write_attribute(fh,'Header/Flag_GammaHI',this%flag_gammaHI)
+  call hdf5_write_attribute(fh,'Header/Flag_Cloudy',this%flag_cloudy)
+  call hdf5_write_attribute(fh,'Header/Flag_EoS',this%flag_eos)
+  call hdf5_write_attribute(fh,'Header/Flag_IncSFR',this%flag_incsfr)
+#endif
+
+
+end subroutine write_Gsphray_header_hdf5_lun
+
+
+!> copies an OWLS/GIMIC header into the sphray style header
+!--------------------------------------------------------------
 subroutine copy_Gowls_header( this, owlshead )
   class(gadget_sphray_header_type) :: this
   class(gadget_owls_header_type) :: owlshead
@@ -103,7 +151,8 @@ subroutine copy_Gowls_header( this, owlshead )
 end subroutine copy_Gowls_header
 
 
-
+!> copies a Public header into the sphray style header
+!--------------------------------------------------------------
 subroutine copy_Gpublic_header( this, pubhead )
   class(gadget_sphray_header_type) :: this
   class(gadget_public_header_type) :: pubhead

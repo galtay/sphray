@@ -15,6 +15,10 @@ use myf03_mod
   use mpi
 #endif
 
+#ifdef useHDF5
+  use hdf5_wrapper
+#endif
+
 implicit none
 private
 
@@ -25,6 +29,7 @@ public :: gadget_units_type
 public :: form_gadget_snapshot_file_name
 public :: broadcast_gadget_units
 
+public :: set_data_attributes
 
 
 !> Particle type names
@@ -77,8 +82,212 @@ type gadget_units_type
 end type gadget_units_type
 
 
+!> Attributes for data in HDF5 files.
+!-----------------------------------------------------
+type gadget_hdf5_data_attributes_type
+   real(r8b) :: cgsConversionFactor 
+   real(r4b) :: h_scale_exponent
+   real(r4b) :: aexp_scale_exponent
+   character(200) :: VarDescription
+ contains
+   procedure :: read_lun => read_data_attr_lun
+   procedure :: write_lun => write_data_attr_lun
+end type gadget_hdf5_data_attributes_type
+
+
+
+type(gadget_hdf5_data_attributes_type), public :: pos_attrs
+type(gadget_hdf5_data_attributes_type), public :: id_attrs
+type(gadget_hdf5_data_attributes_type), public :: mass_attrs
+type(gadget_hdf5_data_attributes_type), public :: T_attrs
+type(gadget_hdf5_data_attributes_type), public :: rho_attrs
+type(gadget_hdf5_data_attributes_type), public :: ye_attrs
+type(gadget_hdf5_data_attributes_type), public :: xHI_attrs
+type(gadget_hdf5_data_attributes_type), public :: hsml_attrs
+type(gadget_hdf5_data_attributes_type), public :: lasthit_attrs
+
+type(gadget_hdf5_data_attributes_type), public :: vel_attrs
+type(gadget_hdf5_data_attributes_type), public :: xHI_cloudy_attrs
+type(gadget_hdf5_data_attributes_type), public :: Hmf_attrs
+type(gadget_hdf5_data_attributes_type), public :: xHeI_attrs
+type(gadget_hdf5_data_attributes_type), public :: xHeII_attrs
+type(gadget_hdf5_data_attributes_type), public :: Hemf_attrs
+type(gadget_hdf5_data_attributes_type), public :: gammaHI_attrs
+type(gadget_hdf5_data_attributes_type), public :: eos_attrs
+type(gadget_hdf5_data_attributes_type), public :: sfr_attrs
+
 
 contains
+
+
+!> writes data attributes to an hdf5 file  
+!------------------------------------------------    
+subroutine write_data_attr_lun( attr, fh, grp_tag, dat_tag  )
+  class(gadget_hdf5_data_attributes_type) :: attr
+  integer(i4b) :: fh
+  character(*) :: grp_tag
+  character(*) :: dat_tag
+
+  character(clen) :: tag
+
+#ifdef useHDF5
+
+  tag = trim(grp_tag) // '/' // trim(dat_tag) // '/cgsConversionFactor'
+  call hdf5_write_attribute( fh, tag, attr%cgsConversionFactor )
+
+  tag = trim(grp_tag) // '/' // trim(dat_tag) // '/h_scale_exponent'
+  call hdf5_write_attribute( fh, tag, attr%h_scale_exponent )
+
+  tag = trim(grp_tag) // '/' // trim(dat_tag) // '/aexp_scale_exponent'
+  call hdf5_write_attribute( fh, tag, attr%aexp_scale_exponent )
+
+  tag = trim(grp_tag) // '/' // trim(dat_tag) // '/VarDescription'
+  call hdf5_write_attribute( fh, tag, attr%VarDescription )
+
+#else
+
+  stop " *** called write_data_attr_lun w/o defining useHDF5 *** "
+
+#endif
+
+end subroutine write_data_attr_lun
+
+
+
+!> reads data attributes from an hdf5 file  
+!------------------------------------------------    
+subroutine read_data_attr_lun( attr, fh, grp_tag, dat_tag  )
+  class(gadget_hdf5_data_attributes_type) :: attr
+  integer(i4b) :: fh
+  character(*) :: grp_tag
+  character(*) :: dat_tag
+
+  character(clen) :: tag
+
+#ifdef useHDF5
+
+  tag = trim(grp_tag) // '/' // trim(dat_tag) // '/cgsConversionFactor'
+  call hdf5_read_attribute( fh, tag, attr%cgsConversionFactor )
+
+  tag = trim(grp_tag) // '/' // trim(dat_tag) // '/h_scale_exponent'
+  call hdf5_read_attribute( fh, tag, attr%h_scale_exponent )
+
+  tag = trim(grp_tag) // '/' // trim(dat_tag) // '/aexp_scale_exponent'
+  call hdf5_read_attribute( fh, tag, attr%aexp_scale_exponent )
+
+  tag = trim(grp_tag) // '/' // trim(dat_tag) // '/VarDescription'
+  call hdf5_read_attribute( fh, tag, attr%VarDescription )
+
+#else
+
+  stop " *** called read_data_attr_lun w/o defining useHDF5 *** "
+
+#endif
+
+end subroutine read_data_attr_lun
+
+
+
+
+
+
+subroutine set_data_attributes(gunits)
+  class(gadget_units_type), intent(in) :: gunits
+
+  pos_attrs%cgsConversionFactor = gunits%cgs_length
+  vel_attrs%cgsConversionFactor = gunits%cgs_velocity
+  id_attrs%cgsConversionFactor = 1.0d0
+  mass_attrs%cgsConversionFactor = gunits%cgs_mass
+  T_attrs%cgsConversionFactor = 1.0d0
+  rho_attrs%cgsConversionFactor = gunits%cgs_density
+  ye_attrs%cgsConversionFactor = 1.0d0
+  xHI_attrs%cgsConversionFactor = 1.0d0
+  hsml_attrs%cgsConversionFactor = gunits%cgs_length
+  lasthit_attrs%cgsConversionFactor = 1.0d0
+
+  xHI_cloudy_attrs%cgsConversionFactor = 1.0d0
+  Hmf_attrs%cgsConversionFactor = 1.0d0
+  xHeI_attrs%cgsConversionFactor = 1.0d0
+  xHeII_attrs%cgsConversionFactor = 1.0d0
+  Hemf_attrs%cgsConversionFactor = 1.0d0
+  gammaHI_attrs%cgsConversionFactor = 1.0d0
+  eos_attrs%cgsConversionFactor = 1.0d0
+  sfr_attrs%cgsConversionFactor = 1.0d0
+
+
+
+  pos_attrs%VarDescription = "Co-moving coordinates. Physical: r = a x = Coordinates h^-1 a U_L [cm]"
+  vel_attrs%VarDescription = "Co-moving velocities. Physical v_p = a dx/dt  = Velocities a^1/2 U_V [cm/s]"
+  id_attrs%VarDescription = "Unique particle identifier"
+  mass_attrs%VarDescription = "Particle mass. Physical m = Mass h^-1 U_M [g]"
+  T_attrs%VarDescription = "Temperature [K]"
+  rho_attrs%VarDescription = "Co-moving mass densities. Physical rho = Densities h^2 a^-3 U_M U_L^-3 [g/cm^3]"
+  ye_attrs%VarDescription = "Electron abundance = n_e / n_H"
+  xHI_attrs%VarDescription = "Hydrogen neutral fraction = n_HI / n_H"
+  hsml_attrs%VarDescription = "Co-moving smoothing length. Physical h = SmoothingLength h^-1 a U_L [cm]"
+  lasthit_attrs%VarDescription = "Index of last ray to cross this particle"
+
+  xHI_cloudy_attrs%VarDescription = "Hydrogen neutral fraction from Cloudy Tables xHI = n_HI / n_H"
+  Hmf_attrs%VarDescription = "Hydrogen mass fraction = mass in atomic Hydrogen / particle mass"
+  xHeI_attrs%VarDescription = "Helium I fraction = n_HeI / n_He"
+  xHeII_attrs%VarDescription = "Helium II fraction = n_HeII / n_He"
+  Hemf_attrs%VarDescription = "Helium mass fraction = mass in atomic Helium / particle mass"
+  gammaHI_attrs%VarDescription = "Hydrogen photoionization rate [1/s]"
+  eos_attrs%VarDescription = "Flag for effective equation os state. 1 if currently on EoS, 0 if has never been on EoS, -ExpansionFactor if left the EoS at ExpansionFactor"
+  sfr_attrs%VarDescription = "Star formation rate. Physical sfr = StarformationRate SOLAR_MASS SEC_PER_YEAR^-1 [g/s]"
+
+
+
+  pos_attrs%h_scale_exponent = -1.0d0
+  vel_attrs%h_scale_exponent = 0.0d0
+  id_attrs%h_scale_exponent = 0.0d0
+  mass_attrs%h_scale_exponent = -1.0d0
+  T_attrs%h_scale_exponent = 0.0d0
+  rho_attrs%h_scale_exponent = 2.0d0
+  ye_attrs%h_scale_exponent = 0.0d0
+  xHI_attrs%h_scale_exponent = 0.0d0
+  hsml_attrs%h_scale_exponent = -1.0d0
+  lasthit_attrs%h_scale_exponent = 0.0d0
+
+  xHI_cloudy_attrs%h_scale_exponent = 0.0d0
+  Hmf_attrs%h_scale_exponent = 0.0d0
+  xHeI_attrs%h_scale_exponent = 0.0d0
+  xHeII_attrs%h_scale_exponent = 0.0d0
+  Hemf_attrs%h_scale_exponent = 0.0d0
+  gammaHI_attrs%h_scale_exponent = 0.0d0
+  eos_attrs%h_scale_exponent = 0.0d0
+  sfr_attrs%h_scale_exponent = 0.0d0
+
+
+
+  pos_attrs%aexp_scale_exponent = 1.0d0
+  vel_attrs%aexp_scale_exponent = 0.5d0
+  id_attrs%aexp_scale_exponent = 0.0d0
+  mass_attrs%aexp_scale_exponent = 0.0d0
+  T_attrs%aexp_scale_exponent = 0.0d0
+  rho_attrs%aexp_scale_exponent = -3.0d0
+  ye_attrs%aexp_scale_exponent = 0.0d0
+  xHI_attrs%aexp_scale_exponent = 0.0d0
+  hsml_attrs%aexp_scale_exponent = 1.0d0
+  lasthit_attrs%aexp_scale_exponent = 0.0d0
+
+  xHI_cloudy_attrs%aexp_scale_exponent = 0.0d0
+  Hmf_attrs%aexp_scale_exponent = 0.0d0
+  xHeI_attrs%aexp_scale_exponent = 0.0d0
+  xHeII_attrs%aexp_scale_exponent = 0.0d0
+  Hemf_attrs%aexp_scale_exponent = 0.0d0
+  gammaHI_attrs%aexp_scale_exponent = 0.0d0
+  eos_attrs%aexp_scale_exponent = 0.0d0
+  sfr_attrs%aexp_scale_exponent = 0.0d0
+
+
+end subroutine set_data_attributes
+
+
+
+
+
+
 
 
 !> sets user supplied units

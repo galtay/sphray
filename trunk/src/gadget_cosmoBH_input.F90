@@ -364,8 +364,8 @@ subroutine read_GcosmoBH_particles()
   ! set caseA true or false for collisional equilibrium
   !-----------------------------------------------------
   caseA = .false.
-  if (.not. GV%OnTheSpotH  .or. GV%HydrogenCaseA) caseA(1) = .true.
-  if (.not. GV%OnTheSpotHe .or. GV%HeliumCaseA)   caseA(2) = .true.
+  if (GV%HydrogenCaseA) caseA(1) = .true.
+  if (GV%HeliumCaseA)   caseA(2) = .true.
 
 
   ! if Helium, initialize ionization fractions to collisional equilibrium

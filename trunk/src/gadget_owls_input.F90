@@ -264,6 +264,9 @@ subroutine read_Gowls_particles()
      forall(i=1:ngas1) psys%par(ngasread+i)%pos(2) = rblck3(2,i)
      forall(i=1:ngas1) psys%par(ngasread+i)%pos(3) = rblck3(3,i)
      deallocate(rblck3)
+     call pos_attrs%read_lun( fh, GroupName, VarName )
+
+
 
      ! read velocities 
      !-----------------------------------------------------------!  
@@ -276,6 +279,7 @@ subroutine read_Gowls_particles()
      forall(i=1:ngas1) psys%par(ngasread+i)%vel(2) = rblck3(2,i)
      forall(i=1:ngas1) psys%par(ngasread+i)%vel(3) = rblck3(3,i)
      deallocate(rblck3)
+     call vel_attrs%read_lun( fh, GroupName, VarName )
 #endif
 
      ! read id's 
@@ -286,22 +290,24 @@ subroutine read_Gowls_particles()
      call hdf5_read_data(fh,trim(GroupName)//trim(VarName),iblck)
      forall(i=1:ngas1) psys%par(ngasread+i)%id = iblck(i)
      deallocate(iblck)
+     call id_attrs%read_lun( fh, GroupName, VarName )
 
      ! read masses 
      !-----------------------------------------------------------!  
 
      ! if gas particles are variable mass
-     if (varmass(1)) then  
+     if (varmass(0)) then  
         allocate(rblck(ngas1), stat=err)
         if(err/=0) call myerr("allocating rblck for mass",myname,crash)
         VarName = 'Mass'
         call hdf5_read_data(fh,trim(GroupName)//trim(VarName),rblck)
         forall(i=1:ngas1) psys%par(ngasread+i)%mass = rblck(i)
         deallocate(rblck)
+        call mass_attrs%read_lun( fh, GroupName, VarName )
 
      ! if gas particles are isomass
      else
-        psys%par(ngasread+1:ngasread+ngas1)%mass = ghead%mass(1)       
+        psys%par(ngasread+1:ngasread+ngas1)%mass = ghead%mass(0)       
      end if
 
 
@@ -313,7 +319,7 @@ subroutine read_Gowls_particles()
      call hdf5_read_data(fh,trim(GroupName)//trim(VarName),rblck)
      forall(i=1:ngas1) psys%par(ngasread+i)%T = rblck(i)
      deallocate(rblck)
- 
+     call T_attrs%read_lun( fh, GroupName, VarName ) 
 
      ! read EOS
      !-----------------------------------------------------------!  
@@ -324,6 +330,7 @@ subroutine read_Gowls_particles()
      call hdf5_read_data(fh,trim(GroupName)//trim(VarName),rblck)
      forall(i=1:ngas1) psys%par(ngasread+i)%eos = rblck(i)
      deallocate(rblck)
+     call eos_attrs%read_lun( fh, GroupName, VarName )
 #endif
 
      ! read density 
@@ -334,7 +341,7 @@ subroutine read_Gowls_particles()
      call hdf5_read_data(fh,trim(GroupName)//trim(VarName),rblck)
      forall(i=1:ngas1) psys%par(ngasread+i)%rho = rblck(i)
      deallocate(rblck)
-
+     call rho_attrs%read_lun( fh, GroupName, VarName )
 
      ! read smoothing lengths 
      !-----------------------------------------------------------!  
@@ -344,7 +351,7 @@ subroutine read_Gowls_particles()
      call hdf5_read_data(fh,trim(GroupName)//trim(VarName),rblck)
      forall(i=1:ngas1) psys%par(ngasread+i)%hsml = rblck(i)
      deallocate(rblck)
-
+     call hsml_attrs%read_lun( fh, GroupName, VarName )
 
      ! read Hydrogen mass fractions
      !-----------------------------------------------------------!  
@@ -355,6 +362,7 @@ subroutine read_Gowls_particles()
      call hdf5_read_data(fh,trim(GroupName)//trim(VarName),rblck)
      forall(i=1:ngas1) psys%par(ngasread+i)%Hmf = rblck(i)
      deallocate(rblck)
+     call Hmf_attrs%read_lun( fh, GroupName, VarName )
 #endif
 
 
@@ -367,6 +375,7 @@ subroutine read_Gowls_particles()
      call hdf5_read_data(fh,trim(GroupName)//trim(VarName),rblck)
      forall(i=1:ngas1) psys%par(ngasread+i)%Hemf = rblck(i)
      deallocate(rblck)
+     call Hemf_attrs%read_lun( fh, GroupName, VarName )
 #endif
 
 
@@ -380,8 +389,8 @@ subroutine read_Gowls_particles()
   ! set caseA true or false for collisional equilibrium
   !-----------------------------------------------------
   caseA = .false.
-  if (.not. GV%OnTheSpotH  .or. GV%HydrogenCaseA) caseA(1) = .true.
-  if (.not. GV%OnTheSpotHe .or. GV%HeliumCaseA)   caseA(2) = .true.
+  if (GV%HydrogenCaseA) caseA(1) = .true.
+  if (GV%HeliumCaseA)   caseA(2) = .true.
 
 
   ! calculate xHI from CLOUDY iontables

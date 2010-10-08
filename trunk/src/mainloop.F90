@@ -147,7 +147,7 @@ contains
           enddo
                     
           !  create a source ray and calc the impacts
-          call make_source_ray(psys%src(srcn), GV%rayn, GV%WallSampling, GV%dt_s, GV%Lunit, psys%box, ray)
+          call make_source_ray(psys%src(srcn), GV%rayn, GV%dt_s, GV%Lunit, psys%box, ray)
           
         
           GV%itime = GV%itime + ray%weight

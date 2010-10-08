@@ -352,8 +352,8 @@ contains
     ! state to collisional equilibrium.
     !-----------------------------------------------------
     caseA = .false.
-    if (.not. GV%OnTheSpotH  .or. GV%HydrogenCaseA) caseA(1) = .true.
-    if (.not. GV%OnTheSpotHe .or. GV%HeliumCaseA)   caseA(2) = .true.
+    if (GV%HydrogenCaseA) caseA(1) = .true.
+    if (GV%HeliumCaseA)   caseA(2) = .true.
     
     call psys%set_ci_eq(caseA, DoH=.true., DoHe=.true., fit="hui")
     call psys%set_ye(GV%H_mf, GV%He_mf, GV%NeBackground)
