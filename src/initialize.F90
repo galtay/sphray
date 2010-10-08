@@ -17,7 +17,6 @@ use atomic_rates_mod, only: write_atomic_rates_to_log_file
 use iliev_comparison_project_mod, only: initialize_iliev_tests
 use main_input_mod, only: get_planning_data
 use global_mod, only: GV, PLAN, rtable, xHII_k, cmbT_k, isoT_k
-use ray_mod, only: init_background_source_variables
 use particle_system_mod, only: return_bytes_per_particle
 use particle_system_mod, only: return_bytes_per_source
 implicit none
@@ -427,10 +426,6 @@ subroutine initialize_global_variables()
   GV%ParticleCrossings = zero
   GV%TotalDerivativeCalls = zero
   
-
-  ! only important for runs with a background source (src%EmisPrf=-3)
-  !-------------------------------------------------------------------
-  call init_background_source_variables(nrays)
 
 
   call mywrite("",verb) 

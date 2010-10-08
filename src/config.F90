@@ -5,9 +5,149 @@
 module config_mod
 use myf03_mod
 use global_mod, only: GV
+#ifdef useHDF5
+use hdf5_wrapper
+#endif
+implicit none
+private
 
+public :: read_config_file
+public :: write_config_hdf5_lun
+public :: dummy_check_config_variables
+public :: config_info_to_file
 
 contains
+
+
+!> writes the config file 
+!==============================
+subroutine write_config_hdf5_lun(lun)
+  integer :: lun
+
+#ifdef useHDF5
+  call hdf5_write_attribute( lun, 'Config/Verbosity',          GV%Verbosity )
+
+  if (GV%DoTestScenario) then
+     call hdf5_write_attribute( lun, 'Config/DoTestScenario',  1)           
+  else
+     call hdf5_write_attribute( lun, 'Config/DoTestScenario',  0)           
+  endif
+  
+  call hdf5_write_attribute( lun, 'Config/TestScenario',       GV%TestScenario )
+  
+  if (GV%JustInit) then
+     call hdf5_write_attribute( lun, 'Config/JustInit',        1)           
+  else
+     call hdf5_write_attribute( lun, 'Config/JustInit',        0)           
+  endif
+  
+  if (GV%Comoving) then
+     call hdf5_write_attribute( lun, 'Config/Comoving',        1)         
+  else
+     call hdf5_write_attribute( lun, 'Config/Comoving',        0)         
+  endif
+  
+  call hdf5_write_attribute( lun, 'Config/IsoTemp',            GV%IsoTemp)            
+  
+  if (GV%FixSnapTemp) then
+     call hdf5_write_attribute( lun, 'Config/FixSnapTemp',     1)         
+  else
+     call hdf5_write_attribute( lun, 'Config/FixSnapTemp',     0)         
+  endif
+  
+  call hdf5_write_attribute( lun, 'Config/EOStemp',            GV%EOStemp)            
+  
+  call hdf5_write_attribute( lun, 'Config/InitxHI',            GV%InitxHI)            
+  
+  if (GV%RayDepletion) then
+     call hdf5_write_attribute( lun, 'Config/RayDepletion',    1)         
+  else
+     call hdf5_write_attribute( lun, 'Config/RayDepletion',    0)         
+  endif
+  
+  call hdf5_write_attribute( lun, 'Config/IntSeed',            GV%IntSeed)            
+  
+  call hdf5_write_attribute( lun, 'Config/StaticFieldSimTime', GV%StaticFieldSimTime) 
+  call hdf5_write_attribute( lun, 'Config/StaticSimTimeUnit',  GV%StaticSimTimeUnit) 
+  
+  call hdf5_write_attribute( lun, 'Config/InputType',          GV%InputType)          
+  call hdf5_write_attribute( lun, 'Config/SnapPath',           GV%SnapPath)           
+  call hdf5_write_attribute( lun, 'Config/SourcePath',         GV%SourcePath)           
+  
+  call hdf5_write_attribute( lun, 'Config/SpectraFile',        GV%SpectraFile)           
+  call hdf5_write_attribute( lun, 'Config/b2cdFile',           GV%b2cdFile)           
+  call hdf5_write_attribute( lun, 'Config/AtomicRatesFile',    GV%AtomicRatesFile)    
+  
+  call hdf5_write_attribute( lun, 'Config/ParFileBase',        GV%ParFileBase)        
+  call hdf5_write_attribute( lun, 'Config/SourceFileBase',     GV%SourceFileBase)        
+  
+  call hdf5_write_attribute( lun, 'Config/StartSnapNum',       GV%StartSnapNum)            
+  call hdf5_write_attribute( lun, 'Config/EndSnapNum',         GV%EndSnapNum)            
+  
+  call hdf5_write_attribute( lun, 'Config/ParFilesPerSnap',    GV%ParFilesPerSnap)    
+  call hdf5_write_attribute( lun, 'Config/SourceFilesPerSnap', GV%SourceFilesPerSnap)    
+  
+  call hdf5_write_attribute( lun, 'Config/RayScheme',          GV%RayScheme)
+  call hdf5_write_attribute( lun, 'Config/ForcedRayNumber',    GV%ForcedRayNumber)
+  
+  if (GV%RayStats) then
+     call hdf5_write_attribute( lun, 'Config/RayStats',        1)
+  else
+     call hdf5_write_attribute( lun, 'Config/RayStats',        0)
+  endif
+  
+  call hdf5_write_attribute( lun, 'Config/BndryCond',          GV%BndryCond)          
+  call hdf5_write_attribute( lun, 'Config/RayPhotonTol',       GV%RayPhotonTol)         
+  
+  if (GV%HydrogenCaseA) then
+     call hdf5_write_attribute( lun, 'Config/HydrogenCaseA',   1)
+  else
+     call hdf5_write_attribute( lun, 'Config/HydrogenCaseA',   0)
+  endif
+  
+  if (GV%HeliumCaseA) then
+     call hdf5_write_attribute( lun, 'Config/HeliumCaseA',     1)
+  else
+     call hdf5_write_attribute( lun, 'Config/HeliumCaseA',     0)
+  endif
+  
+  call hdf5_write_attribute( lun, 'Config/IonTempSolver',      GV%IonTempSolver)         
+  
+  call hdf5_write_attribute( lun, 'Config/Tfloor',             GV%Tfloor)             
+  call hdf5_write_attribute( lun, 'Config/Tceiling',           GV%Tceiling)           
+  
+  call hdf5_write_attribute( lun, 'Config/xfloor',             GV%xfloor)             
+  call hdf5_write_attribute( lun, 'Config/xceiling',           GV%xceiling)           
+  
+  call hdf5_write_attribute( lun, 'Config/NeBackground',       GV%NeBackground)       
+  
+  call hdf5_write_attribute( lun, 'Config/NraysUpdateNoHits',  GV%NraysUpdateNoHits)                 
+  
+  call hdf5_write_attribute( lun, 'Config/H_mf',               GV%H_mf)               
+  call hdf5_write_attribute( lun, 'Config/He_mf',              GV%He_mf)              
+  
+  call hdf5_write_attribute( lun, 'Config/OutputDir',          GV%OutputDir)          
+  call hdf5_write_attribute( lun, 'Config/OutputFileBase',     GV%OutputFileBase)     
+  call hdf5_write_attribute( lun, 'Config/OutputType',         GV%OutputType)         
+  
+  call hdf5_write_attribute( lun, 'Config/OutputTiming',       GV%OutputTiming)         
+  call hdf5_write_attribute( lun, 'Config/NumStdOuts',         GV%NumStdOuts)         
+  
+  if (GV%DoInitialOutput) then
+     call hdf5_write_attribute( lun, 'Config/DoInitialOutput', 1)         
+  else
+     call hdf5_write_attribute( lun, 'Config/DoInitialOutput', 0)         
+  endif
+  
+  call hdf5_write_attribute( lun, 'Config/IonFracOutRays',     GV%IonFracOutRays)         
+  call hdf5_write_attribute( lun, 'Config/ForcedOutFile',      GV%ForcedOutFile)         
+  call hdf5_write_attribute( lun, 'Config/ForcedUnits',        GV%ForcedUnits)         
+  
+  call hdf5_write_attribute( lun, 'Config/PartPerCell',        GV%PartPerCell)        
+#endif
+
+  
+end subroutine write_config_hdf5_lun
 
 
 !> reads the config file 
@@ -35,7 +175,7 @@ subroutine read_config_file(config_file)
 
     keyword = "Verbosity:"
     call scanfile(config_file,keyword,GV%Verbosity)
-    myf90_verbosity = GV%verbosity
+    myf03_verbosity = GV%verbosity
 
     keyword = "DoTestScenario:"
     call scanfile(config_file,keyword,GV%DoTestScenario)
@@ -127,23 +267,12 @@ subroutine read_config_file(config_file)
     keyword = "BndryCond:"
     call scanfile(config_file,keyword,GV%BndryCond)
 
-    keyword = "RecRayTol:"
-    call scanfile(config_file,keyword,GV%RecRayTol)
-
     keyword = "RayPhotonTol:"
     call scanfile(config_file,keyword,GV%RayPhotonTol)
 
-    keyword = "WallSampling:"
-    call scanfile(config_file,keyword,GV%WallSampling)
 
     !   ion/temp solving
     !----------------------------
-    keyword = "OnTheSpotH:"
-    call scanfile(config_file,keyword,GV%OnTheSpotH)
-
-    keyword = "OnTheSpotHe:"
-    call scanfile(config_file,keyword,GV%OnTheSpotHe)
-
     keyword = "HydrogenCaseA:"
     call scanfile(config_file,keyword,GV%HydrogenCaseA)
 
@@ -170,9 +299,6 @@ subroutine read_config_file(config_file)
 
     keyword = "NraysUpdateNoHits:"
     call scanfile(config_file,keyword,GV%NraysUpdateNoHits)
-
-    keyword = "RecRaysPerSrcRay:"
-    call scanfile(config_file,keyword,GV%RecRaysPerSrcRay)
 
     keyword = "H_mf:"
     call scanfile(config_file,keyword,GV%H_mf)
@@ -249,11 +375,6 @@ subroutine dummy_check_config_variables()
      config_good = .false. 
   end if
 
-  if (GV%WallSampling /= 1 .and. GV%WallSampling /= 2 .and. GV%WallSampling /= 3) then
-     write(*,*) "Wall Sampling ", GV%WallSampling, " not recognized"
-     write(*,*) "must be 1 (Twister), 2 (Sobol3D), 3 (Sobol2D)"
-     config_good = .false. 
-  end if
 
   if (GV%Tfloor < 0.0 .or. GV%Tceiling < 0.0) then
      write(*,*) "Tfloor and Tceiling must be greater than or equal to 0.0"
@@ -518,14 +639,8 @@ subroutine config_info_to_file()
   write(lun,*)  "Boundry Conditions : ", "periodic"
   end if
 
-  write(lun,*)  "Rec Ray Frac Tol   : ", GV%RecRayTol
   write(lun,*)  "Ray Photon Tol     : ", GV%RayPhotonTol
-
-  write(lun,*)  "Wall Sampling [1=Twister, 2=Sobol3D, 3=Sobol2D]: ", GV%WallSampling
   write(lun,*)  "Maximum Distance to trace a ray [physical code units], negative = default", GV%MaxRayDist
-
-  write(lun,*)  "Use On The Spot for Hydrogen? : ", GV%OnTheSpotH
-  write(lun,*)  "Use On The Spot for Helium?   : ", GV%OnTheSpotHe
 
   write(lun,*)  "Use Case A recombination rates for Hydrogen? :", GV%HydrogenCaseA
   write(lun,*)  "Use Case A recombination rates for Helium?   :", GV%HeliumCaseA
@@ -540,7 +655,6 @@ subroutine config_info_to_file()
 
   write(lun,*)  "ne background      : ", GV%NeBackground
   write(lun,*)  "Rays between all particle update:  ", GV%NraysUpdateNoHits
-  write(lun,*)  "Recomb ray / src ray: ", GV%RecRaysPerSrcRay
 
   write(lun,*) 
   write(lun,*) 

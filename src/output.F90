@@ -7,6 +7,7 @@ module output_mod
 use myf03_mod
 use gadget_general_class
 use gadget_public_header_class
+use gadget_owls_header_class
 use gadget_public_input_hdf5_mod
 use gadget_sphray_header_class
 use particle_system_mod, only: particle_system_type
@@ -15,6 +16,12 @@ use oct_tree_mod, only: oct_tree_type
 use physical_constants_mod
 use global_mod, only: PLAN, GV
 use global_mod, only: saved_gheads
+use config_mod, only: write_config_hdf5_lun
+
+#ifdef useHDF5
+use hdf5_wrapper
+#endif
+
 implicit none
 
 contains
@@ -129,10 +136,12 @@ contains
 
      character(clen), parameter :: myname="output_total_snap"
      logical, parameter :: crash = .true.
+     integer, parameter :: verb = 2
 
      type(particle_system_type), intent(inout) :: psys
      type(gadget_sphray_header_type) :: ghead
      type(gadget_constants_type) :: gconst
+     type(gadget_owls_units_type) :: gunits
 
      character(3) :: label
      character(4) :: ext
@@ -151,10 +160,14 @@ contains
      real(r4b), allocatable :: uint(:)
      real(r4b), allocatable :: rblock3(:,:)
 
+     character(clen) :: tag
+     character(clen) :: group_name
+
      ! set defaults
      !==============
      nHe_over_nH = 0.0
      ipar=0
+     group_name = 'PartType0/'
 
      scale = PLAN%snap(GV%CurSnapNum)%ScalefacAt
      hub   = GV%LittleH
@@ -196,7 +209,7 @@ contains
            write(*,*) 
            call open_unformatted_file_w(filename,lun)
 
-           Nfile = ghead%npar_file(1)
+           Nfile = ghead%npar_file(0)
 
            call ghead%write_Gsphray_header_lun(lun)
 
@@ -313,13 +326,205 @@ contains
      !================================================================
      !================================================================
      if (GV%OutputType == 2) then
-        
 
+#ifdef useHDF5
+
+        Nread = 0
+
+        do ifile = 0, GV%ParFilesPerSnap-1
+
+           call config_to_ghead( ifile, ghead )
+
+           !    form file name
+           write(ext,'(I3)') ifile
+
+           filename = trim(GV%OutputDir) // "/" // trim(GV%OutputFileBase) // "_" // label 
+           if (GV%ParFilesPerSnap > 1) then
+              filename = trim(filename) // "." // trim(adjustl(ext))
+           end if
+           filename = trim(filename) // ".hdf5"
+           call mywrite("writing snapshot state to "//trim(filename), verb)
+           call mywrite('',verb) 
+
+           Nfile = ghead%npar_file(0)
+
+           call hdf5_create_file( lun, filename )
+
+
+           !================================================================
+           ! write Header
+           !================================================================
+           call hdf5_create_group( lun, 'Header/' )
+           call ghead%write_Gsphray_header_lun(lun) 
+
+           !================================================================
+           ! write Units
+           !================================================================
+           call hdf5_create_group( lun, 'Units/' )
+           gunits%cgs_length   = GV%cgs_len
+           gunits%cgs_mass     = GV%cgs_mass
+           gunits%cgs_velocity = GV%cgs_vel
+           gunits%cgs_density  = GV%cgs_rho
+           gunits%cgs_energy   = GV%cgs_enrg
+           gunits%cgs_pressure = GV%cgs_prs
+           gunits%cgs_time     = GV%cgs_time
+           call gunits%write_Gowls_units_lun(lun) 
+
+           call set_data_attributes(gunits)
+                     
+           !================================================================
+           ! write config parameters
+           !================================================================
+           call hdf5_create_group( lun, 'Config/' )
+           call write_config_hdf5_lun(lun)
+
+           if (Nfile == 0) then
+              call hdf5_close_file(lun)
+              cycle
+           endif
+           
+           !================================================================
+           ! write data
+           !================================================================
+           allocate( rblock3(3,Nfile) )
+           rblock3(1,:) = psys%par(Nread+1:Nread+Nfile)%pos(1) 
+           rblock3(2,:) = psys%par(Nread+1:Nread+Nfile)%pos(2) 
+           rblock3(3,:) = psys%par(Nread+1:Nread+Nfile)%pos(3) 
+           tag = trim(group_name)//'Coordinates'
+           call hdf5_write_data( lun, tag, rblock3 )
+           call pos_attrs%write_lun( lun, group_name, 'Coordinates' )
+
+
+#ifdef incVel
+           rblock3(1,:) = psys%par(Nread+1:Nread+Nfile)%vel(1) 
+           rblock3(2,:) = psys%par(Nread+1:Nread+Nfile)%vel(2) 
+           rblock3(3,:) = psys%par(Nread+1:Nread+Nfile)%vel(3) 
+#else
+           rblock3 = 0.0e0
+#endif
+           tag = trim(group_name)//'Velocity'
+           call hdf5_write_data( lun, tag, rblock3 )
+           call vel_attrs%write_lun( lun, group_name, 'Velocity' )
+           deallocate( rblock3 )
+
+
+
+           tag = trim(group_name)//'ParticleIDs'
+           call hdf5_write_data( lun, tag, psys%par(Nread+1:Nread+Nfile)%id )
+           call id_attrs%write_lun( lun, group_name, 'ParticleIDs' )
+
+           tag = trim(group_name)//'Mass'
+           call hdf5_write_data( lun, tag, psys%par(Nread+1:Nread+Nfile)%mass )
+           call mass_attrs%write_lun( lun, group_name, 'Mass' )
+
+
+           tag = trim(group_name)//'Density'
+           call hdf5_write_data( lun, tag, psys%par(Nread+1:Nread+Nfile)%rho )
+           call rho_attrs%write_lun( lun, group_name, 'Density' )
+
+
+           tag = trim(group_name)//'ElectronFraction'
+           call hdf5_write_data( lun, tag, psys%par(Nread+1:Nread+Nfile)%ye )
+           call ye_attrs%write_lun( lun, group_name, 'ElectronFraction' )
+
+ 
+           tag = trim(group_name)//'HydrogenOneFraction'
+           call hdf5_write_data( lun, tag, psys%par(Nread+1:Nread+Nfile)%xHI )
+           call xHI_attrs%write_lun( lun, group_name, 'HydrogenOneFraction' )
+
+
+           tag = trim(group_name)//'SmoothingLength'
+           call hdf5_write_data( lun, tag, psys%par(Nread+1:Nread+Nfile)%hsml )
+           call hsml_attrs%write_lun( lun, group_name, 'SmoothingLength' )
+
+
+           tag = trim(group_name)//'Temperature'
+           call hdf5_write_data( lun, tag, psys%par(Nread+1:Nread+Nfile)%T )
+           call T_attrs%write_lun( lun, group_name, 'Temperature' )
+
+
+          
+#ifdef incHmf
+           tag = trim(group_name)//'ElementAbundance/Hydrogen'
+           call hdf5_write_data( lun, tag, psys%par(Nread+1:Nread+Nfile)%Hmf )
+           call Hmf_attrs%write_lun( lun, group_name, 'ElementAbundance/Hydrogen' )
+#endif
+
+
+#ifdef incHemf
+           tag = trim(group_name)//'ElementAbundance/Helium'
+           call hdf5_write_data( lun, tag, psys%par(Nread+1:Nread+Nfile)%Hemf )
+           call Hemf_attrs%write_lun( lun, group_name, 'ElementAbundance/Helium' )
+#endif
+
+
+#ifdef incHe
+           tag = trim(group_name)//'HeliumOneFraction'
+           call hdf5_write_data( lun, tag, psys%par(Nread+1:Nread+Nfile)%xHeI )
+           call xHeI_attrs%write_lun( lun, group_name, 'HeliumOneFraction' )
+
+           tag = trim(group_name)//'HeliumTwoFraction'
+           call hdf5_write_data( lun, tag, psys%par(Nread+1:Nread+Nfile)%xHeII )
+           call xHeII_attrs%write_lun( lun, group_name, 'HeliumTwoFraction' )
+#endif
+
+
+
+#ifdef outGammaHI
+           tag = trim(group_name)//'HydrogenOneGamma'
+           call hdf5_write_data( lun, tag, psys%par(Nread+1:Nread+Nfile)%gammaHI )
+           call gammaHI_attrs%write_lun( lun, group_name, 'HydrogenOneGamma' )
+#endif
+
+
+ 
+#ifdef cloudy
+           tag = trim(group_name)//'HydrogenOneFraction_Cloudy'
+           call hdf5_write_data( lun, tag, psys%par(Nread+1:Nread+Nfile)%xHI_cloudy )
+           call xHI_cloudy_attrs%write_lun( lun, group_name, 'HydrogenOneFraction_Cloudy' )
+#endif
+
+
+
+#ifdef incEOS
+           tag = trim(group_name)//'OnEquationOfState'
+           call hdf5_write_data( lun, tag, psys%par(Nread+1:Nread+Nfile)%eos )
+           call eos_attrs%write_lun( lun, group_name, 'OnEquationOfState' )
+#endif
+
+
+#ifdef incSFR
+           tag = trim(group_name)//'StarFormationRate'
+           call hdf5_write_data( lun, tag, psys%par(Nread+1:Nread+Nfile)%sfr )
+           call sfr_attrs%write_lun( lun, group_name, 'StarFormationRate' )
+#endif
+
+
+#ifdef incH2
+           tag = trim(group_name)//'MolecularHydrogenMassFraction'
+           call hdf5_write_data( lun, tag, psys%par(Nread+1:Nread+Nfile)%fH2 )
+           call fh2_attrs%write_lun( lun, group_name, 'MolecularHydrogenMassFraction' )
+#endif
+
+
+           call hdf5_close_file(lun)
+           Nread = Nread + Nfile
+
+        end do
+
+#else
+
+        stop " *** want hdf5 output w/o defining useHDF5 macro *** "
+
+#endif
+        
+    
 
      end if
  
      !================================================================
      !================================================================
+
 
 
      if (GV%Comoving) call psys%scale_comoving_to_physical(scale, hub)

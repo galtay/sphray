@@ -106,17 +106,11 @@ type global_variables_type
    logical         :: RayStats            !< [Config File] T = massive output file on ray statistics in raystats.dat
    integer(i4b)    :: BndryCond           !< [Config File] one of {-1:reflecting 0:vacuum 1:periodic}
 
-   real(r8b)       :: RecRayTol           !< [Config File] minimum recombination fraction to make a recomb ray
    real(r8b)       :: RayPhotonTol        !< [Config File] fractional ray depletion to stop ray
-
-   integer(i4b)    :: WallSampling        !< [Config File] 1=Twister, 2=Sobol3D, 3=Sobol2D, 4=QuadTree
    real(r8b)       :: MaxRayDist          !< [Config File] max ray distance in physical code units, negative=default
    
-   logical         :: OnTheSpotH          !< [Config File] T = on the spot approximation for Hydrogen
-   logical         :: OnTheSpotHe         !< [Config File] T = on the spot approximation for Helium
-
-   logical         :: HydrogenCaseA       !< [Config File] T = use case A for Hydrogen OTS (ignored if not using OTS)
-   logical         :: HeliumCaseA         !< [Config File] T = use case A for Helium OTS (ignored if not using OTS)
+   logical         :: HydrogenCaseA       !< [Config File] T = use case A for Hydrogen Recombinations
+   logical         :: HeliumCaseA         !< [Config File] T = use case A for Helium Recombinsations
 
    integer(i4b)    :: IonTempSolver       !< [Config File] one of {1:euler, 2:bdf}
 
@@ -127,9 +121,7 @@ type global_variables_type
    real(r8b)       :: xceiling            !< [Config File] maximum allowed ionization fraction
 
    real(r8b)       :: NeBackground        !< [Config File] constant background electron number density from metals
-
    integer(i8b)    :: NraysUpdateNoHits   !< [Config File] update all pars not hit by a ray in last NraysUpdateNoHits
-   integer(i8b)    :: RecRaysPerSrcRay    !< [Config File] number of recomb rays for each source ray
 
    real(r8b)       :: H_mf                !< [Config File] hydrogen mass fraction
    real(r8b)       :: He_mf               !< [Config File] helium mass fraction
