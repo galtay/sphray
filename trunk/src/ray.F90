@@ -15,38 +15,45 @@ implicit none
 
   private
   public :: raystatbuffsize
-  public :: ray_type
+  public :: base_ray_type
+  public :: src_ray_type
   public :: raystat_type
-  public :: set_ray
-  public :: cell_intersection
-  public :: part_intersection
-  public :: transform_ray
-  public :: dist2ray
-  public :: make_source_ray
-  public :: make_probe_ray
-  public :: make_recomb_ray
-  public :: make_skewer_ray
+
 
 
   integer(i8b) :: raystatbuffsize 
-  real(r8b), parameter :: one = 1.0d0
   real(r8b), parameter :: zero = 0.0d0
-  
+  real(r8b), parameter :: one = 1.0d0
 
-!> a ray to be traced through the density field while depositing photons
+  
+!> bare bones ray class
+!---------------------------------------------------------------------
+type base_ray_type
+   real(r8b) :: start(3)  !< starting position
+   real(r8b) :: dir(3)    !< unit vector direction
+   real(r8b) :: length    !< length (determines when to stop tracing)
+   integer(i4b) :: class  !< based on direction signs (MMM, PMM, ...)
+ contains
+   procedure :: class_from_dir => ray_class_from_dir !< computes class from dir
+   procedure :: dist2pt        !< perpendicular distance to point
+   procedure :: pluecker       !< pluecker AABB intersection test
+   procedure :: part_intersection !< intersects a particle? 
+   procedure :: cell_intersection !< intersects an AABB?
+end type base_ray_type
+
+
+!> adds source and photon properties to base ray class
 !-----------------------------------------------------------------------
-  type ray_type
-     integer(i8b) :: class  !< determines octant
-     real(r8b) :: start(3)  !< starting position
-     real(r8b) :: dir(3)    !< direction
-     real(r8b) :: length    !< length (determines when to stop tracing)
+  type, extends(base_ray_type) :: src_ray_type
      real(r8b) :: freq      !< freq in HI ionizing units
      real(r8b) :: enrg      !< enrg of a single photon in ergs
      real(r8b) :: pcnt      !< photon count (changes as the ray is depleted)
      real(r8b) :: pini      !< initial photons
-     integer(i8b) :: weight !< weight relative to deepest level = 1
      real(r8b) :: dt_s      !< time step associated with ray [s]
-  end type ray_type
+   contains
+     procedure :: make_src_ray => make_src_ray            !< creates ray
+     procedure :: transform => transform_src_ray  !< transform for BCs
+  end type src_ray_type
 
 
 !> ray stats that can be output for each ray
@@ -65,28 +72,24 @@ contains
 
 
 
-
-
-!> creates a source ray (as opposed to recombination)
+!> creates a source ray 
 !-----------------------------------------------------------------------  
-  subroutine make_source_ray(src, rayn, dtray_s, LumFac, box, ray, length)
+  subroutine make_src_ray(ray, src, rayn, dtray_s, Lunit, box, length)
 
-    type(source_type), intent(inout) :: src   !< the source
-    integer(i8b), intent(in) :: rayn          !< the ray indx
-    real(r8b), intent(in) :: dtray_s          !< the time between rays [s]   
-    real(r8b), intent(in) :: LumFac           !< pt. src src%lum -> photons/s
+    class(src_ray_type), intent(out) :: ray   !< ray to make
+    type(source_type), intent(inout) :: src   !< source
+    integer(i8b), intent(in) :: rayn          !< ray indx
+    real(r8b), intent(in) :: dtray_s          !< time between rays [s]   
+    real(r8b), intent(in) :: Lunit            !< converts src%lum -> photons/s
     type(box_type), intent(in) :: box         !< simulation box
-    type(ray_type), intent(out) :: ray        !< output ray
+
     real(r8b), intent(in), optional :: length !< optional length (default=huge)
 
-    real(r8b) :: start(3)
     real(r8b) :: xx,yy,zz,r
     real(r8b) :: rn1, rn2
     real(r8b) :: prate
-    real(r8b) :: weight
     integer :: i
 
-    integer(i8b) :: sobol_dim
   
 !  set the direction of the ray from the emmission profile (src%EmisPrf)
 !     0  = isotropic
@@ -96,10 +99,7 @@ contains
 !  note that for all point sources the luminosity is interpreted as a Flux 
 !  [photons/s].  
 
-
-
     select case (src%EmisPrf)
-
        
     ! this makes rays go in -z direction  
     !-----------------------------------------------------------------------  
@@ -108,7 +108,6 @@ contains
        ray%dir(1) = 0.0
        ray%dir(2) = 0.0
        ray%dir(3) = -1.0       
-       weight = 1.0d0
        
     ! this makes rays go in +z direction 
     !-----------------------------------------------------------------------  
@@ -117,18 +116,16 @@ contains
        ray%dir(1) = 0.0
        ray%dir(2) = 0.0
        ray%dir(3) = 1.0
-       weight = 1.0d0
                  
     ! random direction on the unit sphere
     !-----------------------------------------------------------------------  
     case(0)
 
-       weight = 1.0d0
-       r=2. 
-       do while ( r .GT. 1.0 .and. r .NE. 0.0 )
-          xx=(2*genrand_real1()-1)   
-          yy=(2*genrand_real1()-1)   
-          zz=(2*genrand_real1()-1)   
+       r=2.0d0 
+       do while ( r .GT. 1.0d0 .and. r .NE. 0.0d0 )
+          xx=(2.0d0 * genrand_real1()-1.0d0)   
+          yy=(2.0d0 * genrand_real1()-1.0d0)   
+          zz=(2.0d0 * genrand_real1()-1.0d0)   
           r=xx*xx+yy*yy+zz*zz
        enddo
        r = sqrt(r)
@@ -143,12 +140,9 @@ contains
        stop          
        
     end select
+    !-----------------------------------------------------------------------  
 
-
-    ! set the ray starting position
-    start = src%pos
-    ray%start = start   
-    ray%weight = weight
+    ray%start = src%pos
 
     if ( present(length) ) then
        ray%length = length
@@ -158,10 +152,7 @@ contains
 
   
 !   set the class of the ray (what octant is it going into)
-    ray%class=0
-    do i=1,3
-       if(ray%dir(i).GE.0) ray%class=ray%class+2**(i-1)
-    enddo
+    call ray%class_from_dir()
 
 !   set the frequency and energy / photon of the ray
     ray%freq = rn2freq(src%SpcType)
@@ -170,12 +161,12 @@ contains
 
 !   set the number of photons in the ray
     if (ray%enrg > 0.) then
-       prate = src%L * LumFac ! photons per sec
+       prate = src%L * Lunit ! photons per sec
     else 
        prate = 0.
     end if
     if (rayn > src%lastemit) then
-       ray%dt_s = dtray_s * (rayn - src%lastemit) * weight
+       ray%dt_s = dtray_s * (rayn - src%lastemit) 
        ray%pini = prate * ray%dt_s
     else
        write(*,*) "make_source_ray> rayn .LT. src%lastemit in ray.f90"
@@ -184,406 +175,274 @@ contains
     ray%pcnt = ray%pini
     src%lastemit = rayn
 
-
-  end subroutine make_source_ray
-
-!> creates a recombination ray (as opposed to source)
-!-----------------------------------------------------------------------  
-  subroutine make_recomb_ray(par, Dflt_Mass, Munit, Dflt_Hmf, Dflt_Hemf, ray, length)
-
-    type(particle_type), intent(in) :: par    !< recombining particle
-    real(r8b), intent(in) :: Dflt_Mass        !< default mass
-    real(r8b), intent(in) :: Munit            !< cgs mass unit
-    real(r8b), intent(in) :: Dflt_Hmf         !< Hydrogen mass fraction
-    real(r8b), intent(in) :: Dflt_Hemf        !< Helium mass fraction
-    type(ray_type), intent(out) :: ray        !< output ray
-    real(r8b), intent(in), optional :: length !< ray length (default=huge)
-
-    real(r8b) :: mass, H_mf, He_mf, H_nuclei, He_nuclei
-    real(r8b) :: r,xx,yy,zz
-    integer :: i
-
-    mass = Dflt_Mass
-#ifdef incmass
-    mass = par%mass
-#endif
-
-    H_mf = Dflt_Hmf
-#ifdef incHmf
-    H_mf = par%Hmf
-#endif
-    
-    He_mf = Dflt_Hemf
-#ifdef incHemf
-    He_mf = par%Hemf
-#endif
+  end subroutine make_src_ray
 
 
-    H_nuclei  = mass * Munit * H_mf  / M_H
-    He_nuclei = mass * Munit * He_mf / M_He
+! pre computes the class of the ray for the Pluecker test
+! ray label    class
+!   MMM          0
+!   PMM          1
+!   MPM          2
+!   PPM          3
+!   MMP          4
+!   PMP          5
+!   MPP          6
+!   PPP          7
+!-----------------------------------------------------------
+subroutine ray_class_from_dir( ray ) 
+  class(base_ray_type) :: ray
+  integer(i4b) :: i
 
-
-    !  set the direction of the ray (random direction on unit sphere)  
-    ray%start = par%pos
-    r=2. 
-    do while ( r .GT. 1.0 .and. r .NE. 0.0 )
-       xx=(2*genrand_real1()-1)   
-       yy=(2*genrand_real1()-1)   
-       zz=(2*genrand_real1()-1)   
-       r=xx*xx+yy*yy+zz*zz
-    enddo
-    r = sqrt(r)
-    ray%dir(1) = xx/r  ! it is important that ray%dir be a unit vector
-    ray%dir(2) = yy/r
-    ray%dir(3) = zz/r
-    
-    if (present(length)) then
-       ray%length = length
-    else
-       ray%length = huge(1.0d0)
-    endif
+  ray%class = 0
+  do i = 1, 3
+     if ( ray%dir(i) >= zero ) ray%class = ray%class + 2**(i-1)
+  end do
   
-!   set the class of the ray (what octant is it going into)
-    ray%class=0
-    do i=1,3
-       if(ray%dir(i).GE.0) ray%class=ray%class+2**(i-1)
-    enddo
-
-!   set the frequency and energy / photon of the ray
-    ray%freq = 1.0
-    ray%enrg = ray%freq * HI_th_erg  
-
-!   set the number of photons in the ray.  
-#ifdef incHrec
-    ray%pini = H_nuclei * par%xHIIrc
-#endif
-    ray%pcnt = ray%pini
-
-  end subroutine make_recomb_ray
-
-
-!> creates a probe ray w/o photons (useful for probing the state of particles)
-!------------------------------------------------------------------------------
-  subroutine make_probe_ray(pos,dir,ray,length)
-
-    real(r8b), intent(in) :: pos(3)           !< starting position
-    real(r8b), intent(in) :: dir(3)           !< direction
-    type(ray_type), intent(out) :: ray        !< output ray
-    real(r8b), intent(in), optional :: length !< ray length (default=huge)
-
-    real(r8b) :: unit(3)
-    integer :: i
-    
-    unit = dir / sqrt( dot_product(dir,dir) ) 
-
-    ray%start = pos
-    ray%dir   = unit
-
-    if (present(length)) then
-       ray%length = length
-    else
-       ray%length = huge(1.0d0)
-    endif
-
-
-!   set the class of the ray (what quadrant is it going into)
-    ray%class=0
-    do i=1,3
-       if(ray%dir(i).GE.0) ray%class=ray%class+2**(i-1)
-    enddo
-
-    ray%freq = 0.0
-    ray%enrg = 0.0
-    ray%pcnt = 0.0
-    ray%pini = 0.0
-
-  end subroutine make_probe_ray
-
-
-!> creates a skewer ray
-!-----------------------------------------------------------------------  
-  subroutine make_skewer_ray(box,ray,length)
-
-    type(box_type), intent(in) :: box       !< simulation box
-    type(ray_type), intent(out) :: ray      !< output ray
-    real(r8b), intent(in), optional :: length !< ray length (default=huge)  
-
-    real(r8b) :: xx,yy,zz,r
-    real(r8b) :: rn, rn1, rn2
-    integer :: i
-    integer, save :: curface = 1
-
-
-    curface = curface + 1
-    if (curface > 6) curface = 1
-
-    rn1 = genrand_real1()
-    rn2 = genrand_real1()
-
-    ray%dir = 0.0
-
-    select case (curface)
-       
-    case(1)
-       ray%dir(1) = 1.0            
-       ray%start(1) = box%bots(1)
-       ray%start(2) = box%bots(2) + rn1 * (box%tops(2)-box%bots(2))
-       ray%start(3) = box%bots(3) + rn2 * (box%tops(3)-box%bots(3))
-    case(2)
-       ray%dir(2) = 1.0             
-       ray%start(2) = box%bots(2)
-       ray%start(3) = box%bots(3) + rn1 * (box%tops(3)-box%bots(3))
-       ray%start(1) = box%bots(1) + rn2 * (box%tops(1)-box%bots(1))
-    case(3)
-       ray%dir(3) = 1.0             
-       ray%start(3) = box%bots(3)
-       ray%start(1) = box%bots(1) + rn1 * (box%tops(1)-box%bots(1))
-       ray%start(2) = box%bots(2) + rn2 * (box%tops(2)-box%bots(2))     
-    case(4)
-       ray%dir(1) = -1.0             
-       ray%start(1) = box%tops(1)
-       ray%start(2) = box%bots(2) + rn1 * (box%tops(2)-box%bots(2))
-       ray%start(3) = box%bots(3) + rn2 * (box%tops(3)-box%bots(3))
-    case(5)
-       ray%dir(2) = -1.0
-       ray%start(2) = box%tops(2)
-       ray%start(3) = box%bots(3) + rn1 * (box%tops(3)-box%bots(3))
-       ray%start(1) = box%bots(1) + rn2 * (box%tops(1)-box%bots(1))
-    case(6)
-       ray%dir(3) = -1.0
-       ray%start(3) = box%tops(3)
-       ray%start(1) = box%bots(1) + rn1 * (box%tops(1)-box%bots(1))
-       ray%start(2) = box%bots(2) + rn2 * (box%tops(2)-box%bots(2))
-    case default 
-       stop "curface out of bounds"
-    end select
-
-
-    if (present(length)) then
-       ray%length = length
-    else
-       ray%length = huge(1.0d0)
-    endif
-
-
-  
-!   set the class of the ray (what octant is it going into)
-    ray%class=0
-    do i=1,3
-       if(ray%dir(i).GE.0) ray%class=ray%class+2**(i-1)
-    enddo
-
-!   set rest to zero 
-    ray%freq = 0.0
-    ray%enrg = 0.0
-    ray%pini = 0.0
-    ray%pcnt = 0.0
-
-
-  end subroutine make_skewer_ray
+end subroutine ray_class_from_dir
 
 
 
 
-
-!> properly sets the starting point, direction, class, and length of a ray
-!--------------------------------------------------------------------------
-  subroutine set_ray(ray,start,dir,len)
-    type(ray_type) :: ray     !< inout ray
-    real(r8b) :: start(3)     !< starting position
-    real(r8b) :: dir(3)       !< direction 
-    real(r8b),optional :: len !< length
-    integer :: i
-    
-    real(r8b) :: unit(3)
-
-    unit = dir / sqrt( dot_product(dir,dir) )
-
-    ray%start = start
-    ray%dir   = unit
-    ray%class = 0
-
-    do i=1,3
-       if(dir(i).GE.0) ray%class=ray%class+2**(i-1)
-    enddo
-
-    if (present(len)) then
-       ray%length = len
-    else
-       ray%length = huge(1.0d0)
-    endif
-
-
-  end subroutine set_ray
-  
 !> returns a transformed ray while preserving the initial ray
 !--------------------------------------------------------------
-  subroutine transform_ray(ray, inray, pm)
-    type(ray_type) :: ray           !< output transformed ray
-    type(ray_type) :: inray         !< input ray
-    type(transformation_type) :: pm !< transformation
-    integer :: i
-    ray%start  = inray%start * pm%fac + pm%shift
-    ray%dir    = inray%dir   * pm%fac
-    ray%length = inray%length  
-    ray%class  = 0
-    do i=1,3
-       if (ray%dir(i) >= 0) ray%class=ray%class+2**(i-1)
-    enddo
-  end subroutine transform_ray
+  subroutine transform_src_ray(inray, outray, trans)
+    class(src_ray_type) :: inray       !< input ray
+    type(src_ray_type) :: outray       !< output ray
+    type(transformation_type) :: trans !< transformation
+    
+    outray%start  = inray%start * trans%fac + trans%shift
+    outray%dir    = inray%dir   
+    outray%length = inray%length  
+    outray%class  = inray%class
+
+    outray%freq = inray%freq
+    outray%enrg = inray%enrg
+    outray%pcnt = inray%pcnt
+    outray%pini = inray%pini
+    outray%dt_s = inray%dt_s
+
+  end subroutine transform_src_ray
 
 
-!> returns the distance^2 between a particle and a ray
+!> returns the perpendicular distance between a point and a ray
 !--------------------------------------------------------------  
-  function pdist2ray(ray,part,dd) result(dist2)
-    type(ray_type) :: ray        !< input ray
-    type(particle_type) :: part  !< input particle
-    real(r8b) :: dist2                !< distance^2
-    real(r8b), optional :: dd         !< GT 0 when particle is in front of ray start
-    real(r8b) :: d
-
-    d     = sum( (part%pos - ray%start) * ray%dir  )    ! sp dot dir
-    dist2 = sum( (part%pos-d*ray%dir-ray%start)**2 )    ! dist^2
-
-    if (present(dd)) dd = d
-
-  end function pdist2ray
-
-
-!> returns the distance^2 between a point and a ray
-!--------------------------------------------------------------  
-  function dist2ray(ray, pos, dd) result(dist2)
-    type(ray_type) :: ray       !< input ray
-    real(r4b) :: pos(3)         !< input position
-    real(r8b), optional :: dd   !< GT 0 when point is in front of ray start
-    real(r8b) :: dist2          !< distance^2
-
-    real(r8b) :: dotp
-    real(r8b) :: diff(3)
-
-    real(r8b) :: vec1(3)
-    real(r8b) :: vec2(3)
-
-    vec1 = pos - ray%start
-    vec2 = ray%dir
-
-    dotp  = dot_product( vec1, vec2 )
-    diff  = vec1 - dotp * ray%dir 
-    dist2 = dot_product( diff, diff )
-
-    if( present(dd) ) dd = dotp
-
-  end function dist2ray
+function dist2pt(ray, pos, proj) result(dist)
+  class(base_ray_type), intent(in) :: ray  !< calling ray
+  real(r4b), intent(in) :: pos(3)    !< point
+  real(r8b), optional :: proj        !< distance along ray 
+  real(r8b) :: dist                  !< distance perp. to ray
   
-!> tests for ray / particle intersection. 
+  real(r8b) :: dotp
+  real(r8b) :: diff(3)
+  real(r8b) :: dist2
+  real(r8b) :: vec1(3)
+  real(r8b) :: vec2(3)
+  
+  vec1 = pos - ray%start
+  vec2 = ray%dir
+  
+  dotp  = dot_product( vec1, vec2 )
+  diff  = vec1 - dotp * ray%dir 
+  dist2 = dot_product( diff, diff )
+  dist = sqrt(dist2)
+  
+  if( present(proj) ) proj = dotp
+  
+end function dist2pt
+
+
+
+!> tests for ray / particle intersection.  
 !----------------------------------------------  
   function part_intersection(ray, part) result(hit)
-    logical :: hit               !< true or false result
-    type(ray_type) :: ray        !< ray
-    type(particle_type) :: part  !< particle
-    real(r8b) :: dist2           !< distance to particle squared
-    real(r8b) :: dotp            !< projected distance along ray
+    class(base_ray_type) :: ray    !< ray
+    type(particle_type) :: part    !< particle
+    logical :: hit                 !< true or false result
 
-    dist2 = dist2ray(ray, part%pos, dotp)
-    hit = dist2 < part%hsml * part%hsml .and. dotp >= zero .and. dotp <= ray%length
+    real(r8b) :: start2cen       !< ray start to particle position
+    real(r8b) :: dist            !< perpendicular distance to particle 
+    real(r8b) :: proj            !< projected distance along ray
+
+    start2cen = sqrt( sum( (part%pos - ray%start)*(part%pos - ray%start) ) )
+    if (start2cen < part%hsml) then
+       hit = .true.
+       return
+    endif
+
+    dist = ray%dist2pt(part%pos, proj)
+    if (dist >= part%hsml) then
+       hit = .false.
+       return
+    endif
+
+    hit = dist < part%hsml .and. proj >= zero 
 
   end function part_intersection
-  
-!> tests for ray / cell intersection. 
+
+
+!> tests for ray - AABB intersection. 
 !----------------------------------------------  
   function cell_intersection(ray,cell) result(hit)
-    logical :: hit           !< true or false result
-    type(ray_type) :: ray    !< ray
-    type(cell_type) :: cell  !< cell
-    real(r8b) bot(3),top(3)
+    class(base_ray_type) :: ray    !< ray
+    type(cell_type) :: cell        !< cell
+    logical :: hit                 !< true or false result
+    real(r8b) :: bot(3)
+    real(r8b) :: top(3)
     bot = cell%botrange - ray%start
     top = cell%toprange - ray%start
-    hit = pluecker(ray, bot, top)
+    hit = ray%pluecker(bot, top)
   end function cell_intersection
-  
+
 
 !> pluecker test for line segment / cell intersection
 !-----------------------------------------------------    
-  function pluecker(ray,bot,top) result(hit)
-    logical :: hit            !< true or false result
-    type(ray_type) :: ray     !< input ray
-    real(r8b) :: bot(3)       !< lower cell corner
-    real(r8b) :: top(3)       !< upper cell corner
+function pluecker(ray, s2b, s2t) result( hit )
 
-    real(r8b) :: dir(3)
+  logical :: hit              !< true or false result
+  class(base_ray_type) :: ray !< input ray
+  real(r8b) :: s2b(3)         !< vector from ray start to lower cell corner
+  real(r8b) :: s2t(3)         !< vector from ray start to upper cell corner
+  
+  real(r8b) :: dir(3)
+  real(r8b) :: dist
 
-    dir=ray%dir  
-    hit=.FALSE.
-    select case(ray%class)
-    case(0)
-       if(bot(1).GT.0.OR.bot(2).GT.0.OR.bot(3).GT.0) return
-       if(dir(1)*bot(2)-dir(2)*top(1).LT.0.OR. &
-            dir(1)*top(2)-dir(2)*bot(1).GT.0.OR. &
-            dir(1)*top(3)-dir(3)*bot(1).GT.0.OR. &
-            dir(1)*bot(3)-dir(3)*top(1).LT.0.OR. &
-            dir(2)*bot(3)-dir(3)*top(2).LT.0.OR. &
-            dir(2)*top(3)-dir(3)*bot(2).GT.0.) return
-    case(1)
-       if(top(1).LT.0.OR.bot(2).GT.0.OR.bot(3).GT.0) return
-       if(dir(1)*top(2)-dir(2)*top(1).LT.0.OR. &
-            dir(1)*bot(2)-dir(2)*bot(1).GT.0.OR. &
-            dir(1)*bot(3)-dir(3)*bot(1).GT.0.OR. &
-            dir(1)*top(3)-dir(3)*top(1).LT.0.OR. &
-            dir(2)*bot(3)-dir(3)*top(2).LT.0.OR. &
-            dir(2)*top(3)-dir(3)*bot(2).GT.0.) return
-    case(2)
-       if(bot(1).GT.0.OR.top(2).LT.0.OR.bot(3).GT.0) return
-       if(dir(1)*bot(2)-dir(2)*bot(1).LT.0.OR. &
-            dir(1)*top(2)-dir(2)*top(1).GT.0.OR. &
-            dir(1)*top(3)-dir(3)*bot(1).GT.0.OR. &
-            dir(1)*bot(3)-dir(3)*top(1).LT.0.OR. &
-            dir(2)*top(3)-dir(3)*top(2).LT.0.OR. &
-            dir(2)*bot(3)-dir(3)*bot(2).GT.0.) return
-    case(3)
-       if(top(1).LT.0.OR.top(2).LT.0.OR.bot(3).GT.0) return
-       if(dir(1)*top(2)-dir(2)*bot(1).LT.0.OR. &
-            dir(1)*bot(2)-dir(2)*top(1).GT.0.OR. &
-            dir(1)*bot(3)-dir(3)*bot(1).GT.0.OR. &
-            dir(1)*top(3)-dir(3)*top(1).LT.0.OR. &
-            dir(2)*top(3)-dir(3)*top(2).LT.0.OR. &
-            dir(2)*bot(3)-dir(3)*bot(2).GT.0.) return
-    case(4)
-       if(bot(1).GT.0.OR.bot(2).GT.0.OR.top(3).LT.0) return
-       if(dir(1)*bot(2)-dir(2)*top(1).LT.0.OR. &
-            dir(1)*top(2)-dir(2)*bot(1).GT.0.OR. &
-            dir(1)*top(3)-dir(3)*top(1).GT.0.OR. &
-            dir(1)*bot(3)-dir(3)*bot(1).LT.0.OR. &
-            dir(2)*bot(3)-dir(3)*bot(2).LT.0.OR. &
-            dir(2)*top(3)-dir(3)*top(2).GT.0.) return
-    case(5)
-       if(top(1).LT.0.OR.bot(2).GT.0.OR.top(3).LT.0) return
-       if(dir(1)*top(2)-dir(2)*top(1).LT.0.OR. &
-            dir(1)*bot(2)-dir(2)*bot(1).GT.0.OR. &
-            dir(1)*bot(3)-dir(3)*top(1).GT.0.OR. &
-            dir(1)*top(3)-dir(3)*bot(1).LT.0.OR. &
-            dir(2)*bot(3)-dir(3)*bot(2).LT.0.OR. &
-            dir(2)*top(3)-dir(3)*top(2).GT.0.) return
-    case(6)
-       if(bot(1).GT.0.OR.top(2).LT.0.OR.top(3).LT.0) return
-       if(dir(1)*bot(2)-dir(2)*bot(1).LT.0.OR. &
-            dir(1)*top(2)-dir(2)*top(1).GT.0.OR. &
-            dir(1)*top(3)-dir(3)*top(1).GT.0.OR. &
-            dir(1)*bot(3)-dir(3)*bot(1).LT.0.OR. &
-            dir(2)*top(3)-dir(3)*bot(2).LT.0.OR. &
-            dir(2)*bot(3)-dir(3)*top(2).GT.0.) return
-    case(7)
-       if(top(1).LT.0.OR.top(2).LT.0.OR.top(3).LT.0) return
-       if(dir(1)*top(2)-dir(2)*bot(1).LT.0.OR. &
-            dir(1)*bot(2)-dir(2)*top(1).GT.0.OR. &
-            dir(1)*bot(3)-dir(3)*top(1).GT.0.OR. &
-            dir(1)*top(3)-dir(3)*bot(1).LT.0.OR. &
-            dir(2)*top(3)-dir(3)*bot(2).LT.0.OR. &
-            dir(2)*bot(3)-dir(3)*top(2).GT.0.) return
-    case default
-       call rayError('ray class.')
-    end select
-    hit=.TRUE.
-  end function pluecker
+  real(r8b) :: e2b(3)       !< vector from ray end to lower cell corner
+  real(r8b) :: e2t(3)       !< vector from ray end to upper cell corner
+
+  dir  = ray%dir  
+  dist = ray%length
+
+  e2b = s2b - dir * dist
+  e2t = s2t - dir * dist
+
+  hit = .false.
+
+  ! branch on ray direction
+  !---------------------------
+  select case( ray%class )
+
+     ! MMM
+     !-----------
+  case(0)
+
+     if(s2b(1) > zero .or. s2b(2) > zero .or. s2b(3) > zero) return ! on negative part of ray 
+     if(e2t(1) < zero .or. e2t(2) < zero .or. e2t(3) < zero) return ! past length of ray      
+
+     if ( dir(1)*s2b(2) - dir(2)*s2t(1) < zero .or.  &
+          dir(1)*s2t(2) - dir(2)*s2b(1) > zero .or.  &
+          dir(1)*s2t(3) - dir(3)*s2b(1) > zero .or.  &
+          dir(1)*s2b(3) - dir(3)*s2t(1) < zero .or.  &
+          dir(2)*s2b(3) - dir(3)*s2t(2) < zero .or.  &
+          dir(2)*s2t(3) - dir(3)*s2b(2) > zero       ) return
+     
+     ! PMM
+     !-----------
+  case(1)
+     
+     if(s2t(1) < zero .or. s2b(2) > zero .or. s2b(3) > zero) return ! on negative part of ray 
+     if(e2b(1) > zero .or. e2t(2) < zero .or. e2t(3) < zero) return ! past length of ray      
+     
+     if ( dir(1)*s2t(2) - dir(2)*s2t(1) < zero .or.  &
+          dir(1)*s2b(2) - dir(2)*s2b(1) > zero .or.  &
+          dir(1)*s2b(3) - dir(3)*s2b(1) > zero .or.  &
+          dir(1)*s2t(3) - dir(3)*s2t(1) < zero .or.  &
+          dir(2)*s2b(3) - dir(3)*s2t(2) < zero .or.  &
+          dir(2)*s2t(3) - dir(3)*s2b(2) > zero       ) return
+     
+     ! MPM
+     !-----------
+  case(2)
+     
+     if(s2b(1) > zero .or. s2t(2) < zero .or. s2b(3) > zero) return ! on negative part of ray 
+     if(e2t(1) < zero .or. e2b(2) > zero .or. e2t(3) < zero) return ! past length of ray      
+     
+     if ( dir(1)*s2b(2) - dir(2)*s2b(1) < zero .or.  &
+          dir(1)*s2t(2) - dir(2)*s2t(1) > zero .or.  &
+          dir(1)*s2t(3) - dir(3)*s2b(1) > zero .or.  &
+          dir(1)*s2b(3) - dir(3)*s2t(1) < zero .or.  &
+          dir(2)*s2t(3) - dir(3)*s2t(2) < zero .or.  &
+          dir(2)*s2b(3) - dir(3)*s2b(2) > zero       ) return
+     
+     ! PPM
+     !-----------
+  case(3)
+     
+     if(s2t(1) < zero .or. s2t(2) < zero .or. s2b(3) > zero) return ! on negative part of ray 
+     if(e2b(1) > zero .or. e2b(2) > zero .or. e2t(3) < zero) return ! past length of ray      
+     
+     if ( dir(1)*s2t(2) - dir(2)*s2b(1) < zero .or.  &
+          dir(1)*s2b(2) - dir(2)*s2t(1) > zero .or.  &
+          dir(1)*s2b(3) - dir(3)*s2b(1) > zero .or.  &
+          dir(1)*s2t(3) - dir(3)*s2t(1) < zero .or.  &
+          dir(2)*s2t(3) - dir(3)*s2t(2) < zero .or.  &
+          dir(2)*s2b(3) - dir(3)*s2b(2) > zero       ) return
+     
+     ! MMP
+     !-----------
+  case(4)
+     
+     if(s2b(1) > zero .or. s2b(2) > zero .or. s2t(3) < zero) return ! on negative part of ray 
+     if(e2t(1) < zero .or. e2t(2) < zero .or. e2b(3) > zero) return ! past length of ray      
+     
+     if ( dir(1)*s2b(2) - dir(2)*s2t(1) < zero .or.  &
+          dir(1)*s2t(2) - dir(2)*s2b(1) > zero .or.  &
+          dir(1)*s2t(3) - dir(3)*s2t(1) > zero .or.  &
+          dir(1)*s2b(3) - dir(3)*s2b(1) < zero .or.  &
+          dir(2)*s2b(3) - dir(3)*s2b(2) < zero .or.  &
+          dir(2)*s2t(3) - dir(3)*s2t(2) > zero       ) return
+     
+     
+     ! PMP
+     !-----------
+  case(5)
+     
+     if(s2t(1) < zero .or. s2b(2) > zero .or. s2t(3) < zero) return ! on negative part of ray 
+     if(e2b(1) > zero .or. e2t(2) < zero .or. e2b(3) > zero) return ! past length of ray      
+     
+     if ( dir(1)*s2t(2) - dir(2)*s2t(1) < zero .or.  &
+          dir(1)*s2b(2) - dir(2)*s2b(1) > zero .or.  &
+          dir(1)*s2b(3) - dir(3)*s2t(1) > zero .or.  &
+          dir(1)*s2t(3) - dir(3)*s2b(1) < zero .or.  &
+          dir(2)*s2b(3) - dir(3)*s2b(2) < zero .or.  &
+          dir(2)*s2t(3) - dir(3)*s2t(2) > zero       ) return
+     
+     
+     ! MPP
+     !-----------
+  case(6)
+     
+     if(s2b(1) > zero .or. s2t(2) < zero .or. s2t(3) < zero) return ! on negative part of ray 
+     if(e2t(1) < zero .or. e2b(2) > zero .or. e2b(3) > zero) return ! past length of ray      
+     
+     if ( dir(1)*s2b(2) - dir(2)*s2b(1) < zero .or.  &
+          dir(1)*s2t(2) - dir(2)*s2t(1) > zero .or.  &
+          dir(1)*s2t(3) - dir(3)*s2t(1) > zero .or.  &
+          dir(1)*s2b(3) - dir(3)*s2b(1) < zero .or.  &
+          dir(2)*s2t(3) - dir(3)*s2b(2) < zero .or.  &
+          dir(2)*s2b(3) - dir(3)*s2t(2) > zero       ) return
+     
+     ! PPP
+     !-----------
+  case(7)
+     
+     if(s2t(1) < zero .or. s2t(2) < zero .or. s2t(3) < zero) return ! on negative part of ray 
+     if(e2b(1) > zero .or. e2b(2) > zero .or. e2b(3) > zero) return ! past length of ray      
+     
+     if ( dir(1)*s2t(2) - dir(2)*s2b(1) < zero .or.  &
+          dir(1)*s2b(2) - dir(2)*s2t(1) > zero .or.  &
+          dir(1)*s2b(3) - dir(3)*s2t(1) > zero .or.  &
+          dir(1)*s2t(3) - dir(3)*s2b(1) < zero .or.  &
+          dir(2)*s2t(3) - dir(3)*s2b(2) < zero .or.  &
+          dir(2)*s2b(3) - dir(3)*s2t(2) > zero       ) return
+     
+  case default
+     call rayError('ray class.')
+     
+  end select
+  
+  hit=.true.
+  
+end function pluecker
 
 !> error handling
 !-----------------------------      
@@ -601,5 +460,6 @@ contains
     
     stop
   end subroutine rayError
+
   
 end module ray_mod

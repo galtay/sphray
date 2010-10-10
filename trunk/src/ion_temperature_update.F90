@@ -7,27 +7,24 @@
 !<
 module ion_temperature_update
 use myf03_mod
-use raylist_mod, only: raylist_type
-use ray_mod, only: ray_type
-use ray_mod, only: make_recomb_ray, make_probe_ray
+use ray_mod
+use raylist_mod
+use ionpar_mod
+use physical_constants_mod
 use particle_system_mod, only: particle_system_type
 use particle_system_mod, only: particle_type
 use particle_system_mod, only: box_type
-use raylist_mod, only: trace_ray
 use oct_tree_mod, only: oct_tree_type
-use raylist_mod, only: raylist_type
-use ionpar_mod
 use spectra_mod, only: rn2freq
 use euler_mod, only: eulerint, recombeulerint
 use bdf_mod, only: bdfint
 use atomic_rates_mod, only: get_atomic_rates
-use physical_constants_mod
 use global_mod, only: GV, saved_gheads, rtable
 implicit none
 
 private
 public :: update_raylist
-public :: update_no_hits
+
  
 contains
 
@@ -230,220 +227,7 @@ subroutine update_raylist(raylist, pars, box, srcray)
 end subroutine update_raylist
 
 
-!==============================================================================
-!> this routine is called to update particles that have not been hit by rays.
-!! it reverse ray traces the non-hit particles.  in other words it traces rays
-!! from those particles to the walls (the background sources) and updates the 
-!! particle using a sum of those fluxes.  might add point sources to this
-!! update later. 
 
-subroutine update_no_hits(psys, tree)
-
-  integer, parameter :: MaxSteps = 50000000
-
-  integer, parameter :: ray_dirs(3,6) = reshape( (/  1, 0, 0, &
-                                                     0, 1, 0, &
-                                                     0, 0, 1, &
-                                                    -1, 0, 0, &
-                                                     0,-1, 0, &
-                                                     0, 0,-1 /), (/3, 6/) )
-  
-  type(particle_system_type), intent(inout) :: psys !< particle system
-  type(oct_tree_type), intent(in) :: tree !< oct-tree to search  
-
-  type(particle_type) :: par
-  type(ionpart_type) :: ipar  
-  type(ray_type) :: ray(6)
-  type(raylist_type) :: raylist(6)
-  real(r8b) :: tauHI(6)
-  real(r8b) :: parflux(6)
-  
-
-  integer(i8b) :: ip              ! particle counter.
-  integer(i8b) :: rays_since_hit  ! rays traced since this particle has been hit.
-  integer(i8b) :: scalls          ! number of times solver was called
-  logical :: photo 
-  logical :: srcray
-  logical :: He
-  logical :: caseA(2)
-  logical :: isoT
-  logical :: fixT
-
-  integer :: i, j, isrc
-  integer :: nsrcs
-
-  real :: Hmf
-  real(r8b) :: dir(3)
-  real(r8b) :: pos(3)
-  real(r8b) :: delta
-  real(r8b) :: sigmaHI
-  real(r8b) :: nHI
-  real(r8b) :: wallflux
-  real(r8b) :: freq
-  real(r8b) :: enrg
-
-  integer :: pindx_here
-  integer :: pindx_last
-  integer :: itravel
-
-  type(gadget_constants_type) :: gconst
- 
-
-  photo=.true.
-  
-
-  ! find background source
-  !--------------------------------------------
-  do i = 1, size(psys%src)
-     if ( psys%src(i)%EmisPrf == -3 ) isrc = i
-     exit
-  end do  
-  freq = rn2freq( psys%src(isrc)%SpcType )
-  enrg = freq * HI_th_erg
-  sigmaHI = Verner_HI_photo_cs(freq)    
-
-
-  wallflux = psys%src(isrc)%L * GV%Lunit 
-      
- 
-
-  ! loop through all the particles
-  !--------------------------------------------
-  do ip = 1, size(psys%par)
-
-     rays_since_hit = GV%rayn - psys%par(ip)%lasthit
-
-
-     ! dont update if particle has been hit by a ray recently
-     !--------------------------------------------------------
-     if (rays_since_hit < GV%NraysUpdateNoHits) then
-
-        cycle
-
-     ! find the flux from each wall at this particle
-     !--------------------------------------------------------        
-     else
-
-        par = psys%par(ip)
-        pos = par%pos
-
-        tauHI(:)   = 0.0d0
-        parflux(:) = 0.0d0
-
-        do i = 1,6
-
-           dir = ray_dirs(:,i)
-           call make_probe_ray( pos, dir, ray(i) )
-           call trace_ray(ray(i), raylist(i), psys, tree) 
-
-           itravel = sum ( maxloc( abs( dir ) ) ) ! x=1, y=2, z=3
-           
-           ! loop over particles in ray from source particle to wall
-           ! first in list will be source particle
-           !---------------------------------------------------------
-           do j = 2,raylist(i)%nnb  
-
-              pindx_here = raylist(i)%intersection(j)%pindx
-              pindx_last = raylist(i)%intersection(j-1)%pindx
-
-#ifdef incHmf
-              Hmf = psys%par(pindx_here)%Hmf
-#else
-              Hmf = GV%H_mf
-#endif
-
-              nHI = psys%par(pindx_here)%rho * GV%cgs_rho * &
-                   Hmf / gconst%PROTONMASS * psys%par(pindx_here)%xHI
-
-              delta = abs( psys%par(pindx_here)%pos(itravel) - &
-                           psys%par(pindx_last)%pos(itravel)   )
-
-              delta = delta * GV%cgs_len
-              
-              tauHI(i) = tauHI(i) + nHI * delta * sigmaHI
-
-           end do
-
-           parflux(i) = wallflux * exp(-tauHI(i))           
-
-        end do
-
-
-        ! calculate He, caseA, isoT, and fixT
-        !--------------------------------------------
-        call set_bools( He, caseA, isoT, fixT )
-
-        srcray = .false.
-        call initialize_ionpar(ipar, par, ip, srcray, He)
-
-        ! we need to initialize the variables that are 
-        ! usually initialized from the raylist here.
-        !--------------------------------------------
-
-        ipar%bnorm = 0.0d0   
-        ipar%cdfac = b2cdfac( ipar%bnorm, ipar%hsml, GV%cgs_len )
-
-        ipar%dt_code = GV%dt_code * GV%NraysUpdateNoHits
-        ipar%dt_s    = GV%dt_s    * GV%NraysUpdateNoHits
-
-        ipar%pdeps    = 0.0d0
-        ipar%pdeps_eq = 0.0d0
-
-        ipar%penrg = enrg
-
-        ipar%sigmaHI = Verner_HI_photo_cs(freq)    
-        if (He) then
-           ipar%sigmaHeI = Osterbrok_HeI_photo_cs(freq * HI_th_Hz)    
-           ipar%sigmaHeII = Osterbrok_HeII_photo_cs(freq * HI_th_Hz)
-        else
-           ipar%sigmaHeI = 0.0d0
-           ipar%sigmaHeII = 0.0d0
-        end if
-
-        ipar%pflux = sum(parflux)
-
-        ! override the densities set in initialize_ionpar
-        !---------------------------------------------------
-        ipar%nH = ipar%rho * GV%cgs_rho * ipar%H_mf / gconst%PROTONMASS
-        if (He) then
-           ipar%nHe = ipar%rho * GV%cgs_rho * ipar%He_mf / (4*gconst%PROTONMASS)
-        endif
-
-        ! call solver
-        !---------------------------------------------------
-        call eulerint(ipar,scalls,photo,caseA,He,isoT,fixT)
-        ipar%strtag = "on_reverse_trace_eulerint_output"
-
-
-        GV%TotalDerivativeCalls = GV%TotalDerivativeCalls + scalls
-        if (scalls .GT. GV%PeakUpdates) GV%PeakUpdates = scalls
-
-
-        !  put the updated particle data into the particle system
-        !===========================================================
-        call ionpar2par(ipar,par)
-        if (par%T < GV%Tfloor  ) par%T = GV%Tfloor
-        if (par%T > GV%Tceiling) par%T = GV%Tceiling
-
-#ifdef outGammaHI
-        par%gammaHI = psys%par(ip)%gammaHI + ipar%gammaHI * ipar%dt_s
-        par%time    = psys%par(ip)%time    + ipar%dt_s
-#endif
-
-        psys%par(ip) = par
-        psys%par(ip)%lasthit = GV%itime
-
-
-
-        
-     end if
-
-
-
-     
-  end do
-  
-end subroutine update_no_hits
 
 
 
