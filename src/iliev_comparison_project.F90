@@ -5,8 +5,8 @@
 !<
 module iliev_comparison_project_mod
 use myf03_mod
-use raylist_mod, only: raylist_type
-use ray_mod, only: ray_type
+use ray_mod
+use raylist_mod
 use particle_system_mod, only: particle_system_type
 use oct_tree_mod, only: oct_tree_type
 use global_mod, only: global_variables_type
@@ -70,15 +70,12 @@ contains
 !> iliev T1screen output
 !-------------------------------
   subroutine iliev_test1_screen_out(psys,searchtree,GV)
-  use ray_mod, only: make_probe_ray
-  use raylist_mod, only: trace_ray
-  use raylist_mod, only: kill_raylist, prepare_raysearch
-  
+
     type(particle_system_type), intent(in) :: psys  !< input particle system  
     type(oct_tree_type), intent(in) :: searchtree !< oct-tree to search
     type(global_variables_type), intent(in) :: GV  !< global variables
 
-    type(ray_type) :: ray
+    type(src_ray_type) :: ray
     type(raylist_type) :: raylist
 
     real(r8b) :: VWionfrac, time_ratio
@@ -99,9 +96,11 @@ contains
 !   compute numerical Stromgren radius (Ray probe method)
     call prepare_raysearch(psys,raylist)
     pos = psys%box%bots + psys%box%lens / 2.0d0
-
     dir = (/1.0,0.0,0.0/)
-    call make_probe_ray( pos,dir,ray )
+    ray%start = pos
+    ray%dir = dir
+    ray%length = 10.0d0
+    call ray%class_from_dir()
     call trace_ray(ray,raylist,psys,searchtree) 
     do i = 1,raylist%nnb
        pindx = raylist%intersection(i)%pindx
@@ -132,16 +131,12 @@ contains
 
 !> iliev test 2 screen output
 !-------------------------------
-  subroutine iliev_test2_screen_out(psys,searchtree,GV)
-  use ray_mod, only: make_probe_ray
-  use raylist_mod, only: trace_ray
-  use raylist_mod, only: kill_raylist, prepare_raysearch
-  
+  subroutine iliev_test2_screen_out(psys,searchtree,GV)  
     type(particle_system_type), intent(in) :: psys !< input particle system  
     type(oct_tree_type), intent(in) :: searchtree !< oct-tree to search
     type(global_variables_type), intent(in) :: GV  !< global variables
 
-    type(ray_type) :: ray
+    type(src_ray_type) :: ray
     type(raylist_type) :: raylist
 
     real(r8b) :: VWionfrac, time_ratio
@@ -162,9 +157,11 @@ contains
 !   compute numerical Stromgren radius (Ray probe method)
     call prepare_raysearch(psys,raylist)
     pos = psys%box%bots + psys%box%lens / 2.0d0
-
     dir = (/1.0,0.0,0.0/)
-    call make_probe_ray( pos,dir,ray )
+    ray%start = pos
+    ray%dir = dir
+    ray%length = 10.0d0
+    call ray%class_from_dir()
     call trace_ray(ray,raylist,psys,searchtree) 
     do i = 1,raylist%nnb
        pindx = raylist%intersection(i)%pindx

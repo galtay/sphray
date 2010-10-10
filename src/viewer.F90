@@ -5,6 +5,9 @@
 !<
 
 module viewermod
+use particle_system_mod
+use ray_mod
+use raylist_mod
 use opengl_gl
 use opengl_glu
 use opengl_glut
@@ -338,6 +341,9 @@ end module viewermod
 
 
 module snap_viewer
+use particle_system_mod
+use ray_mod
+use raylist_mod
 use opengl_gl
 use opengl_glut
 use opengl_glu
@@ -1059,6 +1065,8 @@ end subroutine pt_setup
 
 
 subroutine viewbodies
+use ray_mod
+use raylist_mod
   use viewermod
   use opengl_gl
   use opengl_glut

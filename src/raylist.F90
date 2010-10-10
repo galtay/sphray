@@ -6,10 +6,7 @@
 
 module raylist_mod
 use myf03_mod
-use ray_mod, only: ray_type
-use ray_mod, only: part_intersection
-use ray_mod, only: cell_intersection
-use ray_mod, only: transform_ray
+use ray_mod, only: src_ray_type, base_ray_type
 use particle_system_mod, only: particle_system_type
 use particle_system_mod, only: particle_type
 use particle_system_mod, only: transformation_type
@@ -52,7 +49,7 @@ implicit none
       logical :: reuseable        !< is this ray reusable?
       integer :: searchimage      !< which transformation of the particles?
       integer :: nsearchimages    !< how many images to search
-      type(ray_type) :: ray       !< ray 
+      type(src_ray_type) :: ray   !< ray 
       type(transformation_type) :: trafo(nimages)  !< transformations  
       type(intersection_type), allocatable :: intersection(:) !< ray/par 
    end type raylist_type
@@ -66,19 +63,18 @@ contains
 !> set intersection values
 !-----------------------------------------
  function set_intersection(ray, part, i) result(t)
- use ray_mod, only: dist2ray
-
    type(intersection_type) :: t  !< the intersection
-   type(ray_type) :: ray         !< the ray
+   type(src_ray_type) :: ray         !< the ray
    type(particle_type) :: part   !< the particle
    integer(i8b)  :: i            !< the particle index
    real(r8b) :: d
    
      t%pindx = i
-     t%b = sqrt( dist2ray(ray, part%pos, d) )
+     t%b = ray%dist2pt(part%pos,d)
      t%d = d
 
  end function set_intersection
+
  
 !> initialize raylist variables and set search images
 !------------------------------------------------------
@@ -92,42 +88,38 @@ contains
 
  end subroutine prepare_raysearch
 
+
 !> check all of the search images for intersection
 !---------------------------------------------------
- subroutine fullsearch(psys, searchtree, raylist, maxd)
+ subroutine fullsearch(psys, searchtree, raylist)
 
    type(particle_system_type) :: psys  !< particle system
    type(oct_tree_type) :: searchtree   !< oct-tree to search
    type(raylist_type) raylist          !< raylist
-   real, intent(in), optional :: maxd  !< maximum distance to trace 
 
-     if(raylist%searchimage == 0) call raylistError('raylist init.')
-     do while (raylist%searchimage <= raylist%nsearchimages)   
-        if (present(maxd)) then
-           call raysearch(psys, searchtree, raylist, maxd)
-        else
-           call raysearch(psys, searchtree, raylist)
-        endif
-        if (raylist%searchcell /= 0) return 
-        raylist%searchimage = raylist%searchimage + 1
-        raylist%searchcell = 1
-     enddo
-     raylist%searchcell = 0
+   if(raylist%searchimage == 0) call raylistError('raylist init.')
+   do while (raylist%searchimage <= raylist%nsearchimages)   
+      call raysearch(psys, searchtree, raylist)
+      if (raylist%searchcell /= 0) return 
+      raylist%searchimage = raylist%searchimage + 1
+      raylist%searchcell = 1
+   enddo
+   raylist%searchcell = 0
 
  end subroutine fullsearch
 
+
 !> checks a single search image for intersection
 !-----------------------------------------------
- subroutine raysearch(psys, searchtree, raylist, maxd)
+ subroutine raysearch(psys, searchtree, raylist)
 
    type(particle_system_type), intent(in) :: psys         !< particle system
    type(oct_tree_type), intent(in), target :: searchtree  !< oct-tree to search
    type(raylist_type) :: raylist                          !< raylist
-   real, intent(in), optional :: maxd                     !< max distance
 
 
    type(oct_tree_type), pointer :: tree      !< pointer to tree
-   type(ray_type) :: curay                   !< transformed ray
+   type(src_ray_type) :: curay               !< transformed ray
    integer(i8b) :: this, daughter, next      !< octree indices
    integer(i8b) :: par_in_cell               !< number of particles in current search cell
    logical :: par_hit                        !< ray / particle intersection test
@@ -139,7 +131,7 @@ contains
    si = raylist%searchimage
 
    ! curay%start = ray%start * fac + shift
-   call transform_ray(curay, raylist%ray, raylist%trafo(si))
+   call raylist%ray%transform(curay, raylist%trafo(si))
    next = raylist%searchcell
 
    do while (next /= 0)
@@ -152,8 +144,8 @@ contains
       !----------------------------
       if (daughter == 0) then
 
-
          ! return if we go over max intersections
+         !--------------------------------------------
          par_in_cell = tree%cell(next)%start - tree%cell(this)%start
          if (raylist%nnb + par_in_cell > raylist%maxnnb) then             
             write(*,*) ' *** reached max intersections *** '
@@ -163,12 +155,14 @@ contains
          endif
          
          ! add intersected particles to list
+         !----------------------------------------------
          do i = tree%cell(this)%start, tree%cell(next)%start - 1
             orderindx = tree%partorder(i)
-            par_hit = part_intersection( curay, psys%par(orderindx) ) 
+            par_hit = curay%part_intersection( psys%par(orderindx) ) 
             if (par_hit) then
                raylist%nnb = raylist%nnb + 1
-               raylist%intersection(raylist%nnb) = set_intersection(curay, psys%par(orderindx), orderindx)
+               raylist%intersection(raylist%nnb) = &
+                    set_intersection(curay, psys%par(orderindx), orderindx)
             endif
          enddo
 
@@ -177,11 +171,8 @@ contains
       !--------------------------------
       else
 
-         cell_hit = cell_intersection( curay, tree%cell(this) )
+         cell_hit = curay%cell_intersection( tree%cell(this) )
          if ( cell_hit ) next = daughter  
-
-         ! add an extra test to see if this whole cell is beyond maxd
-
 
       endif
 
@@ -191,14 +182,14 @@ contains
    
  end subroutine raysearch
 
+
 !> initializes values in the raylist
 !-------------------------------------------
  subroutine make_raylist(maxnnb, raylist, ray)
- use ray_mod, only: set_ray
 
    integer, intent(in) :: maxnnb       !< maximum number of intersections
-   type(raylist_type)      :: raylist !< the raylist
-   type(ray_type),optional :: ray     !< the ray
+   type(raylist_type)      :: raylist  !< the raylist
+   type(src_ray_type),optional :: ray  !< the ray
    real(r8b) :: start(ndim)
    real(r8b) :: dir(ndim)
   
@@ -211,12 +202,13 @@ contains
      raylist%trafo(1)%fac   = 1
      raylist%trafo(1)%shift = zero 
 
-     start = (/0.,0.,0./)
-     dir   = (/1.,0.,0./) 
-  
-     call set_ray(raylist%ray, start, dir)
      allocate(raylist%intersection(maxnnb))
-     if(present(ray)) raylist%ray=ray
+
+     if(present(ray)) then
+        raylist%ray = src_ray_type( start=ray%start, dir=ray%dir, &
+             length=ray%length, class=ray%class, freq=ray%freq, &
+             enrg=ray%enrg, pcnt=ray%pcnt, pini=ray%pini, dt_s=ray%dt_s)
+     endif
 
  end subroutine make_raylist
 
@@ -224,21 +216,24 @@ contains
 !---------------------------------------
  subroutine reset_raylist(raylist,ray)
 
-   type(raylist_type) :: raylist   !< the raylist
-   type(ray_type), optional :: ray !< the ray
+   type(raylist_type) :: raylist       !< the raylist
+   type(src_ray_type), optional :: ray !< the ray
   
      raylist%nnb         = 0
      raylist%searchcell  = 1
      raylist%searchimage = 1
      raylist%reuseable   = .false.
-     if (present(ray)) raylist%ray = ray
+     if(present(ray)) then
+        raylist%ray = src_ray_type( start=ray%start, dir=ray%dir, &
+             length=ray%length, class=ray%class, freq=ray%freq, &
+             enrg=ray%enrg, pcnt=ray%pcnt, pini=ray%pini, dt_s=ray%dt_s)
+     endif
 
  end subroutine reset_raylist
 
 !> kill a raylist
 !---------------------------------
  subroutine kill_raylist(raylist)
- use ray_mod, only: set_ray
 
    type(raylist_type) :: raylist !< the raylist to kill
    real(r8b) :: start(ndim)
@@ -247,9 +242,6 @@ contains
      raylist%nnb=0
      raylist%maxnnb=MAX_RAYLIST_LENGTH
      raylist%searchcell=0
-     start = (/0.,0.,0./)
-     dir   = (/1.,0.,0./) 
-     call set_ray(raylist%ray, start, dir)
      deallocate(raylist%intersection)
 
  end subroutine kill_raylist
@@ -387,13 +379,12 @@ contains
 
 !> given a ray creates a raylist with intersections
 !------------------------------------------------------
- subroutine trace_ray(ray, raylist, psys, searchtree, dosort, maxd) 
-   type(ray_type), intent(in) :: ray               !< the ray to trace
+ subroutine trace_ray(ray, raylist, psys, searchtree, dosort) 
+   type(src_ray_type), intent(in) :: ray           !< the ray to trace
    type(raylist_type), intent(inout) :: raylist    !< the returned raylist
    type(particle_system_type), intent(in) :: psys  !< the particle system
    type(oct_tree_type), intent(in) :: searchtree   !< the oct-tree to search
    logical, intent(in), optional :: dosort         !< default is true
-   real, intent(in), optional :: maxd              !< maximum distance to trace
 
    logical :: wantsort
 
@@ -407,11 +398,8 @@ contains
    end if
 
    call reset_raylist(raylist, ray)
-   if (present(maxd)) then
-      call fullsearch(psys, searchtree, raylist, maxd) 
-   else
-      call fullsearch(psys, searchtree, raylist)
-   endif
+   call fullsearch(psys, searchtree, raylist)
+
    if (wantsort) call sort3_raylist(raylist)
 
  end subroutine trace_ray

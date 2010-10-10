@@ -12,10 +12,9 @@ module mainloop_mod
   use gadget_general_class, only: gadget_constants_type
   use main_input_mod, only: readin_snapshot
   use oct_tree_mod, only: buildtree, setparticleorder
-  use raylist_mod, only: prepare_raysearch, kill_raylist, trace_ray
-  use ray_mod, only: make_source_ray, make_recomb_ray
-  use ray_mod, only: ray_type, raystat_type, raystatbuffsize
-  use ion_temperature_update, only: update_raylist, update_no_hits
+  use ray_mod
+  use raylist_mod
+  use ion_temperature_update, only: update_raylist
   use mt19937_mod, only: genrand_real1
   use output_mod, only: output_total_snap, ion_frac_out
   use global_mod, only: set_dt_from_dtcode, set_time_elapsed_from_itime
@@ -65,7 +64,7 @@ contains
     ! work variables
     !-----------------
     logical :: srcray
-    type(ray_type) :: ray
+    type(src_ray_type) :: ray
     real(r8b) :: outmark
     
 #ifdef incHrec
@@ -84,19 +83,7 @@ contains
        !  read in particle and source snapshot
        !----------------------------------------------------------------      
        call readin_snapshot()
-       
-
-       !  if tracking recombinations do some initializations
-       !----------------------------------------------------------------   
-#ifdef incHrec
-       if (snapn == GV%StartSnapNum) then
-          allocate( reclist(psys%npar) )
-       end if
-       reclist = 0
-       GV%recpt = 0
-       psys%par(:)%OnRecList = .false.
-#endif
-       
+              
        !  build oct tree.  only need to do this once per snap (for now)
        !----------------------------------------------------------------
        call buildtree(psys,tree,MB,GV%PartPerCell)
@@ -147,25 +134,20 @@ contains
           enddo
                     
           !  create a source ray and calc the impacts
-          call make_source_ray(psys%src(srcn), GV%rayn, GV%dt_s, GV%Lunit, psys%box, ray)
+          call ray%make_src_ray(psys%src(srcn), GV%rayn, GV%dt_s, GV%Lunit, psys%box)
           
-        
-          GV%itime = GV%itime + ray%weight
+          GV%itime = GV%itime + 1
           call set_time_elapsed_from_itime( GV )
           GV%IonizingPhotonsPerSec = GV%TotalPhotonsCast / GV%time_elapsed_s
-
-
 
           globalraylist%ray = ray
           call trace_ray(globalraylist%ray, globalraylist, psys, tree) 
           
           GV%TotalPhotonsCast = GV%TotalPhotonsCast + globalraylist%ray%pini
-
           
           srcray = .true.
           call update_raylist(globalraylist,psys%par,psys%box,srcray)
-          
-          
+                    
           if (GV%raystats) then
              
              raystatcnt = raystatcnt + 1
@@ -182,64 +164,7 @@ contains
                           
           end if
           
-          
-          ! recombination ray loop
-#ifdef incHrec
-          if ( mod(GV%rayn,GV%NrecombRaysPerSourceRay)==0 ) then
-             
-             do rindx = 1,GV%recpt
-                pindx = reclist(rindx)
-                
-                ! reset this
-                psys%par(pindx)%OnRecList = .false.
-                
-                GV%TotalDiffuseRaysCast = GV%TotalDiffuseRaysCast + 1
-                
-                !               xHIIrc = psys%par(pindx)%xHIIrc
-                
-                
-                call make_recomb_ray( psys%par(pindx), GV%IsoMass, GV%cgs_mass, &
-                     GV%H_mf, GV%He_mf, ray)
-                
-                call trace_ray(ray,globalraylist,psys,tree) 
-                
-                
-                psys%par(pindx)%xHIIrc = 0.0
-#ifdef incHe
-                psys%par(pindx)%xHeIIrc = 0.0
-                psys%par(pindx)%xHeIIIrc = 0.0
-#endif
-                
-                lasthitcheck = psys%par(pindx)%lasthit 
-                
-                srcray = .false.
-                call update_raylist(globalraylist,psys,srcray)
-                
-                if (.not. psys%par(pindx)%lasthit == lasthitcheck) then
-                   write(*,*) "lasthit check failed"
-                   stop
-                end if
-                
-             end do
-             
-             ! reset reclist
-             reclist(1:GV%recpt) = 0
-             GV%recpt = 0
-             
-          end if
-          
-#endif
-          
-
-          if (GV%NraysUpdateNoHits == 0) GV%NraysUpdateNoHits = huge(1_i8b)
-          if ( mod(GV%itime, GV%NraysUpdateNoHits)==0 ) then
-             write(*,*) "updating particles not hit by rays"
-             call update_no_hits(psys, tree)
-          end if
-          
-          
-
-          
+                              
           
           !        output routines
           !------------------------

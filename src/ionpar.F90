@@ -9,8 +9,8 @@ use gadget_general_class
 use physical_constants_mod, only: HI_th_Hz, HI_th_erg, HeI_th_erg, HeII_th_erg
 use atomic_rates_mod, only: atomic_rates_type
 use particle_system_mod, only: particle_type
-use raylist_mod, only: raylist_type
-use raylist_mod, only: intersection_type
+use ray_mod
+use raylist_mod
 use b2cd_mod, only: b2cdfac
 use cen_atomic_rates_mod, only: Verner_HI_photo_cs
 use cen_atomic_rates_mod, only: Osterbrok_HeI_photo_cs

@@ -6,9 +6,10 @@ module global_mod
 use myf03_mod 
 use gadget_general_class
 use gadget_sphray_header_class
+use ray_mod
+use raylist_mod
 use particle_system_mod, only: particle_system_type
 use oct_tree_mod, only: oct_tree_type
-use raylist_mod, only: raylist_type
 use atomic_rates_mod, only: atomic_rates_table_type
 use atomic_rates_mod, only: atomic_rates_type
 implicit none
