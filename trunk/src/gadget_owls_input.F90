@@ -234,7 +234,7 @@ subroutine read_Gowls_particles()
   !==============================          
   ngasread = 0
   GroupName = 'PartType0/'
-  files: do fn = 0, ghead%nfiles-1
+  files: do fn = 0, shead%nfiles-1
 
 
      ! recall the header info
@@ -253,6 +253,7 @@ subroutine read_Gowls_particles()
      call mywrite("   reading particle snapshot file: "//trim(snapfile), verb)
      call hdf5_open_file(fh, snapfile, readonly=.true.)
      call ghead%read_Gowls_header_lun(fh)
+
 
      ! read positions 
      !-----------------------------------------------------------!  
@@ -415,6 +416,7 @@ subroutine read_Gowls_particles()
 #else
      Hmf = GV%H_mf
 #endif
+
 
      ! get Hydrogen number density and temperature
      nH8 = psys%par(i)%rho * GV%cgs_rho * ghead%h**2 / ghead%a**3 * &
