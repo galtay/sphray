@@ -85,7 +85,7 @@ end type gadget_units_type
 !> Attributes for data in HDF5 files.
 !-----------------------------------------------------
 type gadget_hdf5_data_attributes_type
-   real(r8b) :: cgsConversionFactor 
+   real(r8b) :: CGSConversionFactor 
    real(r4b) :: h_scale_exponent
    real(r4b) :: aexp_scale_exponent
    character(200) :: VarDescription
@@ -132,16 +132,16 @@ subroutine write_data_attr_lun( attr, fh, grp_tag, dat_tag  )
 
 #ifdef useHDF5
 
-  tag = trim(grp_tag) // '/' // trim(dat_tag) // '/cgsConversionFactor'
-  call hdf5_write_attribute( fh, tag, attr%cgsConversionFactor )
+  tag = trim(grp_tag) // trim(dat_tag) // '/CGSConversionFactor'
+  call hdf5_write_attribute( fh, tag, attr%CGSConversionFactor )
 
-  tag = trim(grp_tag) // '/' // trim(dat_tag) // '/h_scale_exponent'
+  tag = trim(grp_tag) // trim(dat_tag) // '/h-scale-exponent'
   call hdf5_write_attribute( fh, tag, attr%h_scale_exponent )
 
-  tag = trim(grp_tag) // '/' // trim(dat_tag) // '/aexp_scale_exponent'
+  tag = trim(grp_tag) // trim(dat_tag) // '/aexp-scale-exponent'
   call hdf5_write_attribute( fh, tag, attr%aexp_scale_exponent )
 
-  tag = trim(grp_tag) // '/' // trim(dat_tag) // '/VarDescription'
+  tag = trim(grp_tag) // trim(dat_tag) // '/VarDescription'
   call hdf5_write_attribute( fh, tag, attr%VarDescription )
 
 #else
@@ -166,16 +166,16 @@ subroutine read_data_attr_lun( attr, fh, grp_tag, dat_tag  )
 
 #ifdef useHDF5
 
-  tag = trim(grp_tag) // '/' // trim(dat_tag) // '/cgsConversionFactor'
-  call hdf5_read_attribute( fh, tag, attr%cgsConversionFactor )
+  tag = trim(grp_tag) // trim(dat_tag) // '/CGSConversionFactor'
+  call hdf5_read_attribute( fh, tag, attr%CGSConversionFactor )
 
-  tag = trim(grp_tag) // '/' // trim(dat_tag) // '/h_scale_exponent'
+  tag = trim(grp_tag) // trim(dat_tag) // '/h-scale-exponent'
   call hdf5_read_attribute( fh, tag, attr%h_scale_exponent )
 
-  tag = trim(grp_tag) // '/' // trim(dat_tag) // '/aexp_scale_exponent'
+  tag = trim(grp_tag) // trim(dat_tag) // '/aexp-scale-exponent'
   call hdf5_read_attribute( fh, tag, attr%aexp_scale_exponent )
 
-  tag = trim(grp_tag) // '/' // trim(dat_tag) // '/VarDescription'
+  tag = trim(grp_tag) // trim(dat_tag) // '/VarDescription'
   call hdf5_read_attribute( fh, tag, attr%VarDescription )
 
 #else
@@ -194,25 +194,25 @@ end subroutine read_data_attr_lun
 subroutine set_data_attributes(gunits)
   class(gadget_units_type), intent(in) :: gunits
 
-  pos_attrs%cgsConversionFactor = gunits%cgs_length
-  vel_attrs%cgsConversionFactor = gunits%cgs_velocity
-  id_attrs%cgsConversionFactor = 1.0d0
-  mass_attrs%cgsConversionFactor = gunits%cgs_mass
-  T_attrs%cgsConversionFactor = 1.0d0
-  rho_attrs%cgsConversionFactor = gunits%cgs_density
-  ye_attrs%cgsConversionFactor = 1.0d0
-  xHI_attrs%cgsConversionFactor = 1.0d0
-  hsml_attrs%cgsConversionFactor = gunits%cgs_length
-  lasthit_attrs%cgsConversionFactor = 1.0d0
+  pos_attrs%CGSConversionFactor = gunits%cgs_length
+  vel_attrs%CGSConversionFactor = gunits%cgs_velocity
+  id_attrs%CGSConversionFactor = 1.0d0
+  mass_attrs%CGSConversionFactor = gunits%cgs_mass
+  T_attrs%CGSConversionFactor = 1.0d0
+  rho_attrs%CGSConversionFactor = gunits%cgs_density
+  ye_attrs%CGSConversionFactor = 1.0d0
+  xHI_attrs%CGSConversionFactor = 1.0d0
+  hsml_attrs%CGSConversionFactor = gunits%cgs_length
+  lasthit_attrs%CGSConversionFactor = 1.0d0
 
-  xHI_cloudy_attrs%cgsConversionFactor = 1.0d0
-  Hmf_attrs%cgsConversionFactor = 1.0d0
-  xHeI_attrs%cgsConversionFactor = 1.0d0
-  xHeII_attrs%cgsConversionFactor = 1.0d0
-  Hemf_attrs%cgsConversionFactor = 1.0d0
-  gammaHI_attrs%cgsConversionFactor = 1.0d0
-  eos_attrs%cgsConversionFactor = 1.0d0
-  sfr_attrs%cgsConversionFactor = 1.0d0
+  xHI_cloudy_attrs%CGSConversionFactor = 1.0d0
+  Hmf_attrs%CGSConversionFactor = 1.0d0
+  xHeI_attrs%CGSConversionFactor = 1.0d0
+  xHeII_attrs%CGSConversionFactor = 1.0d0
+  Hemf_attrs%CGSConversionFactor = 1.0d0
+  gammaHI_attrs%CGSConversionFactor = 1.0d0
+  eos_attrs%CGSConversionFactor = 1.0d0
+  sfr_attrs%CGSConversionFactor = 1.0d0
 
 
 

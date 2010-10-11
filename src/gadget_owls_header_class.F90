@@ -232,7 +232,7 @@ subroutine read_Gowls_header_lun(this, fh)
   call hdf5_read_attribute(fh,'Header/RunLabel',this%run_label)
   call hdf5_read_attribute(fh,'Header/NumPart_ThisFile',this%npar_file)
   call hdf5_read_attribute(fh,'Header/NumPart_Total',this%npar_all)
-  call hdf5_read_attribute(fh,'Header/NumPart_Total_HW',this%npar_hw)
+  call hdf5_read_attribute(fh,'Header/NumPart_Total_HighWord',this%npar_hw)
   call hdf5_read_attribute(fh,'Header/MassTable',this%mass)
   call hdf5_read_attribute(fh,'Header/ExpansionFactor',this%a)
 
