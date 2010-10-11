@@ -458,7 +458,7 @@ do i=1,size(psys%par)
       red = 1.0-temp
       blue=0.05
       if (temp < 0.5) then
-         alpha_c=0.3
+         alpha_c=0.8
       else
          alpha_c=0.1
       endif
@@ -471,15 +471,12 @@ do i=1,size(psys%par)
    if(show_temp.EQ.4) then
       temp = psys%par(i)%xHII 
       if (temp <= 0.5) then
-         green = 0.2
          red = 0.5
+         green = 0.2
          blue=0.5
-         alpha_c=0.3
+         alpha_c=0.1
       else
-         green=0.
-         red=0.
-         blue=0.
-         alpha_c=0.
+         cycle
       endif
       call glColor4f(red, green, blue, alpha_c)
    endif
@@ -490,21 +487,15 @@ do i=1,size(psys%par)
    if(show_temp.EQ.5) then
       temp = psys%par(i)%xHI 
       if (temp <= 0.5) then
-         green = 0.2
-         red = 0.5
-         blue=0.5
+         red = 5.0
+         green = 0.3
+         blue=0.3
          alpha_c=0.1
       else
-         green=0.
-         red=0.
-         blue=0.
-         alpha_c=0.
+         cycle
       endif
       call glColor4f(red, green, blue, alpha_c)
    endif
-
-
-
 
 
    call glVertex3f(xt,yt,zt)
@@ -987,7 +978,7 @@ subroutine drawtext
         call outputtext(xp1+3._gldouble,yp1+3._gldouble,'time elapsed (Myr):'//rs)
         
         write(rs,'(f8.2)') top(1)-bot(1)
-        call outputtext(xp2-156._gldouble,yp1+3._gldouble,'box (kpc):'//rs)
+        call outputtext(xp2-156._gldouble,yp1+3._gldouble,'box (Mpc):'//rs)
      endif
      
      if(xp2-xp1.gt.360) then
