@@ -88,7 +88,7 @@ subroutine write_Gsphray_header_hdf5_lun(this, fh)
 #ifdef useHDF5
   call hdf5_write_attribute(fh,'Header/NumPart_ThisFile',this%npar_file)
   call hdf5_write_attribute(fh,'Header/NumPart_Total',this%npar_all)
-  call hdf5_write_attribute(fh,'Header/NumPart_Total_HW',this%npar_hw)
+  call hdf5_write_attribute(fh,'Header/NumPart_Total_HighWord',this%npar_hw)
   call hdf5_write_attribute(fh,'Header/MassTable',this%mass)
   call hdf5_write_attribute(fh,'Header/ExpansionFactor',this%a)
   call hdf5_write_attribute(fh,'Header/Time_GYR',this%time_gyr)
