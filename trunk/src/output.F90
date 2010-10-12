@@ -54,13 +54,9 @@ contains
 
     ghead%nfiles    = saved_gheads(GV%CurSnapNum,fnum)%nfiles
 
-    if (GV%Comoving) then
-       ghead%a = PLAN%snap(GV%CurSnapNum)%ScalefacAt
-       ghead%z = 1.0d0 / ghead%a - 1.0d0
-    else
-       ghead%a = GV%time_elapsed_myr
-       ghead%z = saved_gheads(GV%CurSnapNum,fnum)%z
-    end if
+    ghead%a = PLAN%snap(GV%CurSnapNum)%ScalefacAt
+    ghead%z = saved_gheads(GV%CurSnapNum,fnum)%z
+    ghead%time_gyr = GV%time_elapsed_myr / 1.0d3
 
     ghead%boxlen   = saved_gheads(GV%CurSnapNum,fnum)%boxlen
     ghead%OmegaM   = saved_gheads(GV%CurSnapNum,fnum)%OmegaM
