@@ -355,7 +355,7 @@ contains
            ! write Header
            !================================================================
            call hdf5_create_group( lun, 'Header/' )
-           call ghead%write_Gsphray_header_lun(lun) 
+           call ghead%write_Gsphray_header_hdf5_lun(lun) 
 
            !================================================================
            ! write Units
