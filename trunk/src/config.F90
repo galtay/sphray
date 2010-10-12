@@ -4,6 +4,7 @@
 !<
 module config_mod
 use myf03_mod
+use gadget_general_class
 use global_mod, only: GV
 #ifdef useHDF5
 use hdf5_wrapper
@@ -23,6 +24,7 @@ contains
 !==============================
 subroutine write_config_hdf5_lun(lun)
   integer :: lun
+  type(gadget_constants_type) :: gconst
 
 #ifdef useHDF5
   call hdf5_write_attribute( lun, 'Config/Verbosity',          GV%Verbosity )
@@ -66,9 +68,10 @@ subroutine write_config_hdf5_lun(lun)
   endif
   
   call hdf5_write_attribute( lun, 'Config/IntSeed',            GV%IntSeed)            
-  
-  call hdf5_write_attribute( lun, 'Config/StaticFieldSimTime', GV%StaticFieldSimTime) 
-  call hdf5_write_attribute( lun, 'Config/StaticSimTimeUnit',  GV%StaticSimTimeUnit) 
+
+  call hdf5_write_attribute( lun, 'Config/StaticFieldSimTime', &
+       GV%StaticFieldSimTime / gconst%sec_per_megayear / GV%LittleH * GV%cgs_time) 
+  call hdf5_write_attribute( lun, 'Config/StaticSimTimeUnit',  'myr') 
   
   call hdf5_write_attribute( lun, 'Config/InputType',          GV%InputType)          
   call hdf5_write_attribute( lun, 'Config/SnapPath',           GV%SnapPath)           
