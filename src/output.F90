@@ -62,7 +62,7 @@ contains
     ghead%OmegaM   = saved_gheads(GV%CurSnapNum,fnum)%OmegaM
     ghead%OmegaL   = saved_gheads(GV%CurSnapNum,fnum)%OmegaL
     ghead%OmegaB   = saved_gheads(GV%CurSnapNum,fnum)%OmegaB
-    ghead%time_gyr = saved_gheads(GV%CurSnapNum,fnum)%time_gyr
+!    ghead%time_gyr = saved_gheads(GV%CurSnapNum,fnum)%time_gyr
     ghead%h        = saved_gheads(GV%CurSnapNum,fnum)%h
 
     ghead%npar_hw = 0
