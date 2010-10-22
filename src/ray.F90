@@ -13,56 +13,54 @@ use spectra_mod, only: rn2freq
 use physical_constants_mod, only: HI_th_erg, M_H, M_He
 implicit none
 
-  private
-  public :: raystatbuffsize
-  public :: base_ray_type
-  public :: src_ray_type
-  public :: raystat_type
+private
 
 
 
-  integer(i8b) :: raystatbuffsize 
-  real(r8b), parameter :: zero = 0.0d0
-  real(r8b), parameter :: one = 1.0d0
+public :: src_ray_type
+public :: src_ray_make
+public :: src_ray_transform
+
+public :: src_ray_class_from_dir
+public :: src_ray_dist2pt
+public :: src_ray_part_intersection
+public :: src_ray_cell_intersection
+public :: src_ray_pluecker
+
+public :: raystatbuffsize
+public :: raystat_type
+
+
+
+integer(i8b) :: raystatbuffsize 
+real(r8b), parameter :: zero = 0.0d0
+real(r8b), parameter :: one = 1.0d0
 
   
-!> bare bones ray class
-!---------------------------------------------------------------------
-type base_ray_type
+
+!> basic ray type
+!-----------------------------------------------------------------------
+type src_ray_type
    real(r8b) :: start(3)  !< starting position
    real(r8b) :: dir(3)    !< unit vector direction
    real(r8b) :: length    !< length (determines when to stop tracing)
    integer(i4b) :: class  !< based on direction signs (MMM, PMM, ...)
- contains
-   procedure :: class_from_dir => ray_class_from_dir !< computes class from dir
-   procedure :: dist2pt        !< perpendicular distance to point
-   procedure :: pluecker       !< pluecker AABB intersection test
-   procedure :: part_intersection !< intersects a particle? 
-   procedure :: cell_intersection !< intersects an AABB?
-end type base_ray_type
-
-
-!> adds source and photon properties to base ray class
-!-----------------------------------------------------------------------
-  type, extends(base_ray_type) :: src_ray_type
-     real(r8b) :: freq      !< freq in HI ionizing units
-     real(r8b) :: enrg      !< enrg of a single photon in ergs
-     real(r8b) :: pcnt      !< photon count (changes as the ray is depleted)
-     real(r8b) :: pini      !< initial photons
-     real(r8b) :: dt_s      !< time step associated with ray [s]
-   contains
-     procedure :: make_src_ray => make_src_ray            !< creates ray
-     procedure :: transform => transform_src_ray  !< transform for BCs
-  end type src_ray_type
+   
+   real(r8b) :: freq      !< freq in HI ionizing units
+   real(r8b) :: enrg      !< enrg of a single photon in ergs
+   real(r8b) :: pcnt      !< photon count (changes as the ray is depleted)
+   real(r8b) :: pini      !< initial photons
+   real(r8b) :: dt_s      !< time step associated with ray [s]
+end type src_ray_type
 
 
 !> ray stats that can be output for each ray
 !-----------------------------------------------------------------------
-  type raystat_type
-     integer(i4b) :: srcn
-     real(r4b) :: start(3)
-     real(r4b) :: ryd
-  end type raystat_type
+type raystat_type
+   integer(i4b) :: srcn
+   real(r4b) :: start(3)
+   real(r4b) :: ryd
+end type raystat_type
 
 
 
@@ -74,9 +72,9 @@ contains
 
 !> creates a source ray 
 !-----------------------------------------------------------------------  
-  subroutine make_src_ray(ray, src, rayn, dtray_s, Lunit, box, length)
+  subroutine src_ray_make(ray, src, rayn, dtray_s, Lunit, box, length)
 
-    class(src_ray_type), intent(out) :: ray   !< ray to make
+    type(src_ray_type), intent(out) :: ray    !< ray to make
     type(source_type), intent(inout) :: src   !< source
     integer(i8b), intent(in) :: rayn          !< ray indx
     real(r8b), intent(in) :: dtray_s          !< time between rays [s]   
@@ -152,7 +150,8 @@ contains
 
   
 !   set the class of the ray (what octant is it going into)
-    call ray%class_from_dir()
+    call src_ray_class_from_dir(ray)
+
 
 !   set the frequency and energy / photon of the ray
     ray%freq = rn2freq(src%SpcType)
@@ -175,38 +174,13 @@ contains
     ray%pcnt = ray%pini
     src%lastemit = rayn
 
-  end subroutine make_src_ray
-
-
-! pre computes the class of the ray for the Pluecker test
-! ray label    class
-!   MMM          0
-!   PMM          1
-!   MPM          2
-!   PPM          3
-!   MMP          4
-!   PMP          5
-!   MPP          6
-!   PPP          7
-!-----------------------------------------------------------
-subroutine ray_class_from_dir( ray ) 
-  class(base_ray_type) :: ray
-  integer(i4b) :: i
-
-  ray%class = 0
-  do i = 1, 3
-     if ( ray%dir(i) >= zero ) ray%class = ray%class + 2**(i-1)
-  end do
-  
-end subroutine ray_class_from_dir
-
-
+  end subroutine src_ray_make
 
 
 !> returns a transformed ray while preserving the initial ray
 !--------------------------------------------------------------
-  subroutine transform_src_ray(inray, outray, trans)
-    class(src_ray_type) :: inray       !< input ray
+  subroutine src_ray_transform(inray, outray, trans)
+    type(src_ray_type) :: inray       !< input ray
     type(src_ray_type) :: outray       !< output ray
     type(transformation_type) :: trans !< transformation
     
@@ -221,87 +195,122 @@ end subroutine ray_class_from_dir
     outray%pini = inray%pini
     outray%dt_s = inray%dt_s
 
-  end subroutine transform_src_ray
+  end subroutine src_ray_transform
+
+
+
+! pre computes the class of the ray for the Pluecker test
+! ray label    class
+!   MMM          0
+!   PMM          1
+!   MPM          2
+!   PPM          3
+!   MMP          4
+!   PMP          5
+!   MPP          6
+!   PPP          7
+!-----------------------------------------------------------
+subroutine src_ray_class_from_dir( src_ray ) 
+  type(src_ray_type), intent(inout) :: src_ray
+  integer(i4b) :: i
+
+  src_ray%class = 0
+  do i = 1, 3
+     if ( src_ray%dir(i) >= zero ) src_ray%class = src_ray%class + 2**(i-1)
+  end do
+  
+end subroutine src_ray_class_from_dir
+
+
+
+
 
 
 !> returns the perpendicular distance between a point and a ray
 !--------------------------------------------------------------  
-function dist2pt(ray, pos, proj) result(dist)
-  class(base_ray_type), intent(in) :: ray  !< calling ray
-  real(r4b), intent(in) :: pos(3)    !< point
+function src_ray_dist2pt(src_ray, pt, proj) result(perp)
+  type(src_ray_type), intent(in) :: src_ray
+  real(r4b), intent(in) :: pt(3)     !< point
   real(r8b), optional :: proj        !< distance along ray 
-  real(r8b) :: dist                  !< distance perp. to ray
+  real(r8b) :: perp                  !< distance perp. to ray
   
   real(r8b) :: dotp
   real(r8b) :: diff(3)
-  real(r8b) :: dist2
+  real(r8b) :: perp2
   real(r8b) :: vec1(3)
   real(r8b) :: vec2(3)
   
-  vec1 = pos - ray%start
-  vec2 = ray%dir
+  vec1 = pt - src_ray%start
+  vec2 = src_ray%dir
   
   dotp  = dot_product( vec1, vec2 )
-  diff  = vec1 - dotp * ray%dir 
-  dist2 = dot_product( diff, diff )
-  dist = sqrt(dist2)
+  diff  = vec1 - dotp * src_ray%dir 
+  perp2 = dot_product( diff, diff )
+  perp = sqrt(perp2)
   
   if( present(proj) ) proj = dotp
   
-end function dist2pt
+end function src_ray_dist2pt
 
 
 
 !> tests for ray / particle intersection.  
 !----------------------------------------------  
-  function part_intersection(ray, part) result(hit)
-    class(base_ray_type) :: ray    !< ray
-    type(particle_type) :: part    !< particle
-    logical :: hit                 !< true or false result
-
-    real(r8b) :: start2cen       !< ray start to particle position
-    real(r8b) :: dist            !< perpendicular distance to particle 
-    real(r8b) :: proj            !< projected distance along ray
-
-    start2cen = sqrt( sum( (part%pos - ray%start)*(part%pos - ray%start) ) )
-    if (start2cen < part%hsml) then
-       hit = .true.
-       return
-    endif
-
-    dist = ray%dist2pt(part%pos, proj)
-    if (dist >= part%hsml) then
-       hit = .false.
-       return
-    endif
-
-    hit = dist < part%hsml .and. proj >= zero 
-
-  end function part_intersection
+function src_ray_part_intersection(src_ray, part) result(hit)
+  type(src_ray_type), intent(in) :: src_ray
+  type(particle_type), intent(in) :: part       !< particle
+  logical :: hit                    !< true or false result
+  
+  real(r8b) :: start2cen       !< distance from ray start to particle position
+  real(r8b) :: perp            !< perpendicular distance to particle 
+  real(r8b) :: proj            !< projected distance along ray
+  
+  
+  ! if the perpendicular distance to the point is larger than hsml exit
+  !---------------------------------------------------------------------
+  perp = src_ray_dist2pt( src_ray, part%pos, proj ) 
+  if (perp >= part%hsml) then
+     hit = .false.
+     return
+  endif
+  
+  ! if the point is inside the particle we have an intersection
+  !---------------------------------------------------------------------
+  start2cen = sqrt( sum( (part%pos - src_ray%start)*(part%pos - src_ray%start) ) )
+  if (start2cen < part%hsml) then
+     hit = .true.
+     return
+  endif
+  
+  hit = perp < part%hsml .and. proj >= zero 
+  
+end function src_ray_part_intersection
 
 
 !> tests for ray - AABB intersection. 
 !----------------------------------------------  
-  function cell_intersection(ray,cell) result(hit)
-    class(base_ray_type) :: ray    !< ray
-    type(cell_type) :: cell        !< cell
-    logical :: hit                 !< true or false result
-    real(r8b) :: bot(3)
-    real(r8b) :: top(3)
-    bot = cell%botrange - ray%start
-    top = cell%toprange - ray%start
-    hit = ray%pluecker(bot, top)
-  end function cell_intersection
+function src_ray_cell_intersection(src_ray,cell) result(hit)
+  type(src_ray_type), intent(in) :: src_ray  !< ray
+  type(cell_type), intent(in) :: cell        !< cell
+  logical :: hit                 !< true or false result
+  real(r8b) :: bot(3)
+  real(r8b) :: top(3)
+  bot = cell%botrange - src_ray%start
+  top = cell%toprange - src_ray%start
+  hit = src_ray_pluecker(src_ray, bot, top)
+end function src_ray_cell_intersection
+
 
 
 !> pluecker test for line segment / cell intersection
 !-----------------------------------------------------    
-function pluecker(ray, s2b, s2t) result( hit )
+function src_ray_pluecker(src_ray, s2b, s2t) result( hit )
 
-  logical :: hit              !< true or false result
-  class(base_ray_type) :: ray !< input ray
+  type(src_ray_type), intent(in) :: src_ray
+
   real(r8b) :: s2b(3)         !< vector from ray start to lower cell corner
   real(r8b) :: s2t(3)         !< vector from ray start to upper cell corner
+  logical :: hit              !< true or false result
   
   real(r8b) :: dir(3)
   real(r8b) :: dist
@@ -309,8 +318,8 @@ function pluecker(ray, s2b, s2t) result( hit )
   real(r8b) :: e2b(3)       !< vector from ray end to lower cell corner
   real(r8b) :: e2t(3)       !< vector from ray end to upper cell corner
 
-  dir  = ray%dir  
-  dist = ray%length
+  dir  = src_ray%dir  
+  dist = src_ray%length
 
   e2b = s2b - dir * dist
   e2t = s2t - dir * dist
@@ -319,7 +328,7 @@ function pluecker(ray, s2b, s2t) result( hit )
 
   ! branch on ray direction
   !---------------------------
-  select case( ray%class )
+  select case( src_ray%class )
 
      ! MMM
      !-----------
@@ -442,7 +451,9 @@ function pluecker(ray, s2b, s2t) result( hit )
   
   hit=.true.
   
-end function pluecker
+end function src_ray_pluecker
+
+
 
 !> error handling
 !-----------------------------      

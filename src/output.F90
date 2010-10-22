@@ -10,8 +10,7 @@ use gadget_public_header_class
 use gadget_owls_header_class
 use gadget_public_input_hdf5_mod
 use gadget_sphray_header_class
-use particle_system_mod, only: particle_system_type
-use particle_system_mod, only: particle_type
+use particle_system_mod
 use oct_tree_mod, only: oct_tree_type
 use physical_constants_mod
 use global_mod, only: PLAN, GV
@@ -102,7 +101,7 @@ contains
     ghead%flag_gammaHI = 0
 #endif
 !-------------------------
-#ifdef cloudy
+#ifdef incCloudy
     ghead%flag_cloudy = 1
 #else
     ghead%flag_cloudy = 0
@@ -137,7 +136,7 @@ contains
      type(particle_system_type), intent(inout) :: psys
      type(gadget_sphray_header_type) :: ghead
      type(gadget_constants_type) :: gconst
-     type(gadget_owls_units_type) :: gunits
+     type(gadget_units_type) :: gunits
 
      character(3) :: label
      character(4) :: ext
@@ -174,13 +173,15 @@ contains
      write(*,*) "time (elapsed code) ", GV%time_elapsed_code
      write(*,*) "time (elapsed myr)  ", GV%time_elapsed_myr
 
-     if (GV%Comoving) call psys%scale_physical_to_comoving(scale, hub)
+     if (GV%Comoving) then
+        call particle_system_scale_physical_to_comoving(psys, scale, hub)
+     endif
 
      100 format(I3.3)
      write(label,100) GV%OutputIndx
 
 
-     call psys%set_ye( GV%H_mf, GV%He_mf, GV%NeBackground )
+     call particle_system_set_ye( psys, GV%H_mf, GV%He_mf, GV%NeBackground )
 
 
      !================================================================
@@ -207,7 +208,7 @@ contains
 
            Nfile = ghead%npar_file(0)
 
-           call ghead%write_Gsphray_header_lun(lun)
+           call gadget_sphray_header_write_lun(ghead,lun)
 
            allocate( rblock3(3,Nfile) )
            rblock3(1,:) = psys%par(Nread+1:Nread+Nfile)%pos(1) 
@@ -294,7 +295,7 @@ contains
 #endif
 
  
-#ifdef cloudy
+#ifdef incCloudy
            write(lun) psys%par(Nread+1:Nread+Nfile)%xHI_cloudy
 #endif
 
@@ -351,7 +352,8 @@ contains
            ! write Header
            !================================================================
            call hdf5_create_group( lun, 'Header/' )
-           call ghead%write_Gsphray_header_hdf5_lun(lun) 
+           call gadget_sphray_header_write_lun( ghead, lun )
+!           call ghead%write_Gsphray_header_hdf5_lun(lun) 
 
            !================================================================
            ! write Units
@@ -364,9 +366,10 @@ contains
            gunits%cgs_energy   = GV%cgs_enrg
            gunits%cgs_pressure = GV%cgs_prs
            gunits%cgs_time     = GV%cgs_time
-           call gunits%write_Gowls_units_lun(lun) 
+           call gadget_units_write_lun( gunits, lun )          
+!           call gunits%write_Gowls_units_lun(lun) 
 
-           call set_data_attributes(gunits)
+           call gadget_data_attributes_set(gunits)
                      
            !================================================================
            ! write config parameters
@@ -388,7 +391,8 @@ contains
            rblock3(3,:) = psys%par(Nread+1:Nread+Nfile)%pos(3) 
            tag = trim(group_name)//'Coordinates'
            call hdf5_write_data( lun, tag, rblock3 )
-           call pos_attrs%write_lun( lun, group_name, 'Coordinates' )
+           call gadget_data_attributes_write_lun( pos_attrs, lun, group_name, 'Coordinates' )
+!           call pos_attrs%write_lun( lun, group_name, 'Coordinates' )
 
 
 #ifdef incVel
@@ -400,68 +404,80 @@ contains
 #endif
            tag = trim(group_name)//'Velocity'
            call hdf5_write_data( lun, tag, rblock3 )
-           call vel_attrs%write_lun( lun, group_name, 'Velocity' )
+           call gadget_data_attributes_write_lun( vel_attrs, lun, group_name, 'Coordinates' )
+!           call vel_attrs%write_lun( lun, group_name, 'Velocity' )
            deallocate( rblock3 )
 
 
 
            tag = trim(group_name)//'ParticleIDs'
            call hdf5_write_data( lun, tag, psys%par(Nread+1:Nread+Nfile)%id )
-           call id_attrs%write_lun( lun, group_name, 'ParticleIDs' )
+           call gadget_data_attributes_write_lun( id_attrs, lun, group_name, 'Coordinates' )
+!           call id_attrs%write_lun( lun, group_name, 'ParticleIDs' )
 
            tag = trim(group_name)//'Mass'
            call hdf5_write_data( lun, tag, psys%par(Nread+1:Nread+Nfile)%mass )
-           call mass_attrs%write_lun( lun, group_name, 'Mass' )
+           call gadget_data_attributes_write_lun( mass_attrs, lun, group_name, 'Coordinates' )
+!           call mass_attrs%write_lun( lun, group_name, 'Mass' )
 
 
            tag = trim(group_name)//'Density'
            call hdf5_write_data( lun, tag, psys%par(Nread+1:Nread+Nfile)%rho )
-           call rho_attrs%write_lun( lun, group_name, 'Density' )
+           call gadget_data_attributes_write_lun( rho_attrs, lun, group_name, 'Coordinates' )
+!           call rho_attrs%write_lun( lun, group_name, 'Density' )
 
 
            tag = trim(group_name)//'ElectronFraction'
            call hdf5_write_data( lun, tag, psys%par(Nread+1:Nread+Nfile)%ye )
-           call ye_attrs%write_lun( lun, group_name, 'ElectronFraction' )
+           call gadget_data_attributes_write_lun( ye_attrs, lun, group_name, 'Coordinates' )
+!           call ye_attrs%write_lun( lun, group_name, 'ElectronFraction' )
 
  
            tag = trim(group_name)//'HydrogenOneFraction'
            call hdf5_write_data( lun, tag, psys%par(Nread+1:Nread+Nfile)%xHI )
-           call xHI_attrs%write_lun( lun, group_name, 'HydrogenOneFraction' )
+           call gadget_data_attributes_write_lun( xHI_attrs, lun, group_name, 'Coordinates' )
+!           call xHI_attrs%write_lun( lun, group_name, 'HydrogenOneFraction' )
 
 
            tag = trim(group_name)//'SmoothingLength'
            call hdf5_write_data( lun, tag, psys%par(Nread+1:Nread+Nfile)%hsml )
-           call hsml_attrs%write_lun( lun, group_name, 'SmoothingLength' )
+           call gadget_data_attributes_write_lun( hsml_attrs, lun, group_name, 'Coordinates' ) 
+!           call hsml_attrs%write_lun( lun, group_name, 'SmoothingLength' )
 
 
            tag = trim(group_name)//'Temperature'
            call hdf5_write_data( lun, tag, psys%par(Nread+1:Nread+Nfile)%T )
-           call T_attrs%write_lun( lun, group_name, 'Temperature' )
+           call gadget_data_attributes_write_lun( T_attrs, lun, group_name, 'Coordinates' )
+!           call T_attrs%write_lun( lun, group_name, 'Temperature' )
 
 
           
 #ifdef incHmf
            tag = trim(group_name)//'ElementAbundance/Hydrogen'
            call hdf5_write_data( lun, tag, psys%par(Nread+1:Nread+Nfile)%Hmf )
-           call Hmf_attrs%write_lun( lun, group_name, 'ElementAbundance/Hydrogen' )
+           call gadget_data_attributes_write_lun( Hmf_attrs, lun, group_name, 'Coordinates' )
+!           call Hmf_attrs%write_lun( lun, group_name, 'ElementAbundance/Hydrogen' )
 #endif
 
 
 #ifdef incHemf
            tag = trim(group_name)//'ElementAbundance/Helium'
            call hdf5_write_data( lun, tag, psys%par(Nread+1:Nread+Nfile)%Hemf )
-           call Hemf_attrs%write_lun( lun, group_name, 'ElementAbundance/Helium' )
+           call gadget_data_attributes_write_lun( Hemf_attrs, lun, group_name, 'Coordinates' )
+!           call Hemf_attrs%write_lun( lun, group_name, 'ElementAbundance/Helium' )
 #endif
 
 
 #ifdef incHe
            tag = trim(group_name)//'HeliumOneFraction'
            call hdf5_write_data( lun, tag, psys%par(Nread+1:Nread+Nfile)%xHeI )
-           call xHeI_attrs%write_lun( lun, group_name, 'HeliumOneFraction' )
+           call gadget_data_attributes_write_lun( xHeI_attrs, lun, group_name, 'Coordinates' )
+!           call xHeI_attrs%write_lun( lun, group_name, 'HeliumOneFraction' )
 
            tag = trim(group_name)//'HeliumTwoFraction'
            call hdf5_write_data( lun, tag, psys%par(Nread+1:Nread+Nfile)%xHeII )
-           call xHeII_attrs%write_lun( lun, group_name, 'HeliumTwoFraction' )
+           call gadget_data_attributes_write_lun( xHeII_attrs, lun, group_name, 'Coordinates' )
+!           call xHeII_attrs%write_lun( lun, group_name, 'HeliumTwoFraction' )
 #endif
 
 
@@ -469,15 +485,17 @@ contains
 #ifdef outGammaHI
            tag = trim(group_name)//'HydrogenOneGamma'
            call hdf5_write_data( lun, tag, psys%par(Nread+1:Nread+Nfile)%gammaHI )
-           call gammaHI_attrs%write_lun( lun, group_name, 'HydrogenOneGamma' )
+           call gadget_data_attributes_write_lun( gammaHI_attrs, lun, group_name, 'Coordinates' )
+!           call gammaHI_attrs%write_lun( lun, group_name, 'HydrogenOneGamma' )
 #endif
 
 
  
-#ifdef cloudy
+#ifdef incCloudy
            tag = trim(group_name)//'HydrogenOneFraction_Cloudy'
            call hdf5_write_data( lun, tag, psys%par(Nread+1:Nread+Nfile)%xHI_cloudy )
-           call xHI_cloudy_attrs%write_lun( lun, group_name, 'HydrogenOneFraction_Cloudy' )
+           call gadget_data_attributes_write_lun( xHI_cloudy_attrs, lun, group_name, 'Coordinates' )
+!           call xHI_cloudy_attrs%write_lun( lun, group_name, 'HydrogenOneFraction_Cloudy' )
 #endif
 
 
@@ -485,21 +503,24 @@ contains
 #ifdef incEOS
            tag = trim(group_name)//'OnEquationOfState'
            call hdf5_write_data( lun, tag, psys%par(Nread+1:Nread+Nfile)%eos )
-           call eos_attrs%write_lun( lun, group_name, 'OnEquationOfState' )
+           call gadget_data_attributes_write_lun( eos_attrs, lun, group_name, 'Coordinates' ) 
+!           call eos_attrs%write_lun( lun, group_name, 'OnEquationOfState' )
 #endif
 
 
 #ifdef incSFR
            tag = trim(group_name)//'StarFormationRate'
            call hdf5_write_data( lun, tag, psys%par(Nread+1:Nread+Nfile)%sfr )
-           call sfr_attrs%write_lun( lun, group_name, 'StarFormationRate' )
+           call gadget_data_attributes_write_lun( sfr_attrs, lun, group_name, 'Coordinates' )
+!           call sfr_attrs%write_lun( lun, group_name, 'StarFormationRate' )
 #endif
 
 
 #ifdef incH2
            tag = trim(group_name)//'MolecularHydrogenMassFraction'
            call hdf5_write_data( lun, tag, psys%par(Nread+1:Nread+Nfile)%fH2 )
-           call fh2_attrs%write_lun( lun, group_name, 'MolecularHydrogenMassFraction' )
+           call gadget_data_attributes_write_lun( fh2_attrs, lun, group_name, 'Coordinates' )
+!           call fh2_attrs%write_lun( lun, group_name, 'MolecularHydrogenMassFraction' )
 #endif
 
 
@@ -521,9 +542,10 @@ contains
      !================================================================
      !================================================================
 
+     if (GV%Comoving) then
+        call particle_system_scale_comoving_to_physical(psys, scale, hub)
+     endif
 
-
-     if (GV%Comoving) call psys%scale_comoving_to_physical(scale, hub)
 
   end subroutine output_total_snap
 
@@ -564,9 +586,9 @@ contains
 
 
 !    calculate the ionized number, volume, and mass fractions
-     Nionfrac = psys%mean_xHII_number_weight()
-     Mionfrac = psys%mean_xHII_mass_weight(DfltH_mf=GV%H_mf) 
-     Vionfrac = psys%mean_xHII_volume_weight()
+     Nionfrac = particle_system_mean_xHII_number_weight(psys)
+     Mionfrac = particle_system_mean_xHII_mass_weight(psys, DfltH_mf=GV%H_mf) 
+     Vionfrac = particle_system_mean_xHII_volume_weight(psys)
 
      GV%nwionfrac = Nionfrac
      GV%mwionfrac = Mionfrac

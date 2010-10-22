@@ -9,23 +9,17 @@ module gadget_public_header_hdf5_class
 use myf03_mod
 use gadget_general_class
 use gadget_public_header_class
+
 #ifdef useHDF5
 use hdf5_wrapper
 #endif
+
 implicit none
 private
  
-public :: gadget_public_header_hdf5_type
-
-
-type, extends(gadget_public_header_type) :: gadget_public_header_hdf5_type
- contains
-   procedure :: read_Gpublic_header_hdf5_lun
-   procedure :: read_Gpublic_header_hdf5_file
-   procedure :: write_Gpublic_header_hdf5_lun
-end type gadget_public_header_hdf5_type
-
-
+public :: gadget_public_header_hdf5_read_lun
+public :: gadget_public_header_hdf5_read_file
+public :: gadget_public_header_hdf5_write_lun
 
 
 contains
@@ -33,8 +27,8 @@ contains
 
 !> reads a gadget header from an hdf5 file
 !--------------------------------------------------------------
-subroutine read_Gpublic_header_hdf5_lun(this, fh)
-  class(gadget_public_header_hdf5_type) :: this
+subroutine gadget_public_header_hdf5_read_lun(this, fh)
+  type(gadget_public_header_type) :: this
   integer, intent(in) :: fh
 
 #ifdef useHDF5
@@ -57,32 +51,38 @@ subroutine read_Gpublic_header_hdf5_lun(this, fh)
   call hdf5_read_attribute(fh,'Header/Flag_Metals',this%flag_metals)
   call hdf5_read_attribute(fh,'Header/Flag_Feedback',this%flag_feedback)
   call hdf5_read_attribute(fh,'Header/Flag_Entropy_ICs',this%flag_entr_ics)
+#else 
+  write(*,*) 'useHDF5 macro not defined in Makefile' 
+  stop
 #endif
 
-end subroutine read_Gpublic_header_hdf5_lun
+end subroutine gadget_public_header_hdf5_read_lun
 
 
 !> reads a gadget header from an hdf5 file
 !--------------------------------------------------------------
-subroutine read_Gpublic_header_hdf5_file(this, snapfile)
-  class(gadget_public_header_hdf5_type) :: this
+subroutine gadget_public_header_hdf5_read_file(this, snapfile)
+  type(gadget_public_header_type) :: this
   character(*), intent(in) :: snapfile
   integer :: fh
 
 #ifdef useHDF5
   call hdf5_open_file( fh, snapfile, readonly=.true. )
-  call read_Gpublic_header_hdf5_lun(this, fh)
+  call gadget_public_header_hdf5_read_lun(this, fh)
   call hdf5_close_file( fh )
+#else 
+  write(*,*) 'useHDF5 macro not defined in Makefile' 
+  stop
 #endif
 
-end subroutine read_Gpublic_header_hdf5_file
+end subroutine gadget_public_header_hdf5_read_file
 
 
 
 !> writes a gadget header to an hdf5 file
 !--------------------------------------------------------------
-subroutine write_Gpublic_header_hdf5_lun(this, fh)
-  class(gadget_public_header_hdf5_type), intent(in) :: this
+subroutine gadget_public_header_hdf5_write_lun(this, fh)
+  type(gadget_public_header_type), intent(in) :: this
   integer, intent(in) :: fh
 
 #ifdef useHDF5
@@ -105,9 +105,12 @@ subroutine write_Gpublic_header_hdf5_lun(this, fh)
   call hdf5_write_attribute(fh,'Header/Flag_Metals',this%flag_metals)
   call hdf5_write_attribute(fh,'Header/Flag_Feedback',this%flag_feedback)
   call hdf5_write_attribute(fh,'Header/Flag_Entropy_ICs',this%flag_entr_ics)
+#else 
+  write(*,*) 'useHDF5 macro not defined in Makefile' 
+  stop
 #endif
 
-end subroutine write_Gpublic_header_hdf5_lun
+end subroutine gadget_public_header_hdf5_write_lun
 
 
 

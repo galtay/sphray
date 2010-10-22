@@ -7,7 +7,7 @@
 !> oct-tree construction and types
 module oct_tree_mod
 use myf03_mod
-use particle_system_mod, only: particle_system_type
+use particle_system_mod
 implicit none
  
  integer, private, parameter :: nsubcell = 2**3  !< number of daughter cells 
@@ -52,7 +52,7 @@ subroutine setparticleorder(psys,tree)
   type(oct_tree_type) :: tree     !< the oct-tree
   type(particle_system_type) :: psys !< the particle system
   call check(psys,tree)
-  call psys%order_particles(tree%partorder)
+  call particle_system_order_particles(psys,tree%partorder)
 end subroutine setparticleorder
 
 

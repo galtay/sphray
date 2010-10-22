@@ -27,7 +27,7 @@ use particle_system_mod, only: transformation_type
      real(r4b)    :: xHII       !< * nHII/nH
      real(r4b)    :: hsml       !< smoothing length
      
-#ifdef cloudy
+#ifdef incCloudy
      real(r4b)    :: xHI_cloudy !< cloudy eq solutions
 #endif
      
@@ -84,7 +84,7 @@ contains
     sphpar%xHII = par%xHII
     sphpar%hsml = par%hsml
 
-#ifdef cloudy
+#ifdef incCloudy
     sphpar%xHI_cloudy = par%xHI_cloudy
 #endif
 

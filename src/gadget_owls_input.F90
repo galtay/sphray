@@ -9,6 +9,7 @@ use gadget_general_class
 use gadget_public_header_class
 use gadget_owls_header_class
 use gadget_sphray_header_class
+use particle_system_mod
 use ion_table_class
 
 use atomic_rates_mod, only: calc_colion_eq_fits
@@ -59,8 +60,8 @@ subroutine get_planning_data_gadget_owls()
   integer, parameter :: verb = 2
 
   type(gadget_owls_header_type) :: ghead
-  type(gadget_owls_units_type) :: gunits
-  type(gadget_owls_constants_type) :: gconst
+  type(gadget_units_type) :: gunits
+  type(gadget_constants_type) :: gconst
 
   integer(i4b) :: iSnap, fSnap    ! initial and final snapshot numbers
   integer(i4b) :: pfiles          ! files/snap for particles    
@@ -88,8 +89,10 @@ subroutine get_planning_data_gadget_owls()
   ! set global units and read constants
   !===================================================
   call form_gadget_snapshot_file_name(GV%SnapPath,GV%ParFileBase,iSnap,0,snapfile,hdf5bool=.true.)
-  call gconst%read_Gowls_constants_file(snapfile)
-  call gunits%read_Gowls_units_file(snapfile)
+  call gadget_constants_read_file( gconst, snapfile )
+  call gadget_units_read_file( gunits, snapfile )
+!  call gconst%read_Gowls_constants_file(snapfile)
+!  call gunits%read_Gowls_units_file(snapfile)
   GV%cgs_len  = gunits%cgs_length
   GV%cgs_mass = gunits%cgs_mass
   GV%cgs_vel  = gunits%cgs_velocity
@@ -107,9 +110,13 @@ subroutine get_planning_data_gadget_owls()
         call form_gadget_snapshot_file_name(GV%SnapPath,GV%ParFileBase,i,j,snapfile,hdf5bool=.true.)
         write(loglun,'(I3,"  ",A)') i,trim(snapfile)
 
-        call ghead%read_Gowls_header_file(snapfile)
-        call ghead%print_Gowls_header_lun(loglun)
-        call saved_gheads(i,j)%copy_Gowls_header(ghead)
+        call gadget_owls_header_read_file( ghead, snapfile )
+        call gadget_owls_header_print_lun( ghead, loglun )
+        call gadget_sphray_header_copy_owls( saved_gheads(i,j), ghead )
+
+!        call ghead%read_Gowls_header_file(snapfile)
+!        call ghead%print_Gowls_header_lun(loglun)
+!        call saved_gheads(i,j)%copy_Gowls_header(ghead)
 
         ! make sure there is gas in this snapshot
         if (.not. ghead%npar_all(0) > 0) then
@@ -147,7 +154,7 @@ subroutine get_planning_data_gadget_owls()
 
   logfile = trim(GV%OutputDir) // "/" // "code_units.log"
   call open_formatted_file_w(logfile,loglun)
-  call gunits%print_lun(loglun,saved_gheads(iSnap,0)%h)
+  call gadget_units_print_lun( gunits, loglun, saved_gheads(iSnap,0)%h ) 
   close(loglun)
 
 end subroutine get_planning_data_gadget_owls
@@ -252,7 +259,8 @@ subroutine read_Gowls_particles()
      call form_gadget_snapshot_file_name(GV%SnapPath,GV%ParFileBase,GV%CurSnapNum,fn,snapfile,hdf5bool)
      call mywrite("   reading particle snapshot file: "//trim(snapfile), verb)
      call hdf5_open_file(fh, snapfile, readonly=.true.)
-     call ghead%read_Gowls_header_lun(fh)
+     call gadget_owls_header_read_lun(ghead,fh)
+
 
 
      ! read positions 
@@ -265,7 +273,7 @@ subroutine read_Gowls_particles()
      forall(i=1:ngas1) psys%par(ngasread+i)%pos(2) = rblck3(2,i)
      forall(i=1:ngas1) psys%par(ngasread+i)%pos(3) = rblck3(3,i)
      deallocate(rblck3)
-     call pos_attrs%read_lun( fh, GroupName, VarName )
+     call gadget_data_attributes_read_lun( pos_attrs, fh, GroupName, VarName )
 
 
 
@@ -280,7 +288,8 @@ subroutine read_Gowls_particles()
      forall(i=1:ngas1) psys%par(ngasread+i)%vel(2) = rblck3(2,i)
      forall(i=1:ngas1) psys%par(ngasread+i)%vel(3) = rblck3(3,i)
      deallocate(rblck3)
-     call vel_attrs%read_lun( fh, GroupName, VarName )
+     call gadget_data_attributes_read_lun( vel_attrs, fh, GroupName, VarName )
+!     call vel_attrs%read_lun( fh, GroupName, VarName )
 #endif
 
      ! read id's 
@@ -291,7 +300,8 @@ subroutine read_Gowls_particles()
      call hdf5_read_data(fh,trim(GroupName)//trim(VarName),iblck)
      forall(i=1:ngas1) psys%par(ngasread+i)%id = iblck(i)
      deallocate(iblck)
-     call id_attrs%read_lun( fh, GroupName, VarName )
+     call gadget_data_attributes_read_lun( id_attrs, fh, GroupName, VarName ) 
+!    call id_attrs%read_lun( fh, GroupName, VarName )
 
      ! read masses 
      !-----------------------------------------------------------!  
@@ -304,7 +314,8 @@ subroutine read_Gowls_particles()
         call hdf5_read_data(fh,trim(GroupName)//trim(VarName),rblck)
         forall(i=1:ngas1) psys%par(ngasread+i)%mass = rblck(i)
         deallocate(rblck)
-        call mass_attrs%read_lun( fh, GroupName, VarName )
+        call gadget_data_attributes_read_lun( mass_attrs, fh, GroupName, VarName ) 
+!       call mass_attrs%read_lun( fh, GroupName, VarName )
 
      ! if gas particles are isomass
      else
@@ -320,7 +331,8 @@ subroutine read_Gowls_particles()
      call hdf5_read_data(fh,trim(GroupName)//trim(VarName),rblck)
      forall(i=1:ngas1) psys%par(ngasread+i)%T = rblck(i)
      deallocate(rblck)
-     call T_attrs%read_lun( fh, GroupName, VarName ) 
+     call gadget_data_attributes_read_lun( T_attrs, fh, GroupName, VarName )
+!     call T_attrs%read_lun( fh, GroupName, VarName ) 
 
      ! read EOS
      !-----------------------------------------------------------!  
@@ -331,7 +343,8 @@ subroutine read_Gowls_particles()
      call hdf5_read_data(fh,trim(GroupName)//trim(VarName),rblck)
      forall(i=1:ngas1) psys%par(ngasread+i)%eos = rblck(i)
      deallocate(rblck)
-     call eos_attrs%read_lun( fh, GroupName, VarName )
+     call gadget_data_attributes_read_lun( eos_attrs, fh, GroupName, VarName )
+!     call eos_attrs%read_lun( fh, GroupName, VarName )
 #endif
 
      ! read density 
@@ -342,7 +355,8 @@ subroutine read_Gowls_particles()
      call hdf5_read_data(fh,trim(GroupName)//trim(VarName),rblck)
      forall(i=1:ngas1) psys%par(ngasread+i)%rho = rblck(i)
      deallocate(rblck)
-     call rho_attrs%read_lun( fh, GroupName, VarName )
+     call gadget_data_attributes_read_lun( rho_attrs, fh, GroupName, VarName ) 
+!    call rho_attrs%read_lun( fh, GroupName, VarName )
 
      ! read smoothing lengths 
      !-----------------------------------------------------------!  
@@ -352,7 +366,8 @@ subroutine read_Gowls_particles()
      call hdf5_read_data(fh,trim(GroupName)//trim(VarName),rblck)
      forall(i=1:ngas1) psys%par(ngasread+i)%hsml = rblck(i)
      deallocate(rblck)
-     call hsml_attrs%read_lun( fh, GroupName, VarName )
+     call gadget_data_attributes_read_lun( hsml_attrs, fh, GroupName, VarName )
+!     call hsml_attrs%read_lun( fh, GroupName, VarName )
 
      ! read Hydrogen mass fractions
      !-----------------------------------------------------------!  
@@ -363,7 +378,8 @@ subroutine read_Gowls_particles()
      call hdf5_read_data(fh,trim(GroupName)//trim(VarName),rblck)
      forall(i=1:ngas1) psys%par(ngasread+i)%Hmf = rblck(i)
      deallocate(rblck)
-     call Hmf_attrs%read_lun( fh, GroupName, VarName )
+     call gadget_data_attributes_read_lun( Hmf_attrs, fh, GroupName, VarName )
+!     call Hmf_attrs%read_lun( fh, GroupName, VarName )
 #endif
 
 
@@ -376,7 +392,8 @@ subroutine read_Gowls_particles()
      call hdf5_read_data(fh,trim(GroupName)//trim(VarName),rblck)
      forall(i=1:ngas1) psys%par(ngasread+i)%Hemf = rblck(i)
      deallocate(rblck)
-     call Hemf_attrs%read_lun( fh, GroupName, VarName )
+     call gadget_data_attributes_read_lun( Hemf_attrs, fh, GroupName, VarName )
+!     call Hemf_attrs%read_lun( fh, GroupName, VarName )
 #endif
 
 
@@ -440,7 +457,7 @@ subroutine read_Gowls_particles()
 
 
 
-#ifdef cloudy
+#ifdef incCloudy
   psys%par(:)%xHI_cloudy = psys%par(:)%xHI
   fmt = "(T7, A, 2ES15.5)"
   write(str,fmt) "min/max xHI_cloudy = ", minval( psys%par%xHI_cloudy ), maxval( psys%par%xHI_cloudy )
@@ -465,7 +482,7 @@ subroutine read_Gowls_particles()
 
   ! set the electron fractions from the ionization fractions
   !----------------------------------------------------------
-  call psys%set_ye(GV%H_mf, GV%He_mf, GV%NeBackground)
+  call particle_system_set_ye( psys, GV%H_mf, GV%He_mf, GV%NeBackground )
 
 
 

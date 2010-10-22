@@ -14,9 +14,7 @@ use gadget_public_input_hdf5_mod
 
 use update_particles_mod
 use source_input_mod
-use particle_system_mod, only: particle_type
-use particle_system_mod, only: source_type
-use particle_system_mod, only: box_type
+use particle_system_mod
 
 use atomic_rates_mod, only: get_atomic_rates
 use global_mod, only: PLAN, GV, rtable, cmbT_k
@@ -220,7 +218,8 @@ subroutine readin_snapshot()
   !========================================================================  
   fmt = "(A,A)"
   write(str,fmt) "Fresh read from ", trim(snpbase)
-  call psys%print_particle_info_lun(str,GV%pardatalun)
+  call particle_system_print_lun(psys, str, GV%pardatalun )
+!  call psys%print_particle_info_lun(str,GV%pardatalun)
   write(GV%pardatalun,*)
   write(GV%pardatalun,*)
   flush(GV%pardatalun)
@@ -247,14 +246,16 @@ subroutine readin_snapshot()
   ! scale the data if we need to
   !=====================================================================
   if(GV%Comoving) then
-     call psys%scale_comoving_to_physical(a, h)
+     call particle_system_scale_comoving_to_physical(psys, a, h)
+!     call psys%scale_comoving_to_physical(a, h)
   endif
 
   ! write data after rescaling to the particle_data.log file
   !=====================================================================
   fmt = "(A,F5.3,A,F5.3,A,A)"
   write(str,fmt) "After rescaling (a=",a,",h=",h,") from ", trim(snpbase)
-  call psys%print_particle_info_lun(str,GV%pardatalun)
+  call particle_system_print_lun(psys, str, GV%pardatalun ) 
+!  call psys%print_particle_info_lun(str,GV%pardatalun)
   write(GV%pardatalun,*)
   write(GV%pardatalun,*)
   flush(GV%pardatalun)
@@ -364,7 +365,7 @@ if (first) then
    if (GV%InitxHI > 0.0) then
       psys%par(:)%xHI  = GV%InitxHI
       psys%par(:)%xHII = 1.0d0 - GV%InitxHI
-      call psys%set_ye(GV%H_mf, GV%He_mf, GV%NeBackground)
+      call particle_system_set_ye( psys, GV%H_mf, GV%He_mf, GV%NeBackground )
    endif
 endif
 
@@ -378,15 +379,15 @@ endif
 
   ! cap the ionization fractions and temperatures if we have to
   !================================================================
-  call psys%enforce_x_and_T_minmax(GV%xfloor, GV%xceiling, &
-       GV%Tfloor, GV%Tceiling)
+  call particle_system_enforce_x_and_T_minmax( &
+       psys, GV%xfloor, GV%xceiling, GV%Tfloor, GV%Tceiling )
 
 
   ! write data after above conditionals to the particle and source log files
   !==========================================================================
   fmt = "(A,A)"
   write(str,fmt) "After test conditionals from ", trim(snpbase)
-  call psys%print_particle_info_lun(str,GV%pardatalun)
+  call particle_system_print_lun(psys, str, GV%pardatalun )
   write(GV%pardatalun,*)
   write(GV%pardatalun,*)
   flush(GV%pardatalun)

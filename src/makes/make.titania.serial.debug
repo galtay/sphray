@@ -1,15 +1,14 @@
-FC= f95
-FFLAGS= -g -C -Xlist -xcheck=stkovf -e -m64
-
+FC= gfortran
+FFLAGS= -g -C -m64
 
 ISLIB=  -L
 ISINC=  -I
-ISMOD=  -M
-ISRLIB= -R
+ISMOD=  -J
+ISRLIB= -Wl,-rpath=
 
 OPT += $(R64LIB)
 
-DIRHDF= /usr/local/hdf5/current
+DIRHDF= $(HDF64)
 
 
 
