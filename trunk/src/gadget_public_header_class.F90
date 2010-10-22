@@ -12,6 +12,7 @@
 module gadget_public_header_class
 use myf03_mod
 use gadget_general_class
+
 #ifdef useMPI
   use mpi
 #endif
@@ -20,9 +21,12 @@ implicit none
 private
 
 public :: gadget_public_header_type
-public :: read_Gpublic_header_lun
-
-public :: broadcast_Gpublic_header
+public :: gadget_public_header_read_lun
+public :: gadget_public_header_read_file
+public :: gadget_public_header_write_lun
+public :: gadget_public_header_print_lun
+public :: gadget_public_header_return_gyr
+public :: gadget_public_header_broadcast
 
 
 
@@ -47,13 +51,6 @@ type gadget_public_header_type
    integer(i4b) :: npar_hw(0:5)     !< 64 bit part of npar 
    integer(i4b) :: flag_entr_ics    !< ICs contain entropy instead of energy
    integer(i4b) :: unused(15)       !< padding to make 256 bytes
- contains
-   procedure :: read_Gpublic_header_lun     !< read from open file
-   procedure :: read_Gpublic_header_file    !< read from unopened file
-   procedure :: write_Gpublic_header_lun    !< write to open file
-   procedure :: print_Gpublic_header_lun    !< formatted print to lun
-   procedure :: return_Gyr                  !< returns Gyr since big bang
-   procedure :: broadcast_Gpublic_header    !< MPI broadcast of header info
 end type gadget_public_header_type
 
 
@@ -64,8 +61,8 @@ contains
 !> uses the scale factor and OmegaM+OmegaL to 
 !! calculate the time in Gyr since the Big Bang
 !----------------------------------------------------
-function return_gyr(this) result(t_gyr)
-  class(gadget_public_header_type) :: this
+function gadget_public_header_return_gyr(this) result(t_gyr)
+  type(gadget_public_header_type) :: this
   type(gadget_constants_type) :: const
   real(r8b) :: t_gyr
   real(r8b) :: aeq, pre, arg, H0
@@ -82,13 +79,13 @@ function return_gyr(this) result(t_gyr)
   t_gyr = pre * log(arg) / H0  ! in s
   t_gyr = t_gyr / ( const%SEC_PER_MEGAYEAR * 1.0d3 )
 
-end function return_gyr
+end function gadget_public_header_return_gyr
 
 
 !> reads a gadget header from an open raw binary file 
 !--------------------------------------------------------------
-subroutine read_Gpublic_header_lun(this, lun)
-  class(gadget_public_header_type) :: this
+subroutine gadget_public_header_read_lun(this, lun)
+  type(gadget_public_header_type) :: this
   integer(i4b), intent(in) :: lun
 
   read(lun) this%npar_file(:), this%mass(:), this%a, this%z, &              
@@ -97,28 +94,28 @@ subroutine read_Gpublic_header_lun(this, lun)
        this%OmegaL, this%h, this%flag_age, this%flag_metals, &    
        this%npar_hw(:), this%flag_entr_ics, this%unused(:)      
 
-end subroutine read_Gpublic_header_lun
+end subroutine gadget_public_header_read_lun
 
 
 
 !> reads a gadget header from snapfile and closes it afterwards
 !--------------------------------------------------------------
-subroutine read_Gpublic_header_file(this, snapfile)
-  class(gadget_public_header_type) :: this
+subroutine gadget_public_header_read_file(this, snapfile)
+  type(gadget_public_header_type) :: this
   character(*), intent(in) :: snapfile
   integer(i4b) :: lun    
 
   call open_unformatted_file_r( snapfile, lun )
-  call this%read_Gpublic_header_lun(lun)
+  call gadget_public_header_read_lun(this, lun)
   close(lun)
 
-end subroutine read_Gpublic_header_file
+end subroutine gadget_public_header_read_file
 
 
 !> writes a gadget header to an open file
 !--------------------------------------------------------------
-subroutine write_Gpublic_header_lun(this, lun)
-  class(gadget_public_header_type) :: this
+subroutine gadget_public_header_write_lun(this, lun)
+  type(gadget_public_header_type) :: this
   integer(i4b), intent(in) :: lun
 
   write(lun) this%npar_file(:), this%mass(:), this%a, this%z, &              
@@ -127,15 +124,15 @@ subroutine write_Gpublic_header_lun(this, lun)
        this%OmegaL, this%h, this%flag_age, this%flag_metals, &    
        this%npar_hw(:), this%flag_entr_ics, this%unused(:)      
 
-end subroutine write_Gpublic_header_lun
+end subroutine gadget_public_header_write_lun
 
 
 
 
 !> formatted print of header to lun (including standard out)
 !---------------------------------------------------------------
-subroutine print_Gpublic_header_lun(this, lun)
-  class(gadget_public_header_type), intent(in) :: this 
+subroutine gadget_public_header_print_lun(this, lun)
+  type(gadget_public_header_type), intent(in) :: this 
   integer(i4b), intent(in) :: lun
   integer(i8b) :: i
 
@@ -164,7 +161,7 @@ subroutine print_Gpublic_header_lun(this, lun)
      write(n1,'(I20)') this%npar_all(i)
      write(n2,'(E12.5)') this%mass(i)
      write(n3,'(I20)') this%npar_file(i)
-     write(lun,type_fmt) "type",i,"(",ptype_names(i),")",&
+     write(lun,type_fmt) "type",i,"(",gadget_ptype_names(i),")",&
           trim(adjustl(n1)), trim(adjustl(n2)), trim(adjustl(n3))
   end do
   write(lun,line_fmt)
@@ -202,7 +199,7 @@ subroutine print_Gpublic_header_lun(this, lun)
   write(lun,*) 
   write(lun,star_fmt)
 
-end subroutine print_Gpublic_header_lun
+end subroutine gadget_public_header_print_lun
 
 
 
@@ -211,8 +208,8 @@ end subroutine print_Gpublic_header_lun
 
 !> broadcasts header
 !-----------------------------------------
-subroutine broadcast_Gpublic_header( this )
-  class(gadget_public_header_type) :: this
+subroutine gadget_public_header_broadcast( this )
+  type(gadget_public_header_type) :: this
   integer :: count
   integer :: root
   integer :: ierr
@@ -242,7 +239,7 @@ subroutine broadcast_Gpublic_header( this )
   call mpi_bcast( this%flag_entr_ics, count, mpi_integer, root, mpi_comm_world, ierr )
 #endif
 
-end subroutine broadcast_Gpublic_header
+end subroutine gadget_public_header_broadcast
 
 
 

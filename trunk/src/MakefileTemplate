@@ -23,7 +23,7 @@
 
 #OPT += -DincEOS     # store equation of state variable 
 #OPT += -DincSFR     # store star formation rate
-#OPT += -Dcloudy     # store CLOUDY eq. ionization values for particles
+#OPT += -DincCloudy  # store CLOUDY eq. ionization values for particles
 
 #OPT += -DuseHDF5    # if you are using the hdf5 library for anything
 
@@ -35,7 +35,7 @@ ifeq (OWLS,$(findstring OWLS, $(OPT)))
    OPT += -DincHmf
    OPT += -DuseHDF5     
    OPT += -DoutGammaHI
-   OPT += -Dcloudy
+   OPT += -DincCloudy
    OPT += -DincEOS
 endif
 
@@ -44,7 +44,7 @@ ifeq (GIMIC,$(findstring GIMIC, $(OPT)))
    OPT += -DincHmf
    OPT += -DuseHDF5     
    OPT += -DoutGammaHI
-   OPT += -Dcloudy
+   OPT += -DincCloudy
    OPT += -DincEOS
 endif
 
@@ -65,7 +65,7 @@ endif
 #include makes/make.icc-graphics.serial.opt
 
 #include makes/make.xgpc.serial.debug
-#include makes/make.xgpc.serial.opt
+include makes/make.xgpc.serial.opt
 
 #include makes/make.ferrari.serial.opt
 
@@ -75,10 +75,12 @@ endif
 #include makes/make.santabuntu.serial.opt
 #include makes/make.santabuntu.serial.debug
 
-include makes/make.blue-velvet.serial.gfortran.debug
+#include makes/make.blue-velvet.serial.gfortran.debug
 
 #include makes/make.blue-velvet.serial.intel.debug
 #include makes/make.blue-velvet.serial.intel.opt
+
+#include makes/make.titania.serial.debug
 
 
 

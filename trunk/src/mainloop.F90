@@ -134,7 +134,7 @@ contains
           enddo
                     
           !  create a source ray and calc the impacts
-          call ray%make_src_ray(psys%src(srcn), GV%rayn, GV%dt_s, GV%Lunit, psys%box)
+          call src_ray_make( ray, psys%src(srcn), GV%rayn, GV%dt_s, GV%Lunit, psys%box )
           
           GV%itime = GV%itime + 1
           call set_time_elapsed_from_itime( GV )

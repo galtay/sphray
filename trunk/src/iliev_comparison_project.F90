@@ -7,7 +7,7 @@ module iliev_comparison_project_mod
 use myf03_mod
 use ray_mod
 use raylist_mod
-use particle_system_mod, only: particle_system_type
+use particle_system_mod
 use oct_tree_mod, only: oct_tree_type
 use global_mod, only: global_variables_type
 use physical_constants_mod
@@ -89,7 +89,7 @@ contains
     ionRa = rtcpStromRad_kpc * (1.0d0 - exp(-time_ratio) )**(1.0/3.0)
  
 !   compute numerical Stromgren radius (Volume method)
-    VWionfrac = psys%mean_xHII_volume_weight()
+    VWionfrac = particle_system_mean_xHII_volume_weight(psys)
     ionVn = (VWionfrac - rtcpT1xHII) * psys%box%vol
     ionRn = (3.0 * ionVn / (4 * pi) )**(1.0/3.0)
 
@@ -100,7 +100,7 @@ contains
     ray%start = pos
     ray%dir = dir
     ray%length = 10.0d0
-    call ray%class_from_dir()
+    call src_ray_class_from_dir( ray )
     call trace_ray(ray,raylist,psys,searchtree) 
     do i = 1,raylist%nnb
        pindx = raylist%intersection(i)%pindx
@@ -150,7 +150,7 @@ contains
     ionRa = rtcpStromRad_kpc * (1.0d0 - exp(-time_ratio) )**(1.0/3.0)
  
 !   compute numerical Stromgren radius
-    VWionfrac = psys%mean_xHII_volume_weight()
+    VWionfrac = particle_system_mean_xHII_volume_weight(psys)
     ionVn = (VWionfrac - rtcpT2xHII) * psys%box%vol
     ionRn = (3.0 * ionVn / (4 * pi) )**(1.0/3.0)
 
@@ -161,7 +161,7 @@ contains
     ray%start = pos
     ray%dir = dir
     ray%length = 10.0d0
-    call ray%class_from_dir()
+    call src_ray_class_from_dir( ray )
     call trace_ray(ray,raylist,psys,searchtree) 
     do i = 1,raylist%nnb
        pindx = raylist%intersection(i)%pindx
@@ -253,7 +253,7 @@ contains
 
     real(r8b) :: NWionfrac
 
-    NWionfrac = psys%mean_xHII_number_weight()
+    NWionfrac = particle_system_mean_xHII_number_weight(psys)
 
     write(*,*) "=============================================================="
     write(*,*) GV%TestScenario, " Specific Monitoring "

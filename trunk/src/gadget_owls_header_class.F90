@@ -9,36 +9,20 @@ module gadget_owls_header_class
 use myf03_mod
 use gadget_general_class
 use gadget_public_header_class
+
 #ifdef useHDF5
 use hdf5_wrapper
 #endif
+
 implicit none
 private
 
 public :: gadget_owls_header_type
-public :: gadget_owls_constants_type
-public :: gadget_owls_units_type
 
-
-
-! constants extension
-!--------------------------------
-type, extends(gadget_constants_type) :: gadget_owls_constants_type
- contains
-   procedure :: read_Gowls_constants_lun
-   procedure :: read_Gowls_constants_file
-   procedure :: write_Gowls_constants_lun
-end type gadget_owls_constants_type
-
-
-! units extension
-!--------------------------------
-type, extends(gadget_units_type) :: gadget_owls_units_type
- contains
-   procedure :: read_Gowls_units_lun
-   procedure :: read_Gowls_units_file
-   procedure :: write_Gowls_units_lun
-end type gadget_owls_units_type
+public :: gadget_owls_header_read_lun
+public :: gadget_owls_header_read_file
+public :: gadget_owls_header_write_lun
+public :: gadget_owls_header_print_lun
 
 
 !> Header type
@@ -63,169 +47,19 @@ type gadget_owls_header_type
    integer(i4b)   :: flag_age       !< flag for stellar age
    integer(i4b)   :: flag_metals    !< flag for metallicity
    integer(i4b)   :: flag_feedback  !< flag for feedback
- contains
-   procedure :: read_Gowls_header_lun
-   procedure :: read_Gowls_header_file
-   procedure :: write_Gowls_header_lun
-   procedure :: print_Gowls_header_lun
 end type gadget_owls_header_type
+
 
 
 contains
   
 
-!> reads constants from an open hdf5 file
-!--------------------------------------------------------------
-subroutine read_Gowls_constants_lun(this, fh)
-  class(gadget_owls_constants_type), intent(out) :: this
-  integer, intent(in) :: fh
-  
-#ifdef useHDF5
-  call hdf5_read_attribute(fh,'Constants/PI',this%pi)
-  call hdf5_read_attribute(fh,'Constants/GAMMA',this%gamma)
-  call hdf5_read_attribute(fh,'Constants/GRAVITY',this%gravity)
-  call hdf5_read_attribute(fh,'Constants/SOLAR_MASS',this%solar_mass)
-  call hdf5_read_attribute(fh,'Constants/SOLAR_LUM',this%solar_lum)
-  call hdf5_read_attribute(fh,'Constants/RAD_CONST',this%rad_const)
-  call hdf5_read_attribute(fh,'Constants/AVOGADRO',this%avogadro)
-  call hdf5_read_attribute(fh,'Constants/BOLTZMANN',this%boltzmann)
-  call hdf5_read_attribute(fh,'Constants/GAS_CONST',this%gas_const)
-  call hdf5_read_attribute(fh,'Constants/C',this%c)
-  call hdf5_read_attribute(fh,'Constants/PLANCK',this%planck)
-  call hdf5_read_attribute(fh,'Constants/CM_PER_MPC',this%cm_per_mpc)
-  call hdf5_read_attribute(fh,'Constants/PROTONMASS',this%protonmass)
-  call hdf5_read_attribute(fh,'Constants/ELECTRONMASS',this%electronmass)
-  call hdf5_read_attribute(fh,'Constants/ELECTRONCHARGE',this%electroncharge)
-  call hdf5_read_attribute(fh,'Constants/HUBBLE',this%hubble)
-  call hdf5_read_attribute(fh,'Constants/T_CMB0',this%t_cmb0)
-  call hdf5_read_attribute(fh,'Constants/SEC_PER_MEGAYEAR',this%sec_per_megayear)
-  call hdf5_read_attribute(fh,'Constants/SEC_PER_YEAR',this%sec_per_year)
-  call hdf5_read_attribute(fh,'Constants/STEFAN',this%stefan)
-  call hdf5_read_attribute(fh,'Constants/THOMPSON',this%thompson)
-  call hdf5_read_attribute(fh,'Constants/EV_TO_ERG',this%ev_to_erg)
-  call hdf5_read_attribute(fh,'Constants/Z_Solar',this%z_solar)
-#endif  
-
-end subroutine read_Gowls_constants_lun
-
-  
-!> reads constants from an hdf5 file
-!--------------------------------------------------------------
-subroutine read_Gowls_constants_file(this, snapfile)
-  class(gadget_owls_constants_type), intent(out) :: this
-  character(*), intent(in) :: snapfile
-  integer :: fh
-
-#ifdef useHDF5
-  call hdf5_open_file( fh, snapfile, readonly=.true. )
-  call read_Gowls_constants_lun(this, fh)
-  call hdf5_close_file( fh )
-#endif  
-
-end subroutine read_Gowls_constants_file
-
-
-!> writes constants to an open hdf5 file
-!--------------------------------------------------------------
-subroutine write_Gowls_constants_lun(this, fh)
-  class(gadget_owls_constants_type), intent(in) :: this
-  integer, intent(in) :: fh
-
-#ifdef useHDF5
-  call hdf5_write_attribute(fh,'Constants/PI',this%pi)
-  call hdf5_write_attribute(fh,'Constants/GAMMA',this%gamma)
-  call hdf5_write_attribute(fh,'Constants/GRAVITY',this%gravity)
-  call hdf5_write_attribute(fh,'Constants/SOLAR_MASS',this%solar_mass)
-  call hdf5_write_attribute(fh,'Constants/SOLAR_LUM',this%solar_lum)
-  call hdf5_write_attribute(fh,'Constants/RAD_CONST',this%rad_const)
-  call hdf5_write_attribute(fh,'Constants/AVOGADRO',this%avogadro)
-  call hdf5_write_attribute(fh,'Constants/BOLTZMANN',this%boltzmann)
-  call hdf5_write_attribute(fh,'Constants/GAS_CONST',this%gas_const)
-  call hdf5_write_attribute(fh,'Constants/C',this%c)
-  call hdf5_write_attribute(fh,'Constants/PLANCK',this%planck)
-  call hdf5_write_attribute(fh,'Constants/CM_PER_MPC',this%cm_per_mpc)
-  call hdf5_write_attribute(fh,'Constants/PROTONMASS',this%protonmass)
-  call hdf5_write_attribute(fh,'Constants/ELECTRONMASS',this%electronmass)
-  call hdf5_write_attribute(fh,'Constants/ELECTRONCHARGE',this%electroncharge)
-  call hdf5_write_attribute(fh,'Constants/HUBBLE',this%hubble)
-  call hdf5_write_attribute(fh,'Constants/T_CMB0',this%t_cmb0)
-  call hdf5_write_attribute(fh,'Constants/SEC_PER_MEGAYEAR',this%sec_per_megayear)
-  call hdf5_write_attribute(fh,'Constants/SEC_PER_YEAR',this%sec_per_year)
-  call hdf5_write_attribute(fh,'Constants/STEFAN',this%stefan)
-  call hdf5_write_attribute(fh,'Constants/THOMPSON',this%thompson)
-  call hdf5_write_attribute(fh,'Constants/EV_TO_ERG',this%ev_to_erg)
-  call hdf5_write_attribute(fh,'Constants/Z_Solar',this%z_solar)
-#endif
-
-end subroutine write_Gowls_constants_lun
-
-
-
-
-
-
-
-!> reads units from an open hdf5 file
-!--------------------------------------------------------------
-subroutine read_Gowls_units_lun(this, fh)
-  class(gadget_owls_units_type), intent(out) :: this
-  integer, intent(in) :: fh
-
-#ifdef useHDF5
-  call hdf5_read_attribute(fh, 'Units/UnitLength_in_cm', this%cgs_length)
-  call hdf5_read_attribute(fh, 'Units/UnitMass_in_g', this%cgs_mass)
-  call hdf5_read_attribute(fh, 'Units/UnitVelocity_in_cm_per_s', this%cgs_velocity)
-  call hdf5_read_attribute(fh, 'Units/UnitDensity_in_cgs', this%cgs_density)
-  call hdf5_read_attribute(fh, 'Units/UnitEnergy_in_cgs', this%cgs_energy)
-  call hdf5_read_attribute(fh, 'Units/UnitPressure_in_cgs', this%cgs_pressure)
-  call hdf5_read_attribute(fh, 'Units/UnitTime_in_s', this%cgs_time)
-#endif
-
-end subroutine read_Gowls_units_lun
-
-
-!> reads units from an hdf5 file
-!--------------------------------------------------------------
-subroutine read_Gowls_units_file(this, snapfile)
-  class(gadget_owls_units_type), intent(out) :: this
-  character(*), intent(in) :: snapfile
-  integer :: fh
-
-#ifdef useHDF5
-  call hdf5_open_file( fh, snapfile, readonly=.true. )
-  call read_Gowls_units_lun(this, fh)
-  call hdf5_close_file( fh )
-#endif
-
-end subroutine read_Gowls_units_file
-
-
-!> writes units to an open hdf5 file
-!--------------------------------------------------------------
-subroutine write_Gowls_units_lun(this, fh)
-  class(gadget_owls_units_type), intent(in) :: this
-  integer, intent(in) :: fh
-
-#ifdef useHDF5
-  call hdf5_write_attribute(fh, 'Units/UnitLength_in_cm', this%cgs_length)
-  call hdf5_write_attribute(fh, 'Units/UnitMass_in_g', this%cgs_mass)
-  call hdf5_write_attribute(fh, 'Units/UnitVelocity_in_cm_per_s', this%cgs_velocity)
-  call hdf5_write_attribute(fh, 'Units/UnitDensity_in_cgs', this%cgs_density)
-  call hdf5_write_attribute(fh, 'Units/UnitEnergy_in_cgs', this%cgs_energy)
-  call hdf5_write_attribute(fh, 'Units/UnitPressure_in_cgs', this%cgs_pressure)
-  call hdf5_write_attribute(fh, 'Units/UnitTime_in_s', this%cgs_time)
-#endif
-
-end subroutine write_Gowls_units_lun
-
-
-
 
 
 !> reads an OWLS/GIMIC gadget header from an open hdf5 file
 !--------------------------------------------------------------
-subroutine read_Gowls_header_lun(this, fh)
-  class(gadget_owls_header_type) :: this
+subroutine gadget_owls_header_read_lun(this, fh)
+  type(gadget_owls_header_type) :: this
   integer, intent(in) :: fh
 
 #ifdef useHDF5
@@ -250,31 +84,38 @@ subroutine read_Gowls_header_lun(this, fh)
   call hdf5_read_attribute(fh,'Header/Flag_StellarAge',this%flag_age)
   call hdf5_read_attribute(fh,'Header/Flag_Metals',this%flag_metals)
   call hdf5_read_attribute(fh,'Header/Flag_Feedback',this%flag_feedback)
+#else 
+  write(*,*) 'useHDF5 macro not defined in Makefile' 
+  stop
 #endif
 
-end subroutine read_Gowls_header_lun
+end subroutine gadget_owls_header_read_lun
+
 
 
 !> reads an OWLS/GIMIC gadget header from an hdf5 file
 !--------------------------------------------------------------
-subroutine read_Gowls_header_file(this, snapfile)
-  class(gadget_owls_header_type) :: this
+subroutine gadget_owls_header_read_file(this, snapfile)
+  type(gadget_owls_header_type) :: this
   character(*), intent(in) :: snapfile
   integer :: fh
 
 #ifdef useHDF5
   call hdf5_open_file( fh, snapfile, readonly=.true. )
-  call read_Gowls_header_lun(this, fh)
+  call gadget_owls_header_read_lun(this, fh)
   call hdf5_close_file( fh )
+#else 
+  write(*,*) 'useHDF5 macro not defined in Makefile' 
+  stop
 #endif
 
-end subroutine read_Gowls_header_file
+end subroutine gadget_owls_header_read_file
 
 
 !> writes a gadget header from an open hdf5 file
 !--------------------------------------------------------------
-subroutine write_Gowls_header_lun(this, fh)
-  class(gadget_owls_header_type), intent(in) :: this
+subroutine gadget_owls_header_write_lun(this, fh)
+  type(gadget_owls_header_type), intent(in) :: this
   integer, intent(in) :: fh
 
 #ifdef useHDF5
@@ -299,17 +140,20 @@ subroutine write_Gowls_header_lun(this, fh)
   call hdf5_write_attribute(fh,'Header/Flag_StellarAge',this%flag_age)
   call hdf5_write_attribute(fh,'Header/Flag_Metals',this%flag_metals)
   call hdf5_write_attribute(fh,'Header/Flag_Feedback',this%flag_feedback)
+#else 
+  write(*,*) 'useHDF5 macro not defined in Makefile' 
+  stop
 #endif
 
-end subroutine write_Gowls_header_lun
+end subroutine gadget_owls_header_write_lun
 
 
 
 
 !> formatted print of header to lun (including standard out)
 !---------------------------------------------------------------
-subroutine print_Gowls_header_lun(this, lun)
-  class(gadget_owls_header_type), intent(in) :: this 
+subroutine gadget_owls_header_print_lun(this, lun)
+  type(gadget_owls_header_type), intent(in) :: this 
   integer(i4b), intent(in) :: lun
   integer(i8b) :: i
 
@@ -338,7 +182,7 @@ subroutine print_Gowls_header_lun(this, lun)
      write(n1,'(I20)') this%npar_all(i)
      write(n2,'(E12.5)') this%mass(i)
      write(n3,'(I20)') this%npar_file(i)
-     write(lun,type_fmt) "type",i,"(",ptype_names(i),")",&
+     write(lun,type_fmt) "type",i,"(",gadget_ptype_names(i),")",&
           trim(adjustl(n1)), trim(adjustl(n2)), trim(adjustl(n3))
   end do
   write(lun,line_fmt)
@@ -375,7 +219,7 @@ subroutine print_Gowls_header_lun(this, lun)
   write(lun,*) 
   write(lun,star_fmt)
 
-end subroutine print_Gowls_header_lun
+end subroutine gadget_owls_header_print_lun
 
 
 

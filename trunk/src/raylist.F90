@@ -6,7 +6,7 @@
 
 module raylist_mod
 use myf03_mod
-use ray_mod, only: src_ray_type, base_ray_type
+use ray_mod
 use particle_system_mod, only: particle_system_type
 use particle_system_mod, only: particle_type
 use particle_system_mod, only: transformation_type
@@ -70,7 +70,7 @@ contains
    real(r8b) :: d
    
      t%pindx = i
-     t%b = ray%dist2pt(part%pos,d)
+     t%b = src_ray_dist2pt(ray, part%pos, d)
      t%d = d
 
  end function set_intersection
@@ -131,7 +131,7 @@ contains
    si = raylist%searchimage
 
    ! curay%start = ray%start * fac + shift
-   call raylist%ray%transform(curay, raylist%trafo(si))
+   call src_ray_transform( raylist%ray, curay, raylist%trafo(si) )
    next = raylist%searchcell
 
    do while (next /= 0)
@@ -158,7 +158,7 @@ contains
          !----------------------------------------------
          do i = tree%cell(this)%start, tree%cell(next)%start - 1
             orderindx = tree%partorder(i)
-            par_hit = curay%part_intersection( psys%par(orderindx) ) 
+            par_hit = src_ray_part_intersection( curay, psys%par(orderindx) ) 
             if (par_hit) then
                raylist%nnb = raylist%nnb + 1
                raylist%intersection(raylist%nnb) = &
@@ -171,7 +171,7 @@ contains
       !--------------------------------
       else
 
-         cell_hit = curay%cell_intersection( tree%cell(this) )
+         cell_hit = src_ray_cell_intersection( curay, tree%cell(this) )
          if ( cell_hit ) next = daughter  
 
       endif
@@ -204,10 +204,8 @@ contains
 
      allocate(raylist%intersection(maxnnb))
 
-     if(present(ray)) then
-        raylist%ray = src_ray_type( start=ray%start, dir=ray%dir, &
-             length=ray%length, class=ray%class, freq=ray%freq, &
-             enrg=ray%enrg, pcnt=ray%pcnt, pini=ray%pini, dt_s=ray%dt_s)
+     if (present(ray)) then
+        raylist%ray = ray
      endif
 
  end subroutine make_raylist
@@ -223,10 +221,8 @@ contains
      raylist%searchcell  = 1
      raylist%searchimage = 1
      raylist%reuseable   = .false.
-     if(present(ray)) then
-        raylist%ray = src_ray_type( start=ray%start, dir=ray%dir, &
-             length=ray%length, class=ray%class, freq=ray%freq, &
-             enrg=ray%enrg, pcnt=ray%pcnt, pini=ray%pini, dt_s=ray%dt_s)
+     if (present(ray)) then
+        raylist%ray = ray
      endif
 
  end subroutine reset_raylist

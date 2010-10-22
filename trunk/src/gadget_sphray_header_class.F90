@@ -10,13 +10,21 @@ use myf03_mod
 use gadget_general_class
 use gadget_public_header_class
 use gadget_owls_header_class
+
 #ifdef useHDF5
 use hdf5_wrapper
 #endif
+
 implicit none
 private
 
 public :: gadget_sphray_header_type
+public :: gadget_sphray_header_copy_public
+public :: gadget_sphray_header_copy_owls
+public :: gadget_sphray_header_write_lun
+public :: gadget_sphray_header_hdf5_write_lun
+
+
 
 !> Gadget header type
 !-----------------------------------------
@@ -50,11 +58,6 @@ type gadget_sphray_header_type
    integer(i4b) :: flag_incsfr     !< output has SFR info?
    real(r8b)    :: time_gyr        !< time since BB from cosmo variables [Gyr]
    integer(i4b) :: unused(2)       !< spacer
- contains
-   procedure :: copy_Gpublic_header
-   procedure :: copy_Gowls_header
-   procedure :: write_Gsphray_header_lun
-   procedure :: write_Gsphray_header_hdf5_lun
 end type gadget_sphray_header_type
 
 
@@ -63,8 +66,8 @@ contains
 
 !> writes a gadget header to an open file
 !--------------------------------------------------------------
-subroutine write_Gsphray_header_lun(this, lun)
-  class(gadget_sphray_header_type), intent(in) :: this
+subroutine gadget_sphray_header_write_lun(this, lun)
+  type(gadget_sphray_header_type), intent(in) :: this
   integer(i4b), intent(in) :: lun
 
   write(lun) this%npar_file(:), this%mass(:), this%a, this%z, &              
@@ -76,13 +79,13 @@ subroutine write_Gsphray_header_lun(this, lun)
        this%flag_gammaHI, this%flag_cloudy, this%flag_eos, this%flag_incsfr, &
        this%time_gyr, this%unused(:)      
 
-end subroutine write_Gsphray_header_lun
+end subroutine gadget_sphray_header_write_lun
 
 
 !> writes a gadget header to an open HDF5 file
 !--------------------------------------------------------------
-subroutine write_Gsphray_header_hdf5_lun(this, fh)
-  class(gadget_sphray_header_type), intent(in) :: this
+subroutine gadget_sphray_header_hdf5_write_lun(this, fh)
+  type(gadget_sphray_header_type), intent(in) :: this
   integer(i4b), intent(in) :: fh
 
 #ifdef useHDF5
@@ -119,14 +122,14 @@ subroutine write_Gsphray_header_hdf5_lun(this, fh)
 #endif
 
 
-end subroutine write_Gsphray_header_hdf5_lun
+end subroutine gadget_sphray_header_hdf5_write_lun
 
 
 !> copies an OWLS/GIMIC header into the sphray style header
 !--------------------------------------------------------------
-subroutine copy_Gowls_header( this, owlshead )
-  class(gadget_sphray_header_type) :: this
-  class(gadget_owls_header_type) :: owlshead
+subroutine gadget_sphray_header_copy_owls( this, owlshead )
+  type(gadget_sphray_header_type) :: this
+  type(gadget_owls_header_type) :: owlshead
 
   this%npar_file(0:5)   = owlshead%npar_file(0:5)   
   this%mass(0:5)        = owlshead%mass(0:5)        
@@ -148,14 +151,14 @@ subroutine copy_Gowls_header( this, owlshead )
   this%OmegaB           = owlshead%OmegaB
   this%time_gyr         = owlshead%time_gyr
 
-end subroutine copy_Gowls_header
+end subroutine gadget_sphray_header_copy_owls
 
 
 !> copies a Public header into the sphray style header
 !--------------------------------------------------------------
-subroutine copy_Gpublic_header( this, pubhead )
-  class(gadget_sphray_header_type) :: this
-  class(gadget_public_header_type) :: pubhead
+subroutine gadget_sphray_header_copy_public( this, pubhead )
+  type(gadget_sphray_header_type) :: this
+  type(gadget_public_header_type) :: pubhead
 
   this%npar_file(0:5)   = pubhead%npar_file(0:5)   
   this%mass(0:5)        = pubhead%mass(0:5)        
@@ -175,7 +178,7 @@ subroutine copy_Gpublic_header( this, pubhead )
   this%npar_hw(0:5)     = pubhead%npar_hw(0:5)     
   this%flag_entr_ics    = pubhead%flag_entr_ics    
 
-end subroutine copy_Gpublic_header
+end subroutine gadget_sphray_header_copy_public
 
 
 end module gadget_sphray_header_class

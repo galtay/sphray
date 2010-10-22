@@ -9,7 +9,9 @@ use gadget_general_class
 use gadget_public_header_class
 use gadget_public_header_hdf5_class
 use gadget_sphray_header_class
+use particle_system_mod
 use gadget_public_input_mod, only: set_temp_from_u
+
 
 use global_mod, only: psys, PLAN, GV
 use global_mod, only: saved_gheads
@@ -54,7 +56,7 @@ contains
     logical, parameter :: crash = .true.
     integer, parameter :: verb = 2
     
-    type(gadget_public_header_hdf5_type) :: ghead
+    type(gadget_public_header_type) :: ghead
     type(gadget_units_type) :: gunits
     type(gadget_constants_type) :: gconst
     
@@ -100,14 +102,18 @@ contains
           call form_gadget_snapshot_file_name(GV%SnapPath,GV%ParFileBase,i,j,snapfile,hdf5bool=.true.)
           write(loglun,'(I3,"  ",A)') i,trim(snapfile)
           
-          call ghead%read_Gpublic_header_hdf5_file(snapfile)
-          call ghead%print_Gpublic_header_lun(loglun)
-          call saved_gheads(i,j)%copy_Gpublic_header(ghead)
+          call gadget_public_header_hdf5_read_file(ghead, snapfile )
+          call gadget_public_header_print_lun( ghead, loglun )
+          call gadget_sphray_header_copy_public( saved_gheads(i,j), ghead )
+
+!          call ghead%read_Gpublic_header_hdf5_file(snapfile)
+!          call ghead%print_Gpublic_header_lun(loglun)
+!          call saved_gheads(i,j)%copy_Gpublic_header(ghead)
           
           saved_gheads(i,j)%OmegaB = 0.045 ! this should be moved to the config file
           ! but its not used in the code now
           
-          saved_gheads(i,j)%time_gyr = ghead%return_gyr()
+          saved_gheads(i,j)%time_gyr = gadget_public_header_return_gyr(ghead)
           
           ! make sure there is gas in this snapshot
           !-------------------------------------------
@@ -121,7 +127,7 @@ contains
           
           if (GV%Comoving) then
              PLAN%snap(i)%ScalefacAt = ghead%a
-             PLAN%snap(i)%TimeAt = ghead%return_gyr() * (gconst%SEC_PER_MEGAYEAR * 1.0d3) ! in seconds
+             PLAN%snap(i)%TimeAt = gadget_public_header_return_gyr(ghead) * (gconst%SEC_PER_MEGAYEAR * 1.0d3) ! in seconds
              PLAN%snap(i)%TimeAt = PLAN%snap(i)%TimeAt * GV%LittleH / GV%cgs_time ! in code units
           else
              PLAN%snap(i)%ScalefacAt = 1.0d0 / (1.0d0 + ghead%z)
@@ -153,7 +159,7 @@ contains
     
     logfile = trim(GV%OutputDir) // "/" // "code_units.log"
     call open_formatted_file_w(logfile,loglun)
-    call gunits%print_lun(loglun,saved_gheads(iSnap,0)%h)
+    call gadget_units_print_lun(gunits, loglun, saved_gheads(iSnap,0)%h)
     close(loglun)
     
     
@@ -179,7 +185,7 @@ contains
     integer(i4b), allocatable :: iblck(:)
     integer(i8b) :: ngasread
     
-    type(gadget_public_header_hdf5_type) :: ghead
+    type(gadget_public_header_type) :: ghead
     type(gadget_sphray_header_type) :: shead
     character(clen) :: snapfile, VarName, GroupName
     integer(i4b) :: fh
@@ -248,7 +254,8 @@ contains
        call form_gadget_snapshot_file_name(GV%SnapPath,GV%ParFileBase,GV%CurSnapNum,fn,snapfile,hdf5bool)
        call mywrite("   reading particle snapshot file: "//trim(snapfile), verb)
        call hdf5_open_file(fh, snapfile, readonly=.true.)
-       call ghead%read_Gpublic_header_hdf5_lun(fh)
+       call gadget_public_header_hdf5_read_lun(ghead,fh)
+
        
        ! read positions 
        !-----------------------------------------------------------!  
@@ -355,8 +362,8 @@ contains
     if (GV%HydrogenCaseA) caseA(1) = .true.
     if (GV%HeliumCaseA)   caseA(2) = .true.
     
-    call psys%set_ci_eq(caseA, DoH=.true., DoHe=.true., fit="hui")
-    call psys%set_ye(GV%H_mf, GV%He_mf, GV%NeBackground)
+    call particle_system_set_ci_eq( psys, caseA, DoH=.true., DoHe=.true., fit="hui")
+    call particle_system_set_ye(psys, GV%H_mf, GV%He_mf, GV%NeBackground)
         
   end subroutine read_Gpubhdf5_particles
   
