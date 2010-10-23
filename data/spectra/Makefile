@@ -1,5 +1,6 @@
-FC=ifort
+FC=gfortran
 FFLAGS= -traceback -fpe0 -C
+FFLAGS= 
 
 APPS = create_spectra_file 
 
