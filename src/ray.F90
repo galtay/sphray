@@ -264,7 +264,7 @@ function src_ray_part_intersection(src_ray, part) result(hit)
   real(r8b) :: start2cen       !< distance from ray start to particle position
   real(r8b) :: perp            !< perpendicular distance to particle 
   real(r8b) :: proj            !< projected distance along ray
-  
+  real(r8b) :: diff(3)         !< vector from ray start to part center
   
   ! if the perpendicular distance to the point is larger than hsml exit
   !---------------------------------------------------------------------
@@ -276,7 +276,8 @@ function src_ray_part_intersection(src_ray, part) result(hit)
   
   ! if the point is inside the particle we have an intersection
   !---------------------------------------------------------------------
-  start2cen = sqrt( sum( (part%pos - src_ray%start)*(part%pos - src_ray%start) ) )
+  diff = part%pos - src_ray%start
+  start2cen = sqrt( sum( diff*diff ) )
   if (start2cen < part%hsml) then
      hit = .true.
      return

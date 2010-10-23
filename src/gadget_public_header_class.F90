@@ -65,7 +65,7 @@ function gadget_public_header_return_gyr(this) result(t_gyr)
   type(gadget_public_header_type) :: this
   type(gadget_constants_type) :: const
   real(r8b) :: t_gyr
-  real(r8b) :: aeq, pre, arg, H0, km_per_Mpc
+  real(r8b) :: aeq, pre, arg, H0, km_per_Mpc, sec_per_Gyr
 
   if (this%OmegaL == 0.0) then
      t_gyr = 1.0d0
