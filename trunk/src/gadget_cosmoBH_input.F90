@@ -40,6 +40,12 @@ subroutine get_planning_data_gadget_cosmoBH()
 
   integer(i4b) :: loglun
   character(clen) :: logfile
+  real(r8b) :: time_Gyr
+  real(r8b) :: sec_per_Gyr
+
+  ! define constants
+  !======================================================
+  sec_per_Gyr = (gconst%SEC_PER_MEGAYEAR * 1.0d3)
 
   ! open up the planning data log file
   !======================================================
@@ -81,8 +87,8 @@ subroutine get_planning_data_gadget_cosmoBH()
         saved_gheads(i,j)%OmegaB = 0.045 ! this should be moved to the config file
                                          ! but its not used in the code now
 
-        saved_gheads(i,j)%time_gyr = gadget_public_header_return_gyr(ghead)
-!        saved_gheads(i,j)%time_gyr = ghead%return_gyr()
+        time_Gyr = gadget_public_header_return_gyr(ghead)
+        saved_gheads(i,j)%time_gyr = time_Gyr
 
         ! make sure there is gas in this snapshot
         !-------------------------------------------
@@ -96,7 +102,7 @@ subroutine get_planning_data_gadget_cosmoBH()
 
         if (GV%Comoving) then
            PLAN%snap(i)%ScalefacAt = ghead%a
-           PLAN%snap(i)%TimeAt = gadget_public_header_return_gyr(ghead) * (gconst%SEC_PER_MEGAYEAR * 1.0d3) ! in seconds
+           PLAN%snap(i)%TimeAt = time_Gyr * sec_per_Gyr   ! in seconds
            PLAN%snap(i)%TimeAt = PLAN%snap(i)%TimeAt * GV%LittleH / GV%cgs_time ! in code units
         else
            PLAN%snap(i)%ScalefacAt = 1.0d0 / (1.0d0 + ghead%z)
