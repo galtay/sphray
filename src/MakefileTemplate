@@ -65,7 +65,7 @@ endif
 #include makes/make.icc-graphics.serial.opt
 
 #include makes/make.xgpc.serial.debug
-include makes/make.xgpc.serial.opt
+#include makes/make.xgpc.serial.opt
 
 #include makes/make.ferrari.serial.opt
 
@@ -73,7 +73,7 @@ include makes/make.xgpc.serial.opt
 #include makes/make.cosma.serial.opt
 
 #include makes/make.santabuntu.serial.opt
-#include makes/make.santabuntu.serial.debug
+include makes/make.santabuntu.serial.debug
 
 #include makes/make.blue-velvet.serial.gfortran.debug
 
@@ -109,7 +109,6 @@ SRC= 	myf03.o \
         gadget_owls_header_class.o \
 	gadget_public_header_hdf5_class.o \
         gadget_sphray_header_class.o \
-	pluecker.o \
 	cosmology.o \
 	particle_system.o \
 	b2cd.o \
