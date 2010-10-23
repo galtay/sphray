@@ -40,23 +40,22 @@ subroutine get_planning_data()
   if (allocated(PLAN%snap)) deallocate(PLAN%snap)
   allocate( PLAN%snap(GV%StartSnapNum : GV%EndSnapNum) )
 
- 
-  ! branch on input type
+  ! branch on input type 
   !-------------------------------------------------------------------
-  if (GV%InputType == 1) then
+  select case (GV%InputType)
+  case(1)
      call get_planning_data_gadget_public()
-  else if (GV%InputType == 2) then
+  case(2)
      call get_planning_data_gadget_cosmoBH()
-  else if (GV%InputType == 3) then
+  case(3)
      call get_planning_data_gadget_owls()
-  else if (GV%InputType == 4) then
+  case(4)
      call get_planning_data_gadget_vbromm()
-  else if (GV%InputType == 5) then
+  case(5)
      call get_planning_data_gadget_public_hdf5()
-  endif
+  end select
 
   call get_planning_data_sources()
-
 
 end subroutine get_planning_data
 

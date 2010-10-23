@@ -61,7 +61,6 @@ contains
     ghead%OmegaM   = saved_gheads(GV%CurSnapNum,fnum)%OmegaM
     ghead%OmegaL   = saved_gheads(GV%CurSnapNum,fnum)%OmegaL
     ghead%OmegaB   = saved_gheads(GV%CurSnapNum,fnum)%OmegaB
-!    ghead%time_gyr = saved_gheads(GV%CurSnapNum,fnum)%time_gyr
     ghead%h        = saved_gheads(GV%CurSnapNum,fnum)%h
 
     ghead%npar_hw = 0
@@ -74,7 +73,6 @@ contains
     ghead%flag_metals   = saved_gheads(GV%CurSnapNum,fnum)%flag_metals
     ghead%flag_entr_ics = saved_gheads(GV%CurSnapNum,fnum)%flag_entr_ics
     
-
     ghead%rays_traced = GV%src_rayn
 
 #ifdef incHmf
