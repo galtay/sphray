@@ -55,7 +55,7 @@ subroutine get_planning_data_gadget_cosmoBH()
   if ( allocated(saved_gheads) ) deallocate(saved_gheads)
   allocate( saved_gheads(iSnap:fSnap, 0:pfiles-1) )
 
-  ! set global units
+  ! set global units to default values
   !===================================================
   GV%cgs_len  = gunits%cgs_length
   GV%cgs_mass = gunits%cgs_mass
@@ -77,10 +77,6 @@ subroutine get_planning_data_gadget_cosmoBH()
         call gadget_public_header_read_file( ghead, snapfile )
         call gadget_public_header_print_lun( ghead, loglun )
         call gadget_sphray_header_copy_public( saved_gheads(i,j), ghead )
-
-!        call ghead%read_Gpublic_header_file(snapfile)
-!        call ghead%print_Gpublic_header_lun(loglun)
-!        call saved_gheads(i,j)%copy_Gpublic_header(ghead)
 
         saved_gheads(i,j)%OmegaB = 0.045 ! this should be moved to the config file
                                          ! but its not used in the code now
