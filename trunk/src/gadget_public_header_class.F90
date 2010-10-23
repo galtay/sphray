@@ -65,19 +65,22 @@ function gadget_public_header_return_gyr(this) result(t_gyr)
   type(gadget_public_header_type) :: this
   type(gadget_constants_type) :: const
   real(r8b) :: t_gyr
-  real(r8b) :: aeq, pre, arg, H0
+  real(r8b) :: aeq, pre, arg, H0, km_per_Mpc
 
   if (this%OmegaL == 0.0) then
      t_gyr = 1.0d0
      return
   endif
 
-  H0 = this%h * 100.0d0 / ( const%CM_PER_MPC / 1.0d5 )
-  aeq = (this%OmegaM/this%OmegaL)**(1.0d0/3.0d0)
-  pre = 2.0d0 / (3.0d0 * sqrt(this%OmegaL) )
+  km_per_Mpc = const%CM_PER_MPC / 1.0d5 
+  sec_per_Gyr = const%SEC_PER_MEGAYEAR * 1.0d3 
+
+  H0 = this%h * 100.0d0 / km_per_Mpc  ! 1/s
+  aeq = ( this%OmegaM/this%OmegaL )**(1.0d0/3.0d0)
+  pre = 2.0d0 / ( 3.0d0 * sqrt(this%OmegaL) )
   arg = (this%a/aeq)**(3.0d0/2.0d0) + sqrt(1 + (this%a/aeq)**3 )
   t_gyr = pre * log(arg) / H0  ! in s
-  t_gyr = t_gyr / ( const%SEC_PER_MEGAYEAR * 1.0d3 )
+  t_gyr = t_gyr / sec_per_Gyr 
 
 end function gadget_public_header_return_gyr
 
