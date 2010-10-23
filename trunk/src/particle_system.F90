@@ -454,7 +454,7 @@ subroutine particle_system_scale_physical_to_comoving(this, a, h)
   this%par%hsml = this%par%hsml / a * h
   this%par%rho = this%par%rho * (a*a*a) / (h*h)
 
-  ! particles
+  ! sources
   !------------------------------------------------
   this%src%pos(1) = this%src%pos(1) / a * h
   this%src%pos(2) = this%src%pos(2) / a * h
