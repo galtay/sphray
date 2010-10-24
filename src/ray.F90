@@ -261,7 +261,7 @@ function src_ray_part_intersection(src_ray, part) result(hit)
   type(particle_type), intent(in) :: part       !< particle
   logical :: hit                    !< true or false result
   
-  real(r8b) :: start2cen       !< distance from ray start to particle position
+  real(r8b) :: start2cen       !< distance^2 from ray start to part position
   real(r8b) :: perp            !< perpendicular distance to particle 
   real(r8b) :: proj            !< projected distance along ray
   real(r8b) :: diff(3)         !< vector from ray start to part center
@@ -276,13 +276,15 @@ function src_ray_part_intersection(src_ray, part) result(hit)
   
   ! if the point is inside the particle we have an intersection
   !---------------------------------------------------------------------
-  diff = part%pos - src_ray%start
-  start2cen = sqrt( sum( diff*diff ) )
-  if (start2cen < part%hsml) then
-     hit = .true.
-     return
+  if ( abs(proj) < part%hsml ) then
+     diff = part%pos - src_ray%start
+     start2cen = sum( diff*diff ) 
+     if (start2cen < part%hsml*part%hsml) then
+        hit = .true.
+        return
+     endif
   endif
-  
+
   hit = perp < part%hsml .and. proj >= zero 
   
 end function src_ray_part_intersection
