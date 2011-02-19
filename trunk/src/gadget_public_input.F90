@@ -171,6 +171,9 @@ subroutine read_Gpublic_particles()
   real(r8b) :: MB 
 
   logical :: hdf5bool
+  logical :: DoH
+  logical :: DoHe 
+
 
   ! set hdf5 boolean
   !======================================================
@@ -340,7 +343,14 @@ subroutine read_Gpublic_particles()
   if (GV%HydrogenCaseA) caseA(1) = .true.
   if (GV%HeliumCaseA)   caseA(2) = .true.
 
-  call particle_system_set_ci_eq( psys, caseA, DoH=.true., DoHe=.true., fit='hui' )
+  DoH = .true.
+#ifdef incHe
+  DoHe = .true.
+#else
+  DoHe = .false.
+#endif
+
+  call particle_system_set_ci_eq( psys, caseA, DoH, DoHe, fit='hui' )
   call particle_system_set_ye( psys, GV%H_mf, GV%He_mf, GV%NeBackground )
 
 
