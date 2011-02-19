@@ -262,6 +262,8 @@ subroutine particle_set_ci_eq(par, caseA, DoH, DoHe, fit)
      par%xHeII = xvec(4)
      par%xHeIII = xvec(5)
 #else
+     write(*,*) 
+     write(*,*) 'In particle_set_ci_eq'
      write(*,*) 'DoHe = .true. but incHe macro not defined in Makefile'
      stop
 #endif
