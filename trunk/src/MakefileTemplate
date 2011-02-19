@@ -73,7 +73,7 @@ endif
 #include makes/make.cosma.serial.opt
 
 #include makes/make.santabuntu.serial.opt
-include makes/make.santabuntu.serial.debug
+#include makes/make.santabuntu.serial.debug
 
 #include makes/make.blue-velvet.serial.gfortran.debug
 
@@ -82,6 +82,7 @@ include makes/make.santabuntu.serial.debug
 
 #include makes/make.titania.serial.debug
 
+include makes/make.warp.opt
 
 
 #=============================================================================
