@@ -145,7 +145,7 @@ contains
     if ( present(length) ) then
        ray%length = length
     else
-       ray%length = huge(1.0d0)
+       ray%length = huge(1.0d0) * 0.1d0
     endif
 
   
@@ -262,6 +262,7 @@ function src_ray_part_intersection(src_ray, part) result(hit)
   logical :: hit                    !< true or false result
   
   real(r8b) :: start2cen       !< distance^2 from ray start to part position
+  real(r8b) :: end2cen         !< distance^2 from ray end to part position
   real(r8b) :: perp            !< perpendicular distance to particle 
   real(r8b) :: proj            !< projected distance along ray
   real(r8b) :: diff(3)         !< vector from ray start to part center
@@ -274,7 +275,25 @@ function src_ray_part_intersection(src_ray, part) result(hit)
      return
   endif
   
-  ! if the point is inside the particle we have an intersection
+  ! now our only concern is the position of the particle
+  ! along the ray.  
+
+
+  ! first we reject particles that cannot possibly be intersections
+  !
+  if ( proj < -part%hsml ) then
+     hit = .false. 
+     return
+  endif
+
+  if ( proj > src_ray%length + part%hsml ) then
+     hit = .false. 
+     return
+  endif
+
+
+  ! if the particle smoothing volume could contain the origin of 
+  ! the ray, test for that.
   !---------------------------------------------------------------------
   if ( abs(proj) < part%hsml ) then
      diff = part%pos - src_ray%start
@@ -285,7 +304,22 @@ function src_ray_part_intersection(src_ray, part) result(hit)
      endif
   endif
 
-  hit = perp < part%hsml .and. proj >= zero 
+  ! if the particle smoothing volume could contain the terminus of 
+  ! the ray, test for that.
+  !---------------------------------------------------------------------
+  if ( abs(proj - src_ray%length) < part%hsml ) then
+     diff = part%pos - (src_ray%start + src_ray%length * src_ray%dir)
+     end2cen = sum( diff*diff )
+     if (end2cen < part%hsml*part%hsml) then
+        hit = .true.
+        return
+     endif
+  endif
+
+  ! at this point we must have a hit
+  hit = .true.
+  return
+
   
 end function src_ray_part_intersection
 
