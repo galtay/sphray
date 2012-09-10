@@ -11,7 +11,7 @@
 !======================================================================
 
 module specfuncs
-use myf90_mod
+use myf03_mod
 use physical_constants_mod
 implicit none
 
@@ -95,7 +95,7 @@ end module specfuncs
 
 
 program create_spectra_file
-use myf90_mod
+use myf03_mod
 use physical_constants_mod
 use specfuncs
 use nr, only: qromb
