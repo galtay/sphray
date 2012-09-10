@@ -14,7 +14,7 @@ NRFILES = $(NRDIR)/nrtype.o $(NRDIR)/nrutil.o $(NRDIR)/nr.o \
 
 
 
-FILES = $(NRFILES) $(SRCDIR)/myf90.o $(SRCDIR)/physical_constants.o
+FILES = $(NRFILES) $(SRCDIR)/myf03.o $(SRCDIR)/physical_constants.o
 
 INCLUDE= -I$(SRCDIR) 
 OPT=
