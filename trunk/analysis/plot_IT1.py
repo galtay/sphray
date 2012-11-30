@@ -23,20 +23,6 @@ print "png file if doing file output:", pngfile
 print
 
 
-#====================================================================
-# define some physical constants
-#====================================================================
-
-PROTONMASS = 1.6726e-24 # proton mass [g]
-GLEN  = 3.085678e21     # [cm h^-1]
-GMASS = 1.989e43        # [g h^-1]
-GVEL  = 1.0e5           # [cm s^-1]
-
-GTIME = GLEN / GVEL                 # [s h^-1]
-GRHO  = GMASS / GLEN**3             # [g cm^-3 h^2]
-GPRS  = GMASS / GLEN / GTIME**2     # [g cm^-1 s^-2 h^2]
-GENRG = GMASS * GLEN**2 / GTIME**2  # [erg h^-1]
-GLUM  = GENRG / GTIME               # [erg/s]
 
 
 #====================================================================
@@ -67,6 +53,39 @@ sdata = sf.convert_data_to_structured_array(sdata)
 sdata.sort(order='rad')
 
 
+# bin particles radially with an equal number of 
+# particles per bin
+#---------------------------------------------------
+
+nbins = 1000
+ngas = sdata['rad'].size
+
+nperbin = ngas / nbins
+
+class SphRadialAverage:
+    pass
+
+rav = SphRadialAverage()
+
+rav.xx = np.zeros( nbins )
+rav.xHI_mean = np.zeros( nbins )
+rav.xHI_median = np.zeros( nbins )
+
+
+for i in xrange(nbins):
+    ii = i * nperbin
+    ff = ii + nperbin
+    if i==nbins-1:
+        ff = ngas
+
+    rads = sdata['rad'][ii:ff]
+    xHI = sdata['xHI'][ii:ff]
+
+    rav.xx[i] = np.mean(rads)
+    rav.xHI_mean[i] = np.mean( np.log10(xHI) )
+    rav.xHI_median[i] = np.median( np.log10(xHI) )
+
+
 #====================================================================
 # read comparison project data
 #====================================================================
@@ -91,21 +110,89 @@ for i,c in enumerate(codes):
 # make plot
 #====================================================================
 
-print 'finished reading and sorting' 
 
-fig = plt.figure() 
+
+# define linestyles 
+#--------------------------------------
+
+from itertools import cycle
+
+lines = [
+    {'color':'blue', 'ls':'-'}, 
+    {'color':'green', 'ls':'-'}, 
+    {'color':'red', 'ls':'-'}, 
+    {'color':'gold', 'ls':'-'}, 
+    {'color':'cyan', 'ls':'-'}, 
+    {'color':'purple', 'ls':'-'}, 
+    {'color':'black', 'ls':'-'}, 
+    {'color':'red', 'ls':'--'}, 
+    {'color':'green', 'ls':'--'}, 
+    
+]
+linecycler = cycle(lines)
+
+
+# set up figure
+#--------------------------------------
+
+fig = plt.figure( figsize=(10,10) ) 
 ax = fig.add_subplot(111)
 
+# plot SPHRAY results
+#--------------------------------------
+
 ax.scatter( sdata['rad']/(shead['boxlen'][0]/2), 
-             np.log10( sdata['xHI'] ), s=10 )
+             np.log10( sdata['xHI'] ), s=30, 
+            facecolors='grey', edgecolors='grey', alpha=0.1)
+
+ax.scatter( sdata['rad']/(shead['boxlen'][0]/2), 
+             np.log10( 1.0-sdata['xHI'] ), s=30, 
+            facecolors='grey', edgecolors='grey', alpha=0.1)
+
+ax.plot( rav.xx / (shead['boxlen'][0]/2), 
+         rav.xHI_median, color='lime', lw=3.0,
+         alpha=0.7, zorder=4)
+
+ax.plot( rav.xx / (shead['boxlen'][0]/2), 
+         np.log10( 1.0 - 10**rav.xHI_median), 
+         color='lime', lw=3.0,
+         alpha=0.7, zorder=4)
+
+
+
+# plot comparison project results
+#--------------------------------------
+
 
 for i,c in enumerate(codes[1:]):
-    ax.plot( cdata['xx'], np.log10( cdata[c] ) )
+
+    this_line = next(linecycler)
+    color = this_line['color']
+    ls = this_line['ls']
 
 
+    ax.plot( cdata['xx'], np.log10( cdata[c] ), label=c, 
+             lw=2.0, color=color, ls=ls )
+
+
+    ax.plot( cdata['xx'], np.log10( 1.0-cdata[c] ),  
+             lw=2.0, color=color, ls=ls )
+
+
+
+# finalize plot
+#--------------------------------------
+
+
+ax.legend(loc='lower center', ncol=2)
+
+ax.set_xlabel( r'$r/L_{\rm box}$', fontsize=20 )
 ax.set_xlim( -0.05, 1.05 )
+
+ax.set_ylabel( r'$x_{\rm HI}$', fontsize=20 )
 ax.set_ylim( -5.3, 0.1 )
 
+fig.savefig( pngfile )
 
 
 
