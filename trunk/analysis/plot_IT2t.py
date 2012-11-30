@@ -19,14 +19,14 @@ mpl.rcParams['ytick.labelsize'] = 20.0
 # define input parameters
 #====================================================================
 
-snapdir  = "../../sphray_output/IT2_N64/r8"
+snapdir  = "../../sphray_output/IT2_N64/r6"
 snapbase = "snap"
-snapnum = 1
+snapnum = 3
 snapnumstr = '{0:03}'.format( snapnum )
 
 sfile  = snapdir + "/" + snapbase + "_" + snapnumstr
-pngfile = "T2x" + snapnumstr + ".png"
-cmpfile= "CmpData/CmpT2_" + snapnumstr + "x.txt"
+pngfile = "T2t" + snapnumstr + ".png"
+cmpfile= "CmpData/CmpT2_" + snapnumstr + "t.txt"
 
 print
 print "comparison project file:", cmpfile
@@ -79,8 +79,8 @@ class SphRadialAverage:
 rav = SphRadialAverage()
 
 rav.xx = np.zeros( nbins )
-rav.xHI_mean = np.zeros( nbins )
-rav.xHI_median = np.zeros( nbins )
+rav.T_mean = np.zeros( nbins )
+rav.T_median = np.zeros( nbins )
 
 
 for i in xrange(nbins):
@@ -90,11 +90,11 @@ for i in xrange(nbins):
         ff = ngas
 
     rads = sdata['rad'][ii:ff]
-    xHI = sdata['xHI'][ii:ff]
+    T = sdata['T'][ii:ff]
 
     rav.xx[i] = np.mean(rads)
-    rav.xHI_mean[i] = np.mean( np.log10(xHI) )
-    rav.xHI_median[i] = np.median( np.log10(xHI) )
+    rav.T_mean[i] = np.mean( np.log10(T) )
+    rav.T_median[i] = np.median( np.log10(T) )
 
 
 #====================================================================
@@ -152,19 +152,19 @@ ax = fig.add_subplot(111)
 #--------------------------------------
 
 ax.scatter( sdata['rad']/(shead['boxlen'][0]/2), 
-             np.log10( sdata['xHI'] ), s=30, 
+             np.log10( sdata['T'] ), s=30, 
             facecolors='grey', edgecolors='grey', alpha=0.1)
 
 ax.scatter( sdata['rad']/(shead['boxlen'][0]/2), 
-             np.log10( 1.0-sdata['xHI'] ), s=30, 
+             np.log10( 1.0-sdata['T'] ), s=30, 
             facecolors='grey', edgecolors='grey', alpha=0.1)
 
 ax.plot( rav.xx / (shead['boxlen'][0]/2), 
-         rav.xHI_median, color='lime', lw=3.0,
+         rav.T_median, color='lime', lw=3.0,
          alpha=0.7, zorder=4)
 
 ax.plot( rav.xx / (shead['boxlen'][0]/2), 
-         np.log10( 1.0 - 10**rav.xHI_median), 
+         np.log10( 1.0 - 10**rav.T_median), 
          color='lime', lw=3.0,
          alpha=0.7, zorder=4)
 
@@ -194,13 +194,13 @@ for i,c in enumerate(codes[1:]):
 #--------------------------------------
 
 
-ax.legend(loc='lower center', ncol=2)
+ax.legend(loc='lower left', ncol=2)
 
 ax.set_xlabel( r'$r/L_{\rm box}$', fontsize=20 )
 ax.set_xlim( -0.05, 1.05 )
 
-ax.set_ylabel( r'$x_{\rm HI}$', fontsize=20 )
-ax.set_ylim( -5.3, 0.1 )
+ax.set_ylabel( r'$T [K]$', fontsize=20 )
+ax.set_ylim( 2.8, 4.5 )
 
 fig.savefig( pngfile )
 
